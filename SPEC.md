@@ -1,41 +1,841 @@
-# MATCH Specification
+# Product Specification
 
-## 1. Purpose and Scope
+## Overview
 
-MATCH is a deterministic, local-first Web Quality Linter delivered as a Chrome Extension (Manifest V3).
-It evaluates a page against strict engineering and semantic standards.
+Artichales is an offline-first academic writing and publishing system centered on a Markdown-first workflow and delivered primarily as a Chrome extension editor. It uses a shadcn-compatible component architecture and a plugin-based pipeline to produce two render targets from a single source: print (PDF) and web (HTML/React). The initial product is intentionally local-first and focuses on a single current document.
 
-MATCH does NOT aim to discover what a website "has".
-MATCH answers: "Is what MUST exist present, and is it correct?"
+Authoring inputs are a single Markdown file and a single BibTeX file. The same Markdown source renders to both print output (templating → PDF) and web output (templating → HTML as a React surface). Templates are selected by a single string name and resolved from `templates/<name>_print.json` and `templates/<name>_web.json`.
 
-This repository will deliver:
-1) A Chrome Extension (Manifest V3) with:
-   - Popup (quick check on current tab)
-   - Dashboard (advanced multi-run + history)
-2) A deterministic scoring engine:
-   - Metric registry (plugins)
-   - Static execution plan (build-time)
-   - Runtime extraction + resolution
-3) Outputs:
-   - Heatmap grid (MATCH columns)
-   - JSON report (agent/AI-friendly)
+Plugin contracts, hook signatures, and directive payload schemas are defined in `PLUGIN_SPEC.md`.
+Extension runtime behavior, storage details, and filesystem interactions are defined in `EXTENSION.md`.
+Asset embedding, loading, and accessibility rules for artifacts are defined in `ARTIFACT_SPEC.md`.
 
-Motto:
-"Engineering Honesty for the Web"
+**Inputs**
+- Markdown document body
+- gray-matter frontmatter
+- BibTeX entries (single `.bib` source)
+- local assets
+- selected template name
+- enabled built-in plugins
+- selected preview target
 
+**Outputs**
+- normalized document model
+- document indexes
+- full print preview
+- full web preview
+- partial render fragments
+- validated references and citation graph
+- normalized render tree for print
+- normalized render tree for web
+- PDF export
+- reusable Artichales components
+
+
+### `paper.md`
+```md
+---
+title: "A Shared Markdown Pipeline for Print and Web Publishing"
+authors:
+  - name: "Goker Cebeci"
+    affiliation: "KODKAFA"
+    orcid: "0000-0002-1825-0097"
+keywords:
+  - markdown
+  - publishing
+  - academic writing
+template: "classic"
+references: 
+  - style: "ieee"
+  - source: "./refs.bib"
+---
+:::abstract
+Lorem ipsum dolor sit amet.
+:::
+
+
+# Introduction
+Lorem ipsum dolor sit amet [cite:knuth1984].
+
+# Methods
+Lorem ipsum dolor sit amet.
+
+# Results
+Lorem ipsum dolor sit amet.
+
+# Conclusion
+Lorem ipsum dolor sit amet.
+```
+
+### refs.bib
+```
+@article{knuth1984,
+  author = {Donald E. Knuth},
+  title = {Literate Programming},
+  journal = {The Computer Journal},
+  year = {1984},
+  volume = {27},
+  number = {2},
+  pages = {97--111}
+}
+```
+
+
+
+## Purpose and Scope
+
+Artichales addresses the gap between traditional academic authoring tools and modern component-based writing systems. The goal is to keep Markdown as the canonical source while providing a structured academic pipeline for references, citations, figures, tables, equations, print preview, web preview, and PDF export.
+
+**Solutions**
+The system is designed around a shared rendering core and a reusable component layer. The same core must drive:
+- editor behavior
+- print preview
+- web preview
+- partial rendering
+- PDF export
+- Chrome extension application surfaces
+- shadcn-installed component usage
+
+**In scope**
+- single-document academic authoring
+- offline-first editing
+- print preview and web preview
+- normalized render tree generation
+- partial rendering
+- controlled BibTeX ingestion and validation
+- built-in plugin execution
+- PDF export through the browser print pipeline
+- shadcn registry-compatible component installation
+
+**Out of scope for the initial version**
+- collaborative editing
+- multi-document workspace management
+- remote publishing
+- content injection into third-party pages
+- runtime plugin downloading
+- arbitrary remote plugin execution
+
+
+## Goals
+
+- produce stable print and web outputs from the same Markdown source
+- use a normalized render tree as the single rendering contract
+- preserve academic structures across both targets
+- support full-document and partial rendering
+- keep the system local-first and usable offline
+- provide reusable shadcn-compatible components
+- make the Chrome extension use the same components and the same rendering core
+- keep plugins built-in, deterministic, and explicit
+- export PDF through the print pipeline without introducing a separate PDF authoring model
+
+## Core Principles
+
+Artichales is source-first. Markdown and frontmatter are the canonical authoring inputs.
+
+Artichales is Markdown-first. Standard Markdown remains the base authoring format. Academic extensions are added through directives, parsing, indexing, and plugins.
+
+Artichales is render-tree-first. The shared rendering contract is a normalized render tree. Print preview, web preview, partial render updates, and PDF export all consume this render tree.
+
+Artichales is component-driven. The editor and preview surfaces are reusable shadcn-compatible components. The Chrome extension uses the same components from the same repository.
+
+Artichales is local-first. The initial version works without a remote backend and uses local persistence.
+
+Artichales is plugin-extensible. Built-in plugins extend parsing, rendering, editor UI, and shared core behavior. Plugin details are defined separately in `PLUGIN_SPEC.md`.
+
+Artichales is artifact-aware. PDF and asset behavior are defined separately in `ARTIFACT_SPEC.md`.
+
+**Detailed features**
+- Markdown editor with local persistence
+- print preview and web preview
+- full render and partial render
+- template selection by name (resolves to `templates/<name>_print.json` and `templates/<name>_web.json`)
+- plugin registry and plugin lifecycle
+- BibTeX import, parse, normalize, validate, and bibliography render
+- citation linking and cross-reference indexing
+- figures, tables, captions, equations, and academic blocks
+- embeddable React surfaces
+- Chrome extension packaging
+- shadcn-compatible component composition
+
+**Input definitions**
+- raw Markdown content
+- frontmatter metadata
+- BibTeX text or normalized reference entries
+- template name (string; resolves to print and web template JSON files)
+- plugin definitions and plugin configuration
+- local assets
+- editor interactions
+- preview target selection
+
+**Output definitions**
+- normalized document model
+- document indexes
+- full print render
+- full web render
+- partial rendered fragments
+- validated references
+- citation map
+- bibliography output
+- PDF artifact
+- HTML artifact
+- host-mountable editor and preview surfaces
+
+## Architecture
+### Component Architecture
+
+Artichales is organized around four layers:
+
+1. **Core layer**
+   - frontmatter parsing
+   - Markdown parsing
+   - BibTeX parsing and normalization
+   - indexing
+   - diagnostics
+   - partial invalidation
+   - normalized render tree generation
+
+2. **Plugin layer**
+   - built-in core plugins
+   - built-in parser plugins
+   - built-in render plugins
+   - built-in editor plugins
+
+3. **Component layer**
+   - editor components
+   - web preview components
+   - print preview components
+   - panel and surface components
+   - shared UI primitives
+
+4. **Application layer**
+   - Chrome extension application
+   - local persistence
+   - file import/export
+   - PDF export
+
+The extension application must consume the same Artichales components and the same core logic defined in this repository. No separate extension-only rendering system is allowed.
+
+### Repository Shape
+
+```txt
+src/
+  artichales.json
+  components.json
+  components/
+    artichales/
+      editor/
+      preview/
+        web/
+        print/
+      panels/
+      surfaces/
+      templates/
+        classic_print.json
+        classic_web.json
+      plugins/
+        citation.core.plugin.tsx
+        citation.parser.plugin.tsx
+        citation.render.plugin.tsx
+      citation.editor.plugin.tsx
+  lib/
+  hooks/
+  app/
+    editor/
+      components/
+      page.tsx
+  types/
+```
+
+### Pipelines
+
+#### Document parse pipeline
+- read Markdown source and frontmatter
+- parse frontmatter with gray-matter
+- parse Markdown into an intermediate syntax tree
+- run registered parser plugins in a deterministic order
+- parse and normalize BibTeX reference input
+- validate references against supported schemas
+- build the normalized document model
+- build document indexes for headings, citations, figures, tables, and cross-references
+
+#### Full render pipeline
+- load normalized document model
+- resolve render target as print or web
+- resolve selected template name into template files:
+  - `templates/<name>_print.json`
+  - `templates/<name>_web.json`
+- run render plugins
+- generate target HTML structure
+- attach target styles, assets, and metadata
+- return full render result
+
+#### Partial render pipeline
+- load normalized document model
+- determine affected fragment from editor changes or render request
+- resolve fragment dependencies such as citations, numbering, and cross-references
+- re-render only the requested fragment or affected render region
+- update preview surface or host component
+- preserve full-document indexes unless invalidated by structural changes
+
+#### Editor pipeline
+- ingest user input
+- persist draft locally
+- debounce parse requests
+- update diagnostics
+- perform partial or full preview render
+- refresh editor and preview UI state
+
+#### Extension pipeline
+- mount shared editor or preview surface inside popup, options page, or content script host
+- use shared core for parsing and rendering
+- autosave current Markdown and BibTeX into extension local storage for offline persistence
+- expose export, preview, and insertion actions through extension UI
+
+#### Shadcn integration pipeline
+- expose editor and preview primitives as reusable React components
+- wrap primitives in host-compatible composable components
+- allow host apps to compose Artichales surfaces into their own layouts without forking logic
+
+## Models
+
+### Author
+
+**Fields**
+- `name`: string
+- `affiliation?`: string
+- `email?`: string
+- `orcid?`: string
+- `url?`: string
+
+### BibliographySource
+
+**Fields**
+- `style`: string
+- `source`: string
+
+### DocumentFrontmatter
+
+**Fields**
+- `title`: string
+- `authors`: Author[]
+- `keywords?`: string[]
+- `template`: string
+- `bibliography`: BibliographySource
+- `plugins?`: PluginConfigMap
+
+### AssetRef
+
+**Fields**
+- `type`: string
+- `path`: string
+
+### SourceRange
+
+**Fields**
+- `start`: number
+- `end`: number
+
+### Diagnostic
+
+**Fields**
+- `code`: string
+- `message`: string
+- `severity`: "error" | "warning" | "info"
+- `range?`: SourceRange
+
+### DocumentBlock
+
+**Fields**
+- `id`: string
+- `type`: string
+- `range`: SourceRange
+- `data?`: Record<string, unknown>
+- `children?`: DocumentBlock[]
+
+### ReferenceEntry
+
+**Fields**
+- `id`: string
+- `type`: "article" | "book" | "inproceedings" | "online"
+- `title`: string
+- `authors?`: string[]
+- `year`: string
+- `fields`: Record<string, string>
+
+### HeadingIndex
+
+**Fields**
+- `id`: string
+- `level`: number
+- `text`: string
+- `number?`: string
+- `range`: SourceRange
+
+### FigureIndex
+
+**Fields**
+- `id`: string
+- `label`: string
+- `number`: number
+- `range`: SourceRange
+
+### TableIndex
+
+**Fields**
+- `id`: string
+- `label`: string
+- `number`: number
+- `range`: SourceRange
+
+### CitationIndex
+
+**Fields**
+- `id`: string
+- `referenceId`: string
+- `range`: SourceRange
+
+### CrossReferenceIndex
+
+**Fields**
+- `id`: string
+- `targetId`: string
+- `range`: SourceRange
+
+### FragmentIndex
+
+**Fields**
+- `id`: string
+- `type`: "document" | "abstract" | "body" | "references" | "section" | "figure" | "table"
+- `range`: SourceRange
+- `dependsOn`: string[]
+
+### DocumentIndexes
+
+**Fields**
+- `headings`: HeadingIndex[]
+- `figures`: FigureIndex[]
+- `tables`: TableIndex[]
+- `citations`: CitationIndex[]
+- `crossReferences`: CrossReferenceIndex[]
+- `fragments`: FragmentIndex[]
+
+### DocumentSource
+
+**Fields**
+- `frontmatter`: DocumentFrontmatter
+- `markdown`: string
+- `bibtex`: string
+- `assets`: AssetRef[]
+
+### DocumentModel
+
+**Fields**
+- `frontmatter`: DocumentFrontmatter
+- `blocks`: DocumentBlock[]
+- `references`: ReferenceEntry[]
+- `indexes`: DocumentIndexes
+- `diagnostics`: Diagnostic[]
+
+### RenderTarget
+
+See `PLUGIN_SPEC.md` for complete plugin type definitions.
+
+```ts
+type RenderTarget = "print" | "web"
+```
+
+### RenderTreeNode
+
+**Fields**
+- `id`: string
+- `type`: string
+- `props?`: Record<string, unknown>
+- `children?`: RenderTreeNode[]
+
+### RenderRequest
+
+**Fields**
+- `target`: RenderTarget
+- `mode`: "full" | "partial"
+- `fragmentId?`: string
+- `templateName`: string
+- `pluginOverrides?`: Record<string, unknown>
+
+### RenderResult
+
+**Fields**
+- `target`: RenderTarget
+- `mode`: "full" | "partial"
+- `tree`: RenderTreeNode[]
+- `fragments?`: Record<string, RenderTreeNode[]>
+- `diagnostics?`: Diagnostic[]
 
 ---
 
-## 2. Technical Stack
+## Plugins
 
-### 2.1 Runtime & Build
+Plugin system is fully defined in `PLUGIN_SPEC.md` including:
+- Plugin categories (core, parser, render, editor)
+- PluginDefinition interface
+- PluginHooks interface
+- Plugin contexts and result types
+- Execution order and conflict resolution
+- Syntax ownership rules
+- Configuration schema
+
+---
+
+### TemplateDefinition
+
+templates/classic_print.json
+```json
+{
+  "id": "classic_print",
+  "target": "print",
+  "version": 1,
+  "meta": {
+    "label": "Classic Print",
+    "description": "Academic print layout optimized for PDF export"
+  },
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margin": {
+      "top": "24mm",
+      "right": "20mm",
+      "bottom": "24mm",
+      "left": "20mm"
+    }
+  },
+  "document": {
+    "language": "en",
+    "columns": 1,
+    "lineHeight": 1.55,
+    "fontFamily": {
+      "body": "Source Serif 4",
+      "heading": "Inter",
+      "mono": "JetBrains Mono",
+      "math": "KaTeX_Main"
+    },
+    "fontSize": {
+      "body": "11pt",
+      "footnote": "9pt",
+      "caption": "9.5pt",
+      "h1": "20pt",
+      "h2": "15pt",
+      "h3": "12pt"
+    },
+    "textAlign": "justify"
+  },
+  "titleBlock": {
+    "enabled": true,
+    "align": "center",
+    "showAuthors": true,
+    "showAffiliations": true,
+    "showKeywords": true,
+    "spacingAfter": "12mm"
+  },
+  "abstract": {
+    "enabled": true,
+    "title": "Abstract",
+    "box": false,
+    "spacingAfter": "8mm"
+  },
+  "headings": {
+    "numbering": true,
+    "h1": {
+      "marginTop": "10mm",
+      "marginBottom": "4mm",
+      "borderBottom": false
+    },
+    "h2": {
+      "marginTop": "7mm",
+      "marginBottom": "3mm"
+    },
+    "h3": {
+      "marginTop": "5mm",
+      "marginBottom": "2mm"
+    }
+  },
+  "paragraphs": {
+    "indentFirstLine": false,
+    "spacingAfter": "3.5mm"
+  },
+  "lists": {
+    "spacingAfter": "3mm"
+  },
+  "equations": {
+    "align": "center",
+    "numbering": true,
+    "numberPosition": "right",
+    "spacingBefore": "3mm",
+    "spacingAfter": "3mm"
+  },
+  "figures": {
+    "captionPosition": "bottom",
+    "captionAlign": "center",
+    "numbering": true,
+    "maxWidth": "100%",
+    "spacingBefore": "5mm",
+    "spacingAfter": "5mm"
+  },
+  "tables": {
+    "captionPosition": "bottom",
+    "captionAlign": "center",
+    "numbering": true,
+    "cellPadding": "6px",
+    "headerBold": true,
+    "borderStyle": "horizontal-only",
+    "spacingBefore": "5mm",
+    "spacingAfter": "5mm"
+  },
+  "citations": {
+    "style": "numeric",
+    "linkable": true
+  },
+  "references": {
+    "enabled": true,
+    "title": "References",
+    "style": "numeric",
+    "hangingIndent": "8mm",
+    "spacingBetweenItems": "2mm"
+  },
+  "headerFooter": {
+    "enabled": true,
+    "header": {
+      "left": "",
+      "center": "",
+      "right": "{title}"
+    },
+    "footer": {
+      "left": "",
+      "center": "{pageNumber}",
+      "right": ""
+    }
+  },
+  "pageBreakRules": {
+    "avoidBreakInside": [
+      "figure",
+      "table",
+      "blockquote",
+      "code"
+    ],
+    "keepHeadingWithNext": true,
+    "orphans": 2,
+    "widows": 2
+  },
+  "pdf": {
+    "enabled": true,
+    "printBackground": true,
+    "preferCSSPageSize": true,
+    "displayHeaderFooter": false
+  }
+}
+```
+
+templates/classic_web.json
+```json
+{
+  "id": "classic_web",
+  "target": "web",
+  "version": 1,
+  "meta": {
+    "label": "Classic Web",
+    "description": "Readable web article layout rendered as a React surface"
+  },
+  "container": "article",
+  "headings": {
+    "numbering": true,
+    "anchorLinks": true,
+    "scrollOffset": "96px"
+  },
+  "equations": {
+    "align": "center",
+    "numbering": true,
+    "inlineOverflow": "scroll"
+  },
+  "figures": {
+    "captionPosition": "bottom",
+    "captionAlign": "left",
+    "numbering": true,
+    "zoomable": true,
+    "maxWidth": "100%"
+  },
+  "tables": {
+    "captionPosition": "bottom",
+    "captionAlign": "left",
+    "numbering": true,
+    "overflowX": "auto",
+    "stickyHeader": false
+  },
+  "citations": {
+    "style": "numeric",
+    "linkable": true,
+    "previewOnHover": false
+  },
+  "references": {
+    "enabled": true,
+    "title": "References",
+    "style": "numeric",
+    "backLinksToCitations": true
+  }
+}
+```
+
+
+**Template resolution (initial version)**
+- the selected template name is a string and must resolve to two files under `templates/`
+  - `templates/<name>_print.json`
+  - `templates/<name>_web.json`
+- all PDF-relevant layout requirements must be defined by the print template
+
+```ts
+const printTemplate = resolveTemplate("classic", "print");
+const webTemplate = resolveTemplate("classic", "web");
+
+const printRender = renderDocument({
+  source: markdownSource,
+  bibtex: bibtexSource,
+  target: "print",
+  template: printTemplate
+});
+
+const pdfArtifact = exportPdf(printRender);
+
+const {title, authors, abstract, body, references} = renderDocument({
+  source: markdownSource,
+  bibtex: bibtexSource,
+  target: "web",
+  template: webTemplate
+});
+```
+
+
+## Plugins
+
+### Plugin Categories
+
+Artichales supports four built-in plugin categories in the initial version:
+
+- core plugins
+- parser plugins
+- render plugins
+- editor plugins
+
+### File Naming Convention
+
+Built-in plugins must follow these file naming conventions under `components/artichales/plugins/`:
+
+- `x.core.plugin.tsx`
+- `x.parser.plugin.tsx`
+- `x.render.plugin.tsx`
+- `x.editor.plugin.tsx`
+
+A feature may provide one or more of these files depending on its scope.
+
+### Plugin Loading Rules
+
+- plugins are built-in only
+- plugins are loaded from this repository
+- execution order must be deterministic
+- plugin configuration must be explicit
+- plugin contract details are defined in `PLUGIN_SPEC.md`
+
+### Initial Authoring Syntax
+
+**Citations**
+- single citation: `[cite:knuth1984]`
+- multiple citations: `[cite:knuth1984, cite:brown2022]`
+
+**Tables**
+- tables are expressed using directive blocks and routed to table plugins
+- `:::table` routes to the default table plugin
+- `:::table[tabularx]` routes to the tabularx table plugin
+- table data payload format will be specified later in `PLUGIN_SPEC.md`
+
+**Examples**
+
+```md
+:::table
+...table data...
+:::
+
+:::table[tabularx]
+...table data...
+:::
+```
+
+**Academic directives**
+- directive-based extensions are allowed for academic authoring
+- supported directive contracts are defined by built-in plugins
+- detailed syntax and payload contracts are defined in `PLUGIN_SPEC.md`
+
+## User Flows
+
+### Author editing flow
+- open or create the current document
+- edit frontmatter, Markdown content, and references
+- switch between print preview and web preview
+- continue editing with immediate preview updates
+- export PDF when ready
+
+### Reference flow
+- import BibTeX
+- validate normalized entries
+- insert citation identifiers into content
+- inspect references in preview
+- resolve validation errors
+
+### Plugin flow
+- enable or disable built-in plugins
+- configure plugin options
+- trigger re-parse or re-render when needed
+- inspect diagnostics if configuration is invalid
+
+### Component installation flow
+- run `npx shadcn@next add <registry>/artichales.json`
+- install Artichales components under `components/artichales/`
+- use the installed editor and preview components in the application
+- use the same components inside the extension application
+
+### System flows
+
+#### Parse flow
+- read source
+- parse frontmatter
+- parse Markdown
+- run parser plugins
+- parse BibTeX
+- validate models
+- build indexes
+- store diagnostics
+
+#### Preview flow
+- determine target and fragment scope
+- resolve template
+- generate the normalized render tree
+- update UI surfaces
+
+#### Plugin flow
+- load registry
+- resolve enabled plugins
+- validate plugin configuration
+- run hooks in declared order
+- attach results to parse, render, editor, or core flow
+
+
+
+## Technical stack
+
+### Runtime & build
 - Bun
 - TypeScript
 - Vite
 - React
 
-### 2.2 UI & Utilities
+### UI & utilities
 - Tailwind CSS v4
+- shadcn/ui-compatible component composition
 - Radix UI primitives
 - class-variance-authority
 - clsx
@@ -43,423 +843,29 @@ Motto:
 - lucide-react
 - tw-animate-css
 
-### 2.3 Code Quality
-- Biome (`@biomejs/biome`)
-
-### 2.4 Extension Tooling
-- `@crxjs/vite-plugin`
-- `@types/chrome`
-
-### 2.5 Core Libraries (Critical Logic)
-
-To maintain the 0-Cost / Local-First policy, the following libraries are integrated for deep analysis without remote API calls:
-
-- **axe-core (Accessibility Engine)**:
-  - **Purpose**: Primary provider for the "A - Access Quality" pillar.
-  - **Implementation**: Injected via content scripts to run automated accessibility audits directly against the DOM.
-  - **Why**: Industry standard for deterministic a11y checks.
-
-- **@xenova/transformers (Transformers.js)**:
-  - **Purpose**: Local NLP and Vector Embeddings.
-  - **Use Case**: Generates semantic vectors for search_term vs. h1/content comparison to calculate cosine similarity.
-  - **Implementation**: Runs ONNX models via WebAssembly (Wasm) inside the extension's background service worker or dashboard.
-  - **Policy**: Models are cached locally after first use. No external inference calls.
-
-- **Chrome Built-in AI (window.ai / Gemini Nano)**:
-  - **Purpose**: High-level semantic reasoning and quality interpretation.
-  - **Use Case**: Scoring the "intent" and "nuance" of metadata and content headers.
-  - **Implementation**: Utilizes the user's local hardware via the experimental Prompt API.
-  - **No-Fallback Policy**: If `window.ai` is disabled or Transformers.js fails due to hardware/browser limitations, MATCH will NOT fallback to remote APIs (OpenAI, Gemini API, etc.). Instead, it MUST trigger a "Browser Update / AI Support Required" alert to the user.
-
----
-
-## 3. MATCH Model
-
-MATCH is a 5-column heatmap system.
-
-### 3.1 MATCH Columns (Pillars)
-
-- M — Metadata Precision
-  Title + essential meta correctness.
-
-- A — Access Quality
-  Strict A11y baseline checks (deterministic).
-
-- T — Technical Hygiene
-  Console/runtime/network hygiene and technical cleanliness (NOT performance scoring).
-
-- C — Contextual Relevancy
-  Page content alignment with the user-provided Search Term.
-
-- H — Hierarchy Integrity
-  Structural and semantic correctness: main/article/heading integrity/landmarks.
-
-Each column is represented by a Proxy Metric (see Metric System).
-
-
----
-
-## 4. Functional Requirements
-
-### 4.1 Inputs & Validation
-
-MATCH must support:
-
-**Input Types**
-- URL (single or list)
-- Search Term (text)
-
-**URL Normalization**
-- If protocol missing, default to `https://`
-- Trim whitespace
-- Remove trailing spaces and normalize casing where safe
-- Reject non-http(s) URLs
-
-**Search Term**
-- Optional for running the engine globally
-- Required for Contextual Relevancy column:
-  - If empty, Contextual proxy metric MUST return a neutral/disabled state (defined below)
-
-### 4.2 Outputs
-
-**UI Output**
-- MATCH heatmap grid (5 columns)
-- Per-row overall state (optional)
-
-**Export**
-- JSON Report (single URL run OR batch run)
-- Export must be deterministic and stable (no random fields)
-
-### 4.3 Live Preview
-- UI must reflect results immediately after a run completes
-- Partial batch results must progressively render row-by-row
-
-
----
-
-## 5. Chrome Extension UX
-
-### 5.1 Popup (Quick Actions)
-The extension popup is the primary entry point for quick checks.
-
-**Popup Behavior**
-- On open:
-  - Capture current tab URL automatically
-  - Pre-fill Search Term (last used) if available
-- Single-click Generate:
-  - Run MATCH on the current tab URL
-  - Render heatmap row (single URL)
-- Download:
-  - Provide a clear “Download Report (JSON)” action
-
-**Popup Footer**
-- Link: "MATCH Dashboard"
-- Action: Opens the full dashboard in a new tab
-
-### 5.2 Dashboard (Advanced)
-Dashboard supports advanced usage.
-
-**Core Features**
-- Multi-URL input (paste list)
-- Search Term input
-- Batch generation with progress feedback
-- History list + re-run
-
-**History & Persistence**
-- Local-only:
-  - `chrome.storage.local` preferred
-- Capacity:
-  - Last 100 records (FIFO)
-- User must be able to:
-  - Clean History
-  - Delete a single record
-
----
-
-## 6. Engine Architecture
-
-### 6.1 Deterministic Pipeline
-
-Runtime pipeline:
-1) Load page (analysis target)
-2) Extract (DOM + optional deep signals)
-3) Execute metrics in static plan order
-4) Compute proxy metrics (MATCH columns)
-5) Persist + render + export
-
-### 6.2 Static Execution Plan (Build-Time)
-Metric dependencies and execution ordering MUST be resolved at build time.
-
-Build-time step:
-- Scan `src/metrics/**/config.json`
-- Build dependency graph
-- Validate:
-  - Missing dependency ids
-  - Cycles (circular dependencies)
-- Generate:
-  - `executionPlan: string[]` (metric id list in execution order)
-  - `metricIndex: Record<id, config + resolverRef>`
-
-At runtime:
-- No dynamic topo-sort
-- No runtime directory scanning
-- Engine runs metrics strictly in `executionPlan`
-
-### 6.3 Metric System (Plugins)
-
-Each metric lives in:
-`src/metrics/<unique_id>/`
-- `config.json`
-- `index.ts`
-
-**Metric Types**
-- `absolute`:
-  - uses `extractions` (+ optional `inputs`, `metrics`)
-- `proxy`:
-  - uses only `metrics` (+ optional `inputs`)
-  - depends on other metric ids
-
-**Metric Config Contract**
-```json
-{
-  "id": "h1_count_integrity",
-  "type": "absolute",
-  "inputs": ["h1List"],
-  "dependencies": [],
-  "constraints": { "min": 0, "max": 10, "ideal": 1 },
-  "description": "Checks the existence and uniqueness of the H1 tag."
-}
-```
-
-Notes:
-- inputs are extraction keys (string references)
-- description is sufficient for UI and export
-
-
-### 6.4 Resolver Contract
-
-Resolver receives 3 objects:
-
-```typescript
-interface Extractions {
-  // Explicit keys OR index signature (v1 can use index signature)
-  [key: string]: string | string[] | number | boolean | null;
-}
-
-interface Metrics {
-  [metricId: string]: number; // normalized [0..1]
-}
-
-interface Inputs {
-  url: string;
-  searchTerm: string;
-  timestamp: number;
-}
-
-export const resolver = (
-  extractions: Extractions,
-  metrics: Metrics,
-  inputs: Inputs
-): number => {
-  return 1.0; // must be [0..1]
-};
-```
-
-### 6.5 Proxy Metrics for MATCH Columns
-
-MATCH columns MUST be represented as proxy metrics:
-- `m_metadata_precision`
-- `a_access_quality`
-- `t_technical_hygiene`
-- `c_contextual_relevancy`
-- `h_hierarchy_integrity`
-
-Proxy reducer rule MUST be deterministic and centralized:
-- default: geometric mean (harsh, no tolerance)
-- clamp output to [0..1]
-
-**Contextual (C) without Search Term**
-If `inputs.searchTerm` is empty:
-- `c_contextual_relevancy` MUST return: `1.0` (neutral pass) OR a fixed neutral constant
-- UI must visually mark it as "not evaluated" (optional)
-
-This keeps the 5-column grid stable without introducing extra states into resolver output.
-
----
-
-## 7. Page Loading & Extraction (Runtime)
-
-MATCH must support two analysis modes:
-
-### 7.1 Mode 1 — Current Tab (Popup Default)
-- Use the active tab the user is currently viewing.
-- Inject content script to extract DOM-based signals.
-- Minimal friction and minimal permissions.
-
-
-
-### 7.3 Readiness / Stabilization
-Extraction MUST run after the page becomes stable.
-Stability conditions (deterministic):
-- `document.readyState === "complete"`
-- wait 2 animation frames
-- wait a quiet window (no significant DOM mutations for N ms)
-
-### 7.4 Extraction Payload (Minimum v1)
-Engine must extract only what it needs for strict checks.
-Minimum recommended extraction keys (v1):
-- `title: string | null`
-- `metaDescription: string | null`
-- `canonicalUrl: string | null`
-- `robotsMeta: string | null`
-- `htmlLang: string | null`
-- `viewportMeta: string | null`
-- `h1List: string[]`
-- `headingOutline: Array<{ level: number; text: string }>`
-- `hasMain: boolean`
-- `hasArticle: boolean`
-- `landmarks: string[]`
-- `hasSkipLink: boolean`
-- `mainText: string` (normalized)
-- `links: Array<{ href: string; text: string }>`
-- `images: Array<{ src: string; alt: string | null }>`
-
-Technical hygiene signals are optional by mode (see below).
-
-### 7.5 Technical Hygiene Signals (Strict but Optional Permission)
-Technical hygiene can be implemented in two tiers:
-
-- **Tier A (default)**:
-  DOM-level and basic signals only (safe, minimal permissions)
-- **Tier B (deep hygiene)**:
-  Console errors / runtime exceptions / network failures
-  Requires Chrome debugging instrumentation.
-  MUST be optional and clearly user-triggered in UI.
-  If disabled, related metrics must return neutral values (deterministic).
-
-This keeps MATCH usable with minimal permissions while allowing a strict mode for power users.
-
----
-
-## 8. Color Palette (MATCH)
-
-| Pillar | Column | Brand HEX | Heat Max HEX |
-|---|---|---|---|
-| M | Metadata | `#DD4433` | `#55CCCC` |
-| A | Access | `#4488FF` | `#EECC33` |
-| T | Technical | `#FFBB00` | `#2288CC` |
-| C | Contextual | `#8844BB` | `#88AA55` |
-| H | Hierarchy | `#11AA55` | `#993366` |
-
-### 8.1 Heatmap Rule
-- Score = 1.0: transparent OR Brand color
-- Score < 0.7: interpolate toward Heat Max
-- Score = 0.0: Heat Max color
-
----
-
-## 9. Storage and History
-
-### 9.1 Storage Strategy
-
-Data is stored in `chrome.storage.local` across three distinct stores. Each store follows a FIFO (First-In, First-Out) policy with a 100-record limit.
-
-- **Extractions Store (URL Bound)**:
-  - **Key**: `ext_[hash(url)]`
-  - **Data**: Raw DOM signals and extracted data (`p_` values).
-  - **Logic**: Reusable for any search term on the same URL.
-  - **TTL**: 24 hours.
-
-- **Core Pillars Store (URL Bound - MATH)**:
-  - **Key**: `math_[hash(url)]`
-  - **Data**: Scores for Metadata, Access, Technical, and Hierarchy.
-  - **Logic**: These pillars are independent of the search term and are only re-calculated if extractions expire.
-  - **TTL**: 24 hours.
-
-- **Contextual Store (URL + SearchTerm Bound - C)**:
-  - **Key**: `sim_[hash(url + searchTerm)]`
-  - **Data**: Score for Contextual Relevancy.
-  - **Logic**: Re-calculated whenever the search term changes, even if MATH pillars are cached.
-  - **TTL**: 24 hours.
-
-### 9.2 Cache Control
-
-- **Force Run**: `Ctrl + Click` on the Analyze button bypasses all three stores for a fresh extraction and full re-calculation.
-
----
-
-## 10. Reports
-
-### 10.1 JSON Report Contract
-Export must include:
-- inputs
-- MATCH proxy scores
-- all metric scores (id -> score)
-
-*Descriptions* should  be  static  and  generated  at build  time.  Each report  should include  the  descriptions of  all  metrics. Descriptions  should  NOT be cached or stored  at browser  storage.
-
-Recommended structure:
-```json
-{
-  "version": "1.0",
-  "inputs": { "url": "...", "searchTerm": "...", "timestamp": 0 },
-  "descriptions": {
-    "m_metadata_precision": "Metadata Precision",
-    "a_access_quality": "Access Quality",
-    "t_technical_hygiene": "Technical Hygiene",
-    "c_contextual_relevancy": "Contextual Relevancy",
-    "h_hierarchy_integrity": "Hierarchy Integrity",
-    "...": "..."
-  },
-  "metrics": {
-    "m_metadata_precision": { "raw": 1, "normalized": 1 },
-    "a_access_quality": { "raw": 1, "normalized": 1 },
-    "t_technical_hygiene": { "raw": 1, "normalized": 1 },
-    "c_contextual_relevancy": { "raw": 1, "normalized": 1 },
-    "h_hierarchy_integrity": { "raw": 1, "normalized": 1 },
-    "h1_count_integrity": { "raw": 5, "normalized": 0.5 },
-    "...": { "raw": 1, "normalized": 1 }
-  }
-}
-```
-
-### 10.2 Batch Report
-Batch export must wrap multiple runs:
-```json
-{ "runs": [ ...singleRunReport ] }
-```
-
----
-
-## 12. Security and Privacy
-- No remote code execution paths
-- Sanitize user-generated payloads before render/export
-- Local-first: analysis results remain on device
-- Permissions must be minimal and justified
-
----
-
-## 13. Extension Permissions (MV3)
-
-Required baseline:
-- `activeTab` (read current tab URL, run quick analysis)
-- `downloads` (save JSON report)
-- `storage` (settings + history)
-
-Optional (only if Tier B deep hygiene is implemented):
-- Debug instrumentation permission(s)
-- Must be opt-in and clearly explained in UI
-
----
-## 14. v2 Plan
-
-### 14.1 Mode 2 — Batch URLs (Dashboard)
-- New background tab logic
-
-
-### 14.2 Accessibility Specification
-- WCAG 2.1 AA baseline
-- Keyboard operability for all controls
-- Visible focus states
-- Sufficient contrast in default themes
-- Form controls with labels and error messaging
+### Code quality
+- Biome (@biomejs/biome)
+
+### Extension tooling
+- @crxjs/vite-plugin
+- @types/chrome
+
+### Distribution
+- shadcn registry-compatible distribution
+- `artichales.json` registry entry
+- install target: `components/artichales/`
+
+### Core libraries
+- gray-matter
+- unified
+- remark-parse
+- remark-gfm
+- remark-math
+- remark-directive
+- remark-rehype
+- rehype-katex
+- a BibTeX parser and validator
+- a local persistence layer
+- a render invalidation layer
+- a normalized render tree mapper
+- a browser print pipeline for PDF export

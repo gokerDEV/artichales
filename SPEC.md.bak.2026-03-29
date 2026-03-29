@@ -1,0 +1,545 @@
+# Product Specification
+
+## Overview
+
+Artichales is an offline-first academic writing and publishing system centered on a Markdown-first workflow and delivered primarily as a Chrome extension editor. It uses a shadcn-compatible component architecture and a plugin-based pipeline to produce two render targets from a single source: print (PDF) and web (HTML/React). The initial product is intentionally local-first and focuses on a single current document.
+
+Authoring inputs are a single Markdown file and a single BibTeX file. The same Markdown source renders to both print output (templating → PDF) and web output (templating → HTML as a React surface). Templates are selected by a single string name and resolved from `templates/<name>_print.json` and `templates/<name>_web.json`.
+
+**Inputs**
+- Markdown document body (single file)
+- gray-matter frontmatter
+- BibTeX entries (single `.bib` file)
+- local assets referenced by `type` and `path`
+- selected template name (string; resolves to print and web template JSON files)
+- enabled built-in plugins (from `plugins/`)
+- selected editor and render themes (initially optional)
+
+**Outputs**
+- full print preview
+- full web preview
+- partial rendered fragments
+- validated citation graph and bibliography
+- PDF download
+- HTML output (web target)
+- publishable print artifact
+- publishable web page
+- extension-compatible editor surface
+- shadcn-compatible component layer for host applications
+
+## Purpose and Scope
+
+Artichales addresses the gap between traditional academic authoring tools and modern web-native writing systems. Existing academic workflows are often rigid, heavyweight, and difficult to adapt to modern publishing targets. Modern web editors are easier to use but usually weak in citation workflows, print (paper/PDF) rendering, controlled reference models, and reusable publishing pipelines.
+
+Artichales solves this by using Markdown as the canonical authoring source and building a shared parsing, rendering, and extension system around it. The same source should support editing, previewing, exporting, embedding, and publishing. The editor should be usable inside a standard web app, inside host applications that use the shadcn component ecosystem, and inside a Chrome extension package without forking the authoring core.
+
+**Solutions**
+- a shared authoring core for editor, preview, export, and publishing
+- print (paper/PDF) and web rendering from the same source document
+- a theme system that works for editor UI and render targets
+- partial rendering for fast preview updates and reusable output fragments
+- a controlled BibTeX workflow with validation and editor support
+- a plugin system for academic features and host-specific extensions
+- a component model that can be integrated into shadcn-based applications
+- a build and packaging model that supports Chrome extension delivery
+
+**Scopes**
+- offline-first document editing (Chrome extension)
+- live preview for print and web targets
+- theme-aware rendering
+- plugin registration and plugin configuration
+- controlled BibTeX ingestion and bibliography generation
+- partial rendering for editor and publishing
+- embeddable React-based editor surfaces
+- Chrome extension packaging
+- shadcn-compatible component integration
+- export and publish pipelines for print and web
+
+**Out of scope for the initial version**
+- real-time collaborative editing
+- unrestricted support for all BibTeX entry types
+- full WYSIWYG page editing
+- cloud-first dependency as a required mode
+- full journal workflow management
+- runtime plugin downloading or remote plugin loading (built-in plugins only)
+- arbitrary plugin execution from untrusted remote sources
+- multi-document libraries (only the current single document)
+
+## Goals
+
+Output should be a single-source academic document system that produces stable print and web artifacts from the same Markdown input.
+
+Output should preserve academic structure across all render targets, including citations, bibliography, equations, figures, tables, captions, section numbering, and cross-references.
+
+Output should support both full-document rendering and partial rendering so preview, export, and publishing can reuse the same core without unnecessary work.
+
+Output should expose reusable editor and preview surfaces that can be embedded into standard React applications, Chrome extension UIs, and shadcn-based product surfaces.
+
+Output should keep theme definitions explicit and portable so editor UI and render outputs can be styled consistently without changing content syntax.
+
+UX should be predictable for Markdown users and compact enough for serious writing work.
+
+UX should allow authors to switch instantly between print preview and web preview while keeping a single source of truth.
+
+UX should keep reference editing strict enough to prevent broken academic output but simple enough to remain understandable.
+
+UX should allow theme switching, template switching, and plugin toggling without corrupting document content.
+
+UX should support offline authoring, local recovery, and fast incremental updates as first-class behavior.
+
+## Core Principles
+
+Artichales is source-first. The document source is the permanent input. All previews, exports, and published outputs must be derived from the same source model.
+
+Artichales is Markdown-first. Basic writing remains standard Markdown. Academic behavior is added through parsing, validation, indexing, and plugins rather than by replacing Markdown with a custom authoring language.
+
+Artichales is metadata-aware through gray-matter. Frontmatter stores document metadata and render configuration such as the selected template name (resolved to print and web template JSON files), theme identifiers, and reference source configuration. Temporary preview state is not part of document content.
+
+Artichales treats editor, preview, theme, and plugins as separate but coordinated layers. The editor manages author input, preview renders target-specific output, themes define visual behavior, and plugins extend parsing and rendering capabilities. None of these layers should require the source syntax to change in order to work.
+
+Artichales supports two render targets as first-class outputs. Print and web are not modes of the document. They are render targets produced from the same parsed document model.
+
+Artichales supports partial rendering. The core must be able to render the full document, the abstract, the body, the references, specific sections, and target-specific blocks without always re-rendering the full output. Partial rendering is required for responsive preview, efficient export, and modular publishing integration.
+
+Artichales keeps themes structured. Themes are not only color skins. A theme may define editor UI tokens, print rendering rules, web rendering rules, typography, spacing, code appearance, and block-level presentation. Themes must be packageable and configurable. Themes must be compatible with Tailwind v4 tokens and usable inside shadcn-based hosts.
+
+Artichales keeps plugins controlled. Plugins may extend parsing and rendering behavior, but execution order must be deterministic and configuration must be explicit. In the initial version, only built-in plugins defined under `plugins/` can be enabled and executed. Plugin contract details will be finalized later in `PLUGIN_SPEC.md`.
+
+Artichales keeps references strict. BibTeX is the external reference format, but the internal reference model is normalized and schema-limited. The initial supported entry types are `article`, `book`, `inproceedings`, and `online`.
+
+**Detailed features**
+- Markdown editor with local persistence
+- print preview and web preview
+- full render and partial render
+- theme selection and theme overrides
+- template selection by name (resolves to `templates/<name>_print.json` and `templates/<name>_web.json`)
+- plugin registry and plugin lifecycle
+- BibTeX import, parse, normalize, validate, and bibliography render
+- citation linking and cross-reference indexing
+- figures, tables, captions, equations, and academic blocks
+- embeddable React surfaces
+- Chrome extension packaging
+- shadcn-compatible component composition
+
+**Input definitions**
+- raw Markdown content
+- frontmatter metadata
+- BibTeX text or normalized reference entries
+- theme identifiers and optional theme overrides
+- template name (string; resolves to print and web template JSON files)
+- plugin definitions and plugin configuration
+- local assets
+- editor interactions
+- preview target selection
+- export and publish actions
+
+**Output definitions**
+- normalized document model
+- document indexes
+- full print render
+- full web render
+- partial rendered fragments
+- validated references
+- citation map
+- bibliography output
+- PDF artifact
+- HTML artifact
+- host-mountable editor and preview surfaces
+
+## Architecture
+
+**Complete scheme**
+
+Artichales is organized around a shared document core and several delivery surfaces. The shared core owns frontmatter parsing, Markdown parsing, plugin execution, BibTeX processing, indexing, theming resolution, and target rendering. The editor application, embedded host components, publishing integration, and Chrome extension all consume this shared core.
+
+The editor layer is responsible for document editing, local persistence, preview switching, theme switching, plugin controls, and export actions. The preview layer is responsible for target rendering and fragment rendering. The theme layer resolves UI tokens and render styling for both editor and output surfaces. The plugin layer extends core behavior through controlled hooks. The integration layer packages these surfaces for web apps, shadcn-based applications, and Chrome extension runtimes.
+
+**Folder structure**
+```txt
+templates/
+  <name>_print.json
+  <name>_web.json
+plugins/
+  *.tsx
+src/
+  ...extension UI + shared core...
+```
+
+Pipeline structure
+
+Document parse pipeline
+read Markdown source and frontmatter
+parse frontmatter with gray-matter
+parse Markdown into an intermediate syntax tree
+run registered parser plugins in a deterministic order
+parse and normalize BibTeX reference input
+validate references against supported schemas
+build the normalized document model
+build document indexes for headings, citations, figures, tables, and cross-references
+Full render pipeline
+load normalized document model
+resolve render target as print or web
+resolve selected template name into template files:
+- `templates/<name>_print.json`
+- `templates/<name>_web.json`
+resolve selected theme and theme token overrides
+run render plugins
+generate target HTML structure
+attach target styles, assets, and metadata
+return full render result
+Partial render pipeline
+load normalized document model
+determine affected fragment from editor changes or render request
+resolve fragment dependencies such as citations, numbering, and cross-references
+re-render only the requested fragment or affected render region
+update preview surface or host component
+preserve full-document indexes unless invalidated by structural changes
+Editor pipeline
+ingest user input
+persist draft locally
+debounce parse requests
+update diagnostics
+perform partial or full preview render
+refresh editor and preview UI state
+Extension pipeline
+mount shared editor or preview surface inside popup, options page, or content script host
+use shared core for parsing and rendering
+autosave current Markdown and BibTeX into extension local storage for offline persistence
+expose export, preview, and insertion actions through extension UI
+Shadcn integration pipeline
+expose editor and preview primitives as reusable React components
+wrap primitives in host-compatible composable components
+align theme tokens with Tailwind and shadcn token expectations
+allow host apps to compose Artichales surfaces into their own layouts without forking logic
+Models
+
+Model definitions
+
+DocumentFrontmatter
+
+Defines source-level metadata and render configuration.
+
+Fields
+
+title: string
+authors: Author[]
+keywords?: string[]
+template: string
+editorTheme?: string
+printTheme?: string
+webTheme?: string
+references?: ReferenceSource
+plugins?: PluginConfigMap
+Author
+
+Defines an author record.
+
+Fields
+
+name: string
+affiliation?: string
+email?: string
+orcid?: string
+DocumentSource
+
+Represents raw authoring input.
+
+Fields
+
+frontmatter: DocumentFrontmatter
+markdown: string
+assets: Asset[]
+bibtex: string
+
+Asset
+
+Represents a local asset reference.
+
+Fields
+
+type: string
+path: string
+
+Asset upload, management, and richer metadata are deferred and will be specified later in ASSETS_SPEC.md.
+DocumentModel
+
+Represents the normalized parsed document.
+
+Fields
+
+frontmatter: DocumentFrontmatter
+content: string
+blocks: DocumentBlock[]
+references: ReferenceEntry[]
+indexes: DocumentIndexes
+diagnostics: Diagnostic[]
+DocumentIndexes
+
+Stores computed indexes needed by rendering.
+
+Fields
+
+headings: HeadingIndex[]
+figures: FigureIndex[]
+tables: TableIndex[]
+citations: CitationIndex[]
+crossReferences: CrossReferenceIndex[]
+fragments: FragmentIndex[]
+FragmentIndex
+
+Defines a renderable fragment and its dependencies.
+
+Fields
+
+id: string
+type: "document" | "abstract" | "body" | "references" | "section" | "figure" | "table"
+sourceRange: SourceRange
+dependsOn: string[]
+invalidates: string[]
+ThemeDefinition
+
+Defines a packageable theme.
+
+Fields
+
+id: string
+target: "editor" | "print" | "web"
+tokens: Record<string, string>
+typography?: TypographyConfig
+spacing?: SpacingConfig
+blockStyles?: Record<string, unknown>
+codeStyles?: Record<string, unknown>
+overrides?: Record<string, unknown>
+
+Theme behavior
+
+editor themes style application UI, panels, toolbars, and document shell
+print themes style print-oriented output, typography, spacing, and academic blocks
+web themes style browser-oriented output, interactive layout, and responsive presentation
+themes may inherit from base themes and override only selected tokens or block definitions
+TemplateDefinition
+
+Defines a render target template.
+
+Fields
+
+id: string
+target: "print" | "web"
+layout: string
+render: (model, theme) => RenderResult
+slots?: Record<string, string>
+assets?: unknown[]
+
+Template resolution (initial version)
+
+the selected template name is a string and must resolve to two files under templates/
+templates/<name>_print.json
+templates/<name>_web.json
+
+all PDF-relevant layout requirements must be defined by the print template
+PluginDefinition
+
+Defines a typed extension unit.
+
+Fields
+
+id: string
+name: string
+kind: "parser" | "render" | "theme" | "editor" | "integration"
+order: number
+enabledByDefault: boolean
+configSchema?: unknown
+hooks: PluginHooks
+
+Plugin behavior
+
+parser plugins can transform syntax trees or document models
+render plugins can modify target output or inject structured blocks
+theme plugins can extend token sets or block styles
+editor plugins can add commands, tool panels, or diagnostics
+integration plugins can connect to host surfaces such as extension actions or embeddable APIs
+
+Plugin loading (initial version)
+
+plugins are built-in only and must be defined under `plugins/` as importable `*.tsx` modules
+the extension UI allows selecting from the installed plugin list
+there is no runtime plugin download and no sandbox model in the initial version
+plugin contract details will be specified later in PLUGIN_SPEC.md
+
+Authoring syntax (initial)
+
+Citations are expressed inline and resolved during render using the citation plugin
+single citation: [cite:coghlan]
+multiple citations: [cite:coghlan, cite:brown]
+
+Tables are expressed using directive blocks and routed to table plugins
+:::table routes to the default table plugin
+:::table[tabularx] routes to the tabularx table plugin
+table data payload format will be specified later in PLUGIN_SPEC.md
+
+Examples
+
+```md
+:::table
+...table data...
+:::
+
+:::table[tabularx]
+...table data...
+:::
+```
+ReferenceEntry
+
+Represents a normalized internal BibTeX record.
+
+Fields
+
+id: string
+type: "article" | "book" | "inproceedings" | "online"
+title: string
+authors?: string[]
+year: string
+fields: Record<string, string>
+
+BibTeX rules
+
+article requires author, title, journal, year
+book requires author, title, publisher, year
+inproceedings requires author, title, booktitle, year
+online requires title, url, year, and either author or organization-equivalent source data
+unknown entry types are rejected at validation time in the initial version
+unsupported fields are preserved only if the schema explicitly allows them
+bibliography output must always use normalized internal models rather than raw BibTeX strings
+RenderRequest
+
+Defines a render operation.
+
+Fields
+
+target: "print" | "web"
+mode: "full" | "partial"
+fragmentId?: string
+templateName: string
+themeId?: string
+pluginOverrides?: Record<string, unknown>
+RenderResult
+
+Represents a render response.
+
+Fields
+
+html: string
+css?: string
+assets?: unknown[]
+fragments?: Record<string, string>
+diagnostics?: Diagnostic[]
+User Flow
+
+UX flows
+
+Author editing flow
+open or create a document
+edit frontmatter, Markdown content, and references
+switch between print preview and web preview
+change theme or template selections
+continue editing with immediate preview updates
+export or publish when ready
+Theme flow
+select editor, print, or web theme
+preview changes against current content
+save theme selection into document metadata or host configuration
+keep content unchanged while visual output updates
+Reference flow
+import BibTeX or create a controlled reference entry
+validate the entry against the supported schema
+insert citation identifiers into content
+inspect bibliography output in preview
+resolve validation errors before export or publish
+Plugin flow
+open plugin panel
+enable or disable allowed plugins
+configure plugin options
+trigger re-parse or re-render when plugin behavior affects output
+inspect diagnostics if plugin configuration is invalid
+Chrome extension flow
+open extension UI in popup or options page
+create or edit document content using the shared editor surface
+preview print or web output inside extension UI
+export content or inject output into host pages if enabled
+preserve local state across extension sessions
+Shadcn host integration flow
+install Artichales UI package and core package
+compose editor or preview surfaces inside a host layout
+connect host theme tokens and application state
+render document content through shared core without rewriting components
+expose export and publish actions from the host application
+
+System flows
+
+Parse flow
+read source
+parse frontmatter
+parse Markdown
+run parser plugins
+parse BibTeX
+validate models
+build indexes
+store diagnostics
+Preview flow
+determine target and fragment scope
+resolve template and theme
+render full or partial output
+update UI surfaces
+Theme flow
+resolve base theme
+apply target-specific theme tokens
+merge host overrides
+pass resolved theme to render pipeline
+refresh affected UI and render surfaces
+Plugin flow
+load registry
+resolve enabled plugins
+validate plugin configuration
+run plugin hooks in declared order
+attach results to parse or render pipeline
+Technical Stack
+Runtime & Build
+Bun
+TypeScript
+Vite
+React
+UI & Utilities
+Tailwind CSS v4
+shadcn/ui-compatible component composition
+Radix UI primitives
+class-variance-authority
+clsx
+tailwind-merge
+lucide-react
+tw-animate-css
+Code Quality
+Biome (@biomejs/biome)
+Extension Tooling
+@crxjs/vite-plugin
+@types/chrome
+Host Integration Tooling
+component packaging for host applications
+shadcn registry-compatible distribution strategy
+embeddable React entry points
+typed integration APIs for host applications
+Core Libraries (Critical Logic)
+gray-matter for frontmatter parsing and metadata extraction
+unified for the shared content processing pipeline
+remark-parse for Markdown parsing
+remark-gfm for extended Markdown features
+remark-math for math syntax support
+remark-directive for structured academic block extensions
+remark-rehype for Markdown-to-HTML transformation
+rehype-stringify for final HTML generation
+rehype-katex for equation rendering
+a BibTeX parser and validator for controlled academic references
+a local persistence layer for drafts, autosave, and extension-safe storage
+a render invalidation layer for fragment tracking and partial rendering
+a PDF generation layer for print-oriented export
+a plugin registry and hook execution layer
+a theme resolution layer for editor, print, and web targets

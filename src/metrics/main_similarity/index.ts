@@ -18,7 +18,7 @@ export const resolver: Resolver = async (
 		typeof extractions.mainText === "string"
 			? extractions.mainText.toLowerCase()
 			: "";
-	console.log({ mainText });
+			
 	if (!mainText) return { raw: 0.0, normalized: 0.0 };
 
 	const similarity = await computeSimilarity(searchTerm, mainText);

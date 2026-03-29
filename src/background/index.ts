@@ -3,15 +3,72 @@ import type { Extractions, Inputs } from "@/lib/types/engine";
 import type {
 	EXTRACT_SIGNALS_MESSAGE,
 	EXTRACT_SIGNALS_RESPONSE,
+	GET_CACHED_EXTRACTIONS_MESSAGE,
+	GET_CACHED_EXTRACTIONS_RESPONSE,
 	RUN_ANALYSIS_MESSAGE,
 	RUN_ANALYSIS_RESPONSE,
 } from "@/services/messaging";
 import { historyService, settingsService, storage } from "@/services/storage";
 
+
+const SESSION_TAB_KEY = "match_last_tab_id";
+
+// Persist the last active browser tab ID to session storage.
+// This is the only reliable way for the side panel to know which tab to
+// analyse, because when the user clicks a button inside the side panel,
+// the side panel window gains focus and `lastFocusedWindow` queries stop
+// returning browser tabs.
+const persistActiveTab = async (tabId: number) => {
+	try {
+		const tab = await chrome.tabs.get(tabId);
+		if (tab.url?.startsWith("http")) {
+			await chrome.storage.session.set({ [SESSION_TAB_KEY]: tabId });
+		}
+	} catch {
+		// Tab may not be accessible (e.g. devtools); ignore.
+	}
+};
+
+// Register the context menu entry on first install / update
+chrome.runtime.onInstalled.addListener(() => {
+	chrome.contextMenus.create({
+		id: "open-match-sidepanel",
+		title: "Check MATCH",
+		contexts: ["page"],
+	});
+	// Do NOT open the side panel automatically when the toolbar action is clicked
+	chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+});
+
+// Track tab switches so the side panel always knows the current browser tab
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+	persistActiveTab(tabId);
+});
+
+// Also track in-place navigations (same tab, new URL)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+	if (changeInfo.status === "complete" && tab.active) {
+		persistActiveTab(tabId);
+	}
+});
+
+// Open the side panel when the user selects "Check MATCH" from the context menu
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+	if (info.menuItemId === "open-match-sidepanel" && tab?.id) {
+		// Open first (must happen synchronously within the user gesture)
+		await chrome.sidePanel.open({ tabId: tab.id });
+		// Persist the tab ID after opening so the side panel can read it
+		persistActiveTab(tab.id);
+	}
+});
+
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Send EXTRACT_SIGNALS to the tab. If the content script is missing,
- *  inject it programmatically and retry once. */
+/**
+ * Send EXTRACT_SIGNALS to the given tab.
+ * If the content script is missing, inject it programmatically and retry once.
+ */
 async function extractFromTab(
 	tabId: number,
 ): Promise<EXTRACT_SIGNALS_RESPONSE> {
@@ -24,8 +81,7 @@ async function extractFromTab(
 	try {
 		return await send();
 	} catch {
-		// Content script not present in this tab.
-		// Dynamically inject the correct hashed content script from the manifest.
+		// Content script not present in this tab — inject it dynamically.
 		const manifest = chrome.runtime.getManifest();
 		const scriptFile = manifest.content_scripts?.[0]?.js?.[0];
 
@@ -45,7 +101,7 @@ async function extractFromTab(
 			);
 		}
 
-		// Give the script time to register its message listener
+		// Give the freshly injected script time to register its message listener
 		await new Promise((r) => setTimeout(r, 500));
 		try {
 			return await send();
@@ -57,7 +113,7 @@ async function extractFromTab(
 	}
 }
 
-// ── Message Listener ──────────────────────────────────────────────────────────
+// ── RUN_ANALYSIS handler ──────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
 	(message: RUN_ANALYSIS_MESSAGE, _sender, sendResponse) => {
@@ -71,10 +127,11 @@ chrome.runtime.onMessage.addListener(
 				let targetTabId = message.payload.tabId;
 				let url = message.payload.url;
 
+				// If the caller didn't supply tab info, resolve it from the tracked tab
 				if (!targetTabId || !url) {
 					const tabs = await chrome.tabs.query({
 						active: true,
-						currentWindow: true,
+						lastFocusedWindow: true,
 					});
 					const activeTab = tabs[0];
 					if (!activeTab?.id || !activeTab.url) {
@@ -135,8 +192,7 @@ chrome.runtime.onMessage.addListener(
 
 				await historyService.addHistory(
 					{
-						id:
-							Date.now().toString(36) + Math.random().toString(36).substring(2),
+						id: Date.now().toString(36) + Math.random().toString(36).substring(2),
 						url,
 						searchTerm,
 						timestamp: Date.now(),
@@ -163,6 +219,42 @@ chrome.runtime.onMessage.addListener(
 			}
 		})();
 
-		return true; // keep channel open for async response
+		return true; // keep the message channel open for the async response
+	},
+);
+
+// ── GET_CACHED_EXTRACTIONS handler ───────────────────────────────────────────
+
+chrome.runtime.onMessage.addListener(
+	(message: GET_CACHED_EXTRACTIONS_MESSAGE, _sender, sendResponse) => {
+		if (message.type !== "GET_CACHED_EXTRACTIONS") return;
+
+		(async () => {
+			try {
+				const url = message.payload.url;
+				const urlHash = storage.hash(url);
+				const extractions = await storage.get<Extractions>(`ext_${urlHash}`);
+
+				if (extractions) {
+					sendResponse({
+						success: true,
+						data: extractions,
+					} as GET_CACHED_EXTRACTIONS_RESPONSE);
+				} else {
+					sendResponse({
+						success: false,
+						error: "No cached extractions found for this URL",
+					} as GET_CACHED_EXTRACTIONS_RESPONSE);
+				}
+			} catch (err: unknown) {
+				console.error("[MATCH] GET_CACHED_EXTRACTIONS failed:", err);
+				sendResponse({
+					success: false,
+					error: err instanceof Error ? err.message : "Failed to get cached extractions",
+				} as GET_CACHED_EXTRACTIONS_RESPONSE);
+			}
+		})();
+
+		return true; // keep the message channel open for the async response
 	},
 );

@@ -23,6 +23,9 @@ export default defineManifest(async (env) => ({
 			"128": "icons/icon-128.png",
 		},
 	},
+	side_panel: {
+		default_path: "sidepanel.html",
+	},
 	icons: {
 		"16": "icons/icon-16.png",
 		"32": "icons/icon-32.png",
@@ -35,10 +38,17 @@ export default defineManifest(async (env) => ({
 	},
 	permissions: [
 		"activeTab",
+		"tabs",
 		"scripting",
 		"storage",
 		"downloads",
+		"sidePanel",
+		"contextMenus",
 	],
+	// Required for chrome.scripting.executeScript to inject content scripts
+	// programmatically into any page (not just the user-gesture active tab).
+	// The content_scripts "<all_urls>" match only covers automatic injection.
+	host_permissions: ["<all_urls>"],
 	content_scripts: [
 		{
 			matches: ["<all_urls>"],
