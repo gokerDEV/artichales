@@ -1,99 +1,78 @@
 # Artichales
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) 
-<!-- ![Chrome Web Store](https://img.shields.io/chrome-web-store/v/fgggldjlbpajaffefpkkhkfdiihinebf) -->
-
----
-
-### The name "Artichales"
-
+Artichales is an offline-first academic writing and publishing system built around a Markdown-first workflow. A single Markdown source renders to both print (PDF) and web (HTML/React) targets via a shared normalized render tree. The initial product ships as a Chrome extension editor and keeps everything local-first.
 
 ## Key Features
 
+- Markdown-first authoring with frontmatter and BibTeX inputs
+- Shared render tree powering print and web outputs
+- Switchable print preview and web preview
+- Deterministic, built-in plugin pipeline (core, parser, render, editor)
+- Template-based layouts for print and web (`templates/<name>_print.json`, `templates/<name>_web.json`)
+- Offline-first, single-document workflow
+- Shadcn-compatible component distribution under `components/artichales/`
 
 ## Tech Stack
 
-*   **Runtime / Tooling**
-    *   **Bun** (Package Manager & Runtime)
-    *   **TypeScript** (Strict Mode)
-    *   **Vite** (Build Tool)
-    *   **React 19**
-*   **Core Logic**
-    *   
-
-*   **UI & UX**
-    *   **Tailwind CSS v4** (Styling)
-    *   **Shadcn UI** (Component Library)
-    *   **Framer Motion** (Animations)
-    *   **Lucide React** (Icons)
-*   **Quality & Standards**
-    *   **Biome** (Linter & Formatter)
-*   **Extension**
-    *   `@crxjs/vite-plugin`
-    *   MV3 Manifest
+- **Runtime / Tooling**: Bun, TypeScript, Vite, React
+- **UI**: Tailwind CSS v4, shadcn/ui, Radix UI, clsx, tailwind-merge, lucide-react
+- **Quality**: Biome
+- **Extension**: @crxjs/vite-plugin, MV3 Manifest
 
 ## Project Structure
 
 ```
 src/
-├── app/                # Feature modules (Dashboard, Popup logic)
-├── components/         # Shared UI components (Shadcn, Common)
-├── lib/                # Shared utilities
-├── metrics/            # Deterministic metric plugins (M.A.T.C.H.)
-├── services/           # External integrations (Chrome API, Storage, AI)
-├── assets/             # Static assets
-└── popup/              # Extension popup entry
+  app/
+    editor/
+      page.tsx
+  components/
+    artichales/
+      editor/
+      preview/
+        web/
+        print/
+      panels/
+      surfaces/
+      templates/
+      plugins/
+  hooks/
+  lib/
 ```
 
-## Installation & Development
+## Development
 
 ### Prerequisites
 
-*   [Bun](https://bun.sh/) (v1.0+)
-*   Node.js (v20+)
+- Bun (v1.0+)
+- Node.js (v20+)
 
 ### Setup
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/goker/artichales
-    cd artichales
-    ```
+```bash
+bun install
+bun dev
+```
 
-2.  **Install dependencies:**
-    ```bash
-    bun install
-    ```
+### Load the extension
 
-3.  **Start Development Server:**
-    ```bash
-    bun dev
-    ```
-    This compiles the extension and app in watch mode.
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `dist/` folder
 
-4.  **Load into Chrome:**
-    *   Open `chrome://extensions`
-    *   Enable **Developer mode** (top right)
-    *   Click **Load unpacked**
-    *   Select the `dist/` folder generated in your project root
+## Specs & References
+
+- `SPEC.md` — product specification and architecture
+- `PLUGIN_SPEC.md` — plugin contracts and hooks
+- `ARTIFACT_SPEC.md` — asset embedding and artifact rules
 
 ## Contributing
 
-Contributions are welcome! Please read the [SPEC.md](./SPEC.md) for architectural details before submitting pull requests.
-
-1.  Fork the repository
-2.  Create your branch (`git checkout -b feature/amazing-feature`)
-3.  Commit changes (`git commit -m 'feat: add amazing feature'`)
-4.  Push branch (`git push origin feature/amazing-feature`)
-5.  Open a Pull Request
-
-### Contribution Rules
-*   Follow **Conventional Commits**
-*   Keep metric logic deterministic
-*   Avoid `any` types (Strict TypeScript)
-*   Keep comments in English
-*   Run lint/format/build before PR (`bun lint`, `bun format`)
+- Follow Conventional Commits
+- Keep changes aligned with the spec docs
+- Run lint/format/build before PR (`bun lint`, `bun format`, `bun build`)
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+MIT License. See `LICENSE`.

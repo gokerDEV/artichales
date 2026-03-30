@@ -1,7 +1,0 @@
-{
-	"id": "axe_score",
-	"type": "absolute",
-	"inputs": ["axePasses", "axeViolations"],
-	"dependencies": [],
-	"description": "Calculates the accessibility score based on axe-core violations vs passes ratio. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

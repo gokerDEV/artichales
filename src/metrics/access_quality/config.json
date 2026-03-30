@@ -1,6 +1,0 @@
-{
-	"id": "access_quality",
-	"type": "proxy",
-	"dependencies": ["axe_score"],
-	"description": "Composite score representing automated and deterministic accessibility passes. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

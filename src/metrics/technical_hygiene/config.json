@@ -1,6 +1,0 @@
-{
-	"id": "technical_hygiene",
-	"type": "proxy",
-	"dependencies": ["lang_presence", "viewport_presence"],
-	"description": "Composite score determining the presence of fundamental technical attributes. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

@@ -9,7 +9,7 @@ import { Header } from "./header";
 import { SystemProvider } from "./system.context";
 
 export default function Layout() {
-	const { settings, loading } = useSettings();
+	const { settings, loading, updateSettings } = useSettings();
 
 	// Wait for settings before committing to loader behaviour
 	if (loading) return null;
@@ -19,12 +19,19 @@ export default function Layout() {
 	return (
 		<SystemProvider initialLoading={settings.showCredits}>
 			<AppLoader timeout={settings.loaderTimeout} skip={skip}>
-				<SidebarProvider>
+				<SidebarProvider
+					open={!settings.ux.sidebarCollapsed}
+					onOpenChange={(open) =>
+						updateSettings({
+							ux: { ...settings.ux, sidebarCollapsed: !open },
+						})
+					}
+				>
 					<AppSidebar />
 					<SidebarInset>
 						<Header />
-						<div className="flex flex-1 flex-col gap-4">
-							<div className="min-h-[100vh] flex-1 p-6 md:min-h-min">
+						<div className="flex grow flex-col gap-4">
+							<div className="grow md:min-h-min">
 								<Outlet />
 							</div>
 						</div>

@@ -2,10 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import Layout from "@/components/common/app.layout";
-import { MatchDashboard } from "./dashboard/page";
-import { HistoryPage } from "./history/page";
-import { SettingsPage } from "./settings/page";
+import { EditorPage } from "./editor/page";
 import "@/style.css";
+import { SettingsPage } from "./settings/page";
 
 const rootElement = document.getElementById("root");
 
@@ -16,8 +15,8 @@ if (rootElement) {
 			<HashRouter>
 				<Routes>
 					<Route element={<Layout />}>
-						<Route path="/" element={<MatchDashboard />} />
-						<Route path="/history" element={<HistoryPage />} />
+						<Route path="/" element={<EditorPage />} />
+						<Route path="/editor" element={<EditorPage />} />
 						<Route path="/settings" element={<SettingsPage />} />
 					</Route>
 				</Routes>

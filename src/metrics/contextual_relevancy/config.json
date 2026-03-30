@@ -1,6 +1,0 @@
-{
-	"id": "contextual_relevancy",
-	"type": "proxy",
-	"dependencies": ["main_similarity", "title_similarity", "h1_similarity"],
-	"description": "Composite score determining how contextually relevant the page is to the search term. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

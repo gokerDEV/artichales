@@ -122,16 +122,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-@keyframes heatmap-pulse {
-  0% {
-    background-color: var(--color-ideal);
-  }
-  100% {
-    background-color: var(--color-heatmax);
-  }
-}
-
-.animate-heatmap-loading {
-  animation: heatmap-pulse 1s infinite alternate ease-in-out;
-}

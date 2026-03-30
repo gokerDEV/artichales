@@ -1,12 +1,10 @@
-import { DEFAULT_TIER, QR_TIER_CONFIG } from "@/config/qr-options.config";
 import {
-	type AppSettings,
-	DEFAULT_SETTINGS,
-	type QRHistoryItem,
-} from "./types";
-
-const HISTORY_KEY = "qr_history";
-const SETTINGS_KEY = "qr_settings";
+	DEFAULT_TIER,
+	HISTORY_KEY,
+	SETTINGS_KEY,
+	TIER_CONFIG,
+} from "@/config/options.config";
+import { type AppSettings, DEFAULT_SETTINGS, type HistoryItem } from "./types";
 
 const isExtension = typeof chrome !== "undefined" && !!chrome.storage;
 
@@ -35,17 +33,14 @@ const storage: StorageBackend = {
 };
 
 export const historyService = {
-	async getHistory(): Promise<QRHistoryItem[]> {
-		const data = await storage.get<QRHistoryItem[]>(HISTORY_KEY);
+	async getHistory(): Promise<HistoryItem[]> {
+		const data = await storage.get<HistoryItem[]>(HISTORY_KEY);
 		return data || [];
 	},
 
-	async addHistory(
-		item: QRHistoryItem,
-		tier: "free" | "premium" = DEFAULT_TIER,
-	) {
+	async addHistory(item: HistoryItem, tier: "free" | "premium" = DEFAULT_TIER) {
 		const history = await this.getHistory();
-		const limit = QR_TIER_CONFIG[tier].historyLimit;
+		const limit = TIER_CONFIG[tier].historyLimit;
 
 		// FIFO: Remove oldest if exceeds limit
 		if (history.length >= limit) {

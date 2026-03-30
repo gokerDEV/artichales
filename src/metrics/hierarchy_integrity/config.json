@@ -1,7 +1,0 @@
-{
-	"id": "hierarchy_integrity",
-	"type": "proxy",
-	"inputs": ["mainText"],
-	"dependencies": ["h1_uniqueness", "structure_score"],
-	"description": "Composite score determining the structural and hierarchical integrity of the document outline. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

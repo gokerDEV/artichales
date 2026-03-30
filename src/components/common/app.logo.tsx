@@ -4,30 +4,21 @@ export function Logo() {
 			<div className="aspect-square">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					viewBox="4 4 16 16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="#dd1322"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
 					className="size-8"
-					aria-label="MATCH"
-					role="img"
 				>
-					<g
-						transform="translate(3,3) scale(0.75)"
-						fill="none"
-						stroke="#1c1917"
-						strokeWidth="2"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					>
-						<path d="M3 7V5a2 2 0 0 1 2-2h2" stroke="#DD4433" />
-						<path d="M17 3h2a2 2 0 0 1 2 2v2" stroke="#4488FF" />
-						<path d="M21 17v2a2 2 0 0 1-2 2h-2" stroke="#FFBB00" />
-						<path d="M7 21H5a2 2 0 0 1-2-2v-2" stroke="#11AA55" />
-						<circle cx="12" cy="12" r="3" stroke="#8844BB" />
-						<path d="m16 16-1.9-1.9" stroke="#8844BB" />
-					</g>
+					<path d="M12 21V7" />
+					<path d="m16 12 2 2 4-4" />
+					<path d="M22 6V4a1 1 0 0 0-1-1h-5a4 4 0 0 0-4 4 4 4 0 0 0-4-4H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6a1 1 0 0 0 1-1v-1.3" />
 				</svg>
 			</div>
 			<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-				<span className="truncate font-semibold">MATCH</span>
+				<span className="truncate font-semibold">Artichales</span>
 				<span className="truncate text-xs">by goker</span>
 			</div>
 		</>

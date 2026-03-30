@@ -7,12 +7,18 @@ const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── App Settings ──────────────────────────────────────────────────────────────
 
+export interface UXSettings {
+	sidebarCollapsed: boolean;
+	editorPanelSizes: number[];
+}
+
 export interface AppSettings {
 	logsEnabled: boolean;
 	historyLimit: number;
 	cacheLimit: number;
 	showCredits: boolean;
 	loaderTimeout: number; // milliseconds
+	ux: UXSettings;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -21,6 +27,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 	cacheLimit: 100,
 	showCredits: true,
 	loaderTimeout: 3000,
+	ux: {
+		sidebarCollapsed: false,
+		editorPanelSizes: [15, 40, 45],
+	},
 };
 
 const SETTINGS_KEY = "match_settings";
@@ -181,7 +191,11 @@ export const settingsService = {
 
 	async updateSettings(patch: Partial<AppSettings>): Promise<void> {
 		const current = await this.getSettings();
-		const updated: AppSettings = { ...current, ...patch };
+		const updated: AppSettings = {
+			...current,
+			...patch,
+			ux: patch.ux ? { ...current.ux, ...patch.ux } : current.ux,
+		};
 		return new Promise((resolve) => {
 			chrome.storage.local.set({ [SETTINGS_KEY]: updated }, resolve);
 		});

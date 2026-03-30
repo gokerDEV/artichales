@@ -1,7 +1,0 @@
-{
-	"id": "lang_presence",
-	"type": "absolute",
-	"inputs": ["htmlLang"],
-	"dependencies": [],
-	"description": "Checks if the HTML tag has a proper lang attribute set. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

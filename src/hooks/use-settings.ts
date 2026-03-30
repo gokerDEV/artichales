@@ -34,7 +34,11 @@ export function useSettings(): UseSettingsReturn {
 		setSaving(true);
 		try {
 			await settingsService.updateSettings(patch);
-			setSettings((prev) => ({ ...prev, ...patch }));
+			setSettings((prev) => ({
+				...prev,
+				...patch,
+				ux: patch.ux ? { ...prev.ux, ...patch.ux } : prev.ux,
+			}));
 		} finally {
 			setSaving(false);
 		}

@@ -1,7 +1,0 @@
-{
-	"id": "title_similarity",
-	"type": "absolute",
-	"inputs": ["title"],
-	"dependencies": [],
-	"description": "Calculates the similarity factor of the title against the requested search term. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

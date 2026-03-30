@@ -1,7 +1,0 @@
-{
-	"id": "main_similarity",
-	"type": "absolute",
-	"inputs": ["mainText"],
-	"dependencies": [],
-	"description": "Calculates the similarity factor of the main text with relation to the requested search term. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

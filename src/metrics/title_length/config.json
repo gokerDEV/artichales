@@ -1,7 +1,0 @@
-{
-	"id": "title_length",
-	"type": "absolute",
-	"inputs": ["title"],
-	"dependencies": [],
-	"description": "Checks if the page title has an optimal length for search and display. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

@@ -1,7 +1,0 @@
-{
-	"id": "meta_length",
-	"type": "absolute",
-	"inputs": ["metaDescription"],
-	"dependencies": [],
-	"description": "Checks if the meta description has an optimal length for search context. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

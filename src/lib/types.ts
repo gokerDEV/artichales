@@ -51,7 +51,7 @@ export interface VCardPayload {
 	url?: string;
 }
 
-export interface QRHistoryItem {
+export interface HistoryItem {
 	id: string; // UUID
 	timestamp: number; // Unix ms
 	type: InputType;

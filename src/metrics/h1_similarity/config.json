@@ -1,7 +1,0 @@
-{
-	"id": "h1_similarity",
-	"type": "absolute",
-	"inputs": ["h1List"],
-	"dependencies": [],
-	"description": "Calculates the similarity factor of the heading elements against the requested search term. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

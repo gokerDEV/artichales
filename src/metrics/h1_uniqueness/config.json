@@ -1,7 +1,0 @@
-{
-	"id": "h1_uniqueness",
-	"type": "absolute",
-	"inputs": ["h1List"],
-	"dependencies": [],
-	"description": "Checks the existence and uniqueness of the H1 tag. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

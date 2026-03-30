@@ -1,7 +1,0 @@
-{
-	"id": "structure_score",
-	"type": "absolute",
-	"inputs": ["countMain", "countArticle"],
-	"dependencies": [],
-	"description": "Evaluates the overall HTML block structure based on main and article tags. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

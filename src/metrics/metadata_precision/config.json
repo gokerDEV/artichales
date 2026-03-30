@@ -1,6 +1,0 @@
-{
-	"id": "metadata_precision",
-	"type": "proxy",
-	"dependencies": ["title_length", "meta_length"],
-	"description": "Composite score determining the quality and precision of basic HTML metadata tags. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}

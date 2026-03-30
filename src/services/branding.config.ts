@@ -1,10 +1,10 @@
 export const BRANDING = {
-	APP_NAME: "MATCH",
-	APP_DESCRIPTION: "Web Quality Linter",
+	APP_NAME: "Artichales",
+	APP_DESCRIPTION: "Offline-first academic writing system",
 	CREDITS: {
 		DEVELOPER: "goker",
-		VERSION: "v1.0.0",
-		GITHUB_URL: "https://github.com/gokerDEV",
+		VERSION: "v0.1.0",
+		GITHUB_URL: "https://github.com/goker",
 		BUY_ME_COFFEE_URL: "https://buymeacoffee.com/goker",
 	},
 	THEME: {

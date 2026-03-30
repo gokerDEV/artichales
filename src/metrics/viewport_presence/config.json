@@ -1,7 +1,0 @@
-{
-	"id": "viewport_presence",
-	"type": "absolute",
-	"inputs": ["viewportMeta"],
-	"dependencies": [],
-	"description": "Checks if the viewport meta tag is properly defined for responsive design. Normalization explanation: Calculates a value between 0 and 1 based on optimal bounds or presence of required fields."
-}
