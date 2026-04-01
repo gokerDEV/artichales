@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import * as React from "react";
 import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
@@ -7,12 +8,66 @@ import classicWebTemplate from "@/components/artichales/templates/classic_web.js
 import type { CitationEntry } from "@/lib/bibtex";
 import { parseBibtex } from "@/lib/bibtex";
 
+type RenderTarget = "web" | "print";
+
+type DocumentStyle = {
+	fontFamily?: {
+		body?: string;
+		heading?: string;
+	};
+	fontSize?: {
+		body?: string;
+		h1?: string;
+		h2?: string;
+		h3?: string;
+	};
+	lineHeight?: number;
+	textAlign?: "left" | "right" | "center" | "justify";
+};
+
+export type DocumentTemplate = {
+	id?: string;
+	target?: RenderTarget;
+	container?: keyof JSX.IntrinsicElements;
+	page?: {
+		size?: "A4" | string;
+		orientation?: "portrait" | "landscape";
+		margin?: {
+			top?: string;
+			right?: string;
+			bottom?: string;
+			left?: string;
+		};
+	};
+	document?: DocumentStyle;
+	titleBlock?: {
+		enabled?: boolean;
+		showAuthors?: boolean;
+		showAffiliations?: boolean;
+		showKeywords?: boolean;
+		align?: "left" | "right" | "center";
+		spacingAfter?: string;
+	};
+	headings?: {
+		numbering?: boolean;
+	};
+	figures?: {
+		zoomable?: boolean;
+	};
+	references?: {
+		enabled?: boolean;
+		title?: string;
+	};
+	citations?: {
+		style?: string;
+	};
+};
+
 export interface DocumentSource {
 	content: string;
 	frontmatter: Record<string, unknown>;
 	citations: Record<string, CitationEntry>;
-	// biome-ignore lint/suspicious/noExplicitAny: Template definitions are extremely dynamic
-	template: any;
+	template: DocumentTemplate;
 	citationStyle: string;
 }
 
@@ -50,13 +105,22 @@ export function useDocument(
 	const templateName =
 		typeof parsed.data.template === "string" ? parsed.data.template : "classic";
 
+	const templateByTarget: Record<PreviewTarget, DocumentTemplate> =
+		React.useMemo(
+			() => ({
+				web: classicWebTemplate as DocumentTemplate,
+				print: classicPrintTemplate as DocumentTemplate,
+			}),
+			[],
+		);
+
 	const activeTemplate = React.useMemo(() => {
-		// Static template fallback
-		if (templateName === "classic") {
-			return target === "web" ? classicWebTemplate : classicPrintTemplate;
+		const normalizedTemplateName = templateName.toLowerCase();
+		if (normalizedTemplateName === "classic") {
+			return templateByTarget[target];
 		}
-		return target === "web" ? classicWebTemplate : classicPrintTemplate;
-	}, [templateName, target]);
+		return templateByTarget[target];
+	}, [templateName, target, templateByTarget]);
 
 	const citationStyle = React.useMemo(() => {
 		const refs = parsed.data.references;

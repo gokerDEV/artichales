@@ -1,15 +1,4 @@
-import ReactMarkdown from "react-markdown";
-import rehypeKatex from "rehype-katex";
-import remarkDirective from "remark-directive";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import { remarkAbstract } from "@/components/artichales/plugins/abstract.parser.plugin";
-import { AbstractRender } from "@/components/artichales/plugins/abstract.render.plugin";
-import { remarkCitation } from "@/components/artichales/plugins/citation.parser.plugin";
-import { CitationRender } from "@/components/artichales/plugins/citation.render.plugin";
-import "katex/dist/katex.min.css";
-import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
-import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
+import { DocumentRenderContent } from "@/components/artichales/preview/shared/document-render-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
@@ -25,7 +14,7 @@ export function WebPreview({
 	className,
 	scale = 100,
 }: WebPreviewProps) {
-	const { content, template } = document;
+	const { template } = document;
 
 	const isWeb = template?.target === "web";
 	const Container = isWeb ? template.container || "article" : "article";
@@ -47,10 +36,10 @@ export function WebPreview({
 					}}
 				>
 					<Container className="w-[800px] shrink-0 rounded-xl border border-border bg-card p-12 shadow-sm md:p-16">
-						<TitleCorePlugin document={document} target="web" />
-
-						<article
-							className={cn(
+						<DocumentRenderContent
+							document={document}
+							target="web"
+							contentClassName={cn(
 								"prose prose-slate dark:prose-invert max-w-none",
 								"prose-a:text-emerald-600 hover:prose-a:text-emerald-500",
 								"prose-img:rounded-xl prose-img:border prose-img:border-border prose-img:shadow-sm",
@@ -59,23 +48,7 @@ export function WebPreview({
 								HeadingClass,
 								ZoomedImages,
 							)}
-						>
-							<ReactMarkdown
-								remarkPlugins={[
-									remarkCitation,
-									remarkAbstract,
-									remarkGfm,
-									remarkMath,
-									remarkDirective,
-								]}
-								rehypePlugins={[rehypeKatex]}
-								components={{ cite: CitationRender, div: AbstractRender }}
-							>
-								{content}
-							</ReactMarkdown>
-						</article>
-
-						<ReferencesCorePlugin document={document} target="web" />
+						/>
 					</Container>
 				</div>
 			</ScrollArea>

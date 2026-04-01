@@ -64,7 +64,7 @@ export function EditorPreviewSurface() {
 		try {
 			const saved = localStorage.getItem(STORAGE_KEY);
 			if (saved) return JSON.parse(saved);
-		} catch { }
+		} catch {}
 		return {
 			"article.mdx": SAMPLE_MARKDOWN,
 			"references.bib": SAMPLE_BIB,
@@ -73,6 +73,7 @@ export function EditorPreviewSurface() {
 	const [activeFile, setActiveFile] = React.useState("article.mdx");
 	const [target, setTarget] = React.useState<PreviewTarget>("print");
 	const [scale, setScale] = React.useState(100);
+	const pendingPdfExportRef = React.useRef(false);
 
 	React.useEffect(() => {
 		const timeout = setTimeout(() => {
@@ -99,7 +100,10 @@ export function EditorPreviewSurface() {
 			sizesRef.current[index] = size;
 			if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
 			layoutTimerRef.current = setTimeout(() => {
-				console.log("🟢 [Artichales] Valid Resize Captured! Saving =>", sizesRef.current);
+				console.log(
+					"🟢 [Artichales] Valid Resize Captured! Saving =>",
+					sizesRef.current,
+				);
 				updateSettings({
 					ux: { ...settings.ux, editorPanelSizes: [...sizesRef.current] },
 				});
@@ -108,7 +112,45 @@ export function EditorPreviewSurface() {
 		[settings.ux, updateSettings],
 	);
 
-	const document = useDocument(files, activeFile, target);
+	const docSource = useDocument(files, activeFile, target);
+
+	const runPdfExport = React.useCallback(() => {
+		globalThis.document.body.setAttribute("data-artichales-printing", "true");
+		window.requestAnimationFrame(() => {
+			window.print();
+		});
+	}, []);
+
+	const handleExportPdf = React.useCallback(() => {
+		if (target === "print") {
+			runPdfExport();
+			return;
+		}
+		pendingPdfExportRef.current = true;
+		setTarget("print");
+	}, [target, runPdfExport]);
+
+	React.useEffect(() => {
+		const resetPrintState = () => {
+			globalThis.document.body.removeAttribute("data-artichales-printing");
+		};
+
+		window.addEventListener("afterprint", resetPrintState);
+		return () => {
+			window.removeEventListener("afterprint", resetPrintState);
+		};
+	}, []);
+
+	React.useEffect(() => {
+		if (target !== "print" || !pendingPdfExportRef.current) return;
+		pendingPdfExportRef.current = false;
+
+		const timeout = window.setTimeout(() => {
+			runPdfExport();
+		}, 50);
+
+		return () => window.clearTimeout(timeout);
+	}, [target, runPdfExport]);
 
 	if (loading) {
 		return (
@@ -120,7 +162,7 @@ export function EditorPreviewSurface() {
 
 	return (
 		<CitationContext.Provider
-			value={{ entries: document.citations, style: document.citationStyle }}
+			value={{ entries: docSource.citations, style: docSource.citationStyle }}
 		>
 			<TypedResizableGroup
 				direction="horizontal"
@@ -163,12 +205,13 @@ export function EditorPreviewSurface() {
 						onTargetChange={setTarget}
 						scale={scale}
 						onScaleChange={setScale}
+						onExportPdf={handleExportPdf}
 					/>
 					<div className="relative grow overflow-hidden">
 						{target === "web" ? (
-							<WebPreview document={document} scale={scale} />
+							<WebPreview document={docSource} scale={scale} />
 						) : (
-							<PrintPreview document={document} scale={scale} />
+							<PrintPreview document={docSource} scale={scale} />
 						)}
 					</div>
 				</ResizablePanel>

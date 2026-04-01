@@ -16,6 +16,7 @@ export type PreviewHeaderProps = {
 	onTargetChange: (target: PreviewTarget) => void;
 	scale: number;
 	onScaleChange: (scale: number) => void;
+	onExportPdf: () => void;
 };
 
 export function PreviewHeader({
@@ -23,6 +24,7 @@ export function PreviewHeader({
 	onTargetChange,
 	scale,
 	onScaleChange,
+	onExportPdf,
 }: PreviewHeaderProps) {
 	return (
 		<div className="flex h-[48px] w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
@@ -72,6 +74,7 @@ export function PreviewHeader({
 					variant="ghost"
 					size="icon"
 					className="h-8 w-8 text-muted-foreground hover:text-foreground"
+					onClick={onExportPdf}
 				>
 					<Download className="h-4 w-4" />
 					<span className="sr-only">Download PDF</span>
