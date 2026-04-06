@@ -37,6 +37,24 @@ Lorem ipsum dolor sit amet.
 
 # Introduction
 Lorem ipsum dolor sit amet [cite:knuth1984].
+
+:::plotty[plot_1.json]
+title: "Ribbon Plot"
+showlegend: false
+autosize: true
+width: 600
+height: 600
+scene:
+  xaxis:
+    title:
+      text: "Sample #"
+  yaxis:
+    title:
+      text: "Wavelength"
+  zaxis:
+    title:
+      text: "OD"
+:::
 `;
 
 const SAMPLE_BIB = `@article{knuth1984,
@@ -50,7 +68,48 @@ const SAMPLE_BIB = `@article{knuth1984,
 }
 `;
 
+const SAMPLE_PLOT = `{
+  "data": [
+    {
+      "type": "surface",
+      "x": [1, 2, 3, 4, 5, 6],
+      "y": [400, 450, 500, 550, 600, 650],
+      "z": [
+        [0.2, 0.25, 0.21, 0.18, 0.14, 0.1],
+        [0.28, 0.34, 0.3, 0.24, 0.2, 0.16],
+        [0.35, 0.42, 0.37, 0.3, 0.24, 0.2],
+        [0.31, 0.39, 0.34, 0.28, 0.23, 0.19],
+        [0.26, 0.33, 0.29, 0.23, 0.19, 0.15],
+        [0.2, 0.27, 0.23, 0.19, 0.15, 0.12]
+      ],
+      "colorscale": "Viridis",
+      "showscale": true
+    }
+  ],
+  "layout": {
+    "title": "Ribbon Plot",
+    "showlegend": false,
+    "autosize": true,
+    "width": 600,
+    "height": 600,
+    "scene": {
+      "xaxis": { "title": { "text": "Sample #" } },
+      "yaxis": { "title": { "text": "Wavelength" } },
+      "zaxis": { "title": { "text": "OD" } }
+    }
+  },
+  "config": {
+    "displayModeBar": true
+  }
+}
+`;
+
 const STORAGE_KEY = "artichales-editor-autosave";
+const DEFAULT_FILES: Record<string, string> = {
+	"article.mdx": SAMPLE_MARKDOWN,
+	"references.bib": SAMPLE_BIB,
+	"plot_1.json": SAMPLE_PLOT,
+};
 
 const TypedResizableGroup = ResizablePanelGroup as unknown as React.FC<
 	React.ComponentProps<typeof ResizablePanelGroup> & {
@@ -63,12 +122,12 @@ export function EditorPreviewSurface() {
 	const [files, setFiles] = React.useState<Record<string, string>>(() => {
 		try {
 			const saved = localStorage.getItem(STORAGE_KEY);
-			if (saved) return JSON.parse(saved);
+			if (saved) {
+				const parsed = JSON.parse(saved) as Record<string, string>;
+				return { ...DEFAULT_FILES, ...parsed };
+			}
 		} catch {}
-		return {
-			"article.mdx": SAMPLE_MARKDOWN,
-			"references.bib": SAMPLE_BIB,
-		};
+		return DEFAULT_FILES;
 	});
 	const [activeFile, setActiveFile] = React.useState("article.mdx");
 	const [target, setTarget] = React.useState<PreviewTarget>("print");

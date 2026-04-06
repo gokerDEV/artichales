@@ -67,6 +67,7 @@ export interface DocumentSource {
 	content: string;
 	frontmatter: Record<string, unknown>;
 	citations: Record<string, CitationEntry>;
+	plots: Record<string, unknown>;
 	template: DocumentTemplate;
 	citationStyle: string;
 }
@@ -100,6 +101,19 @@ export function useDocument(
 
 	const citations = React.useMemo(() => {
 		return parseBibtex(files["references.bib"] || "");
+	}, [files]);
+
+	const plots = React.useMemo(() => {
+		const parsedPlots: Record<string, unknown> = {};
+		for (const [fileName, fileContent] of Object.entries(files)) {
+			if (!fileName.endsWith(".json")) continue;
+			try {
+				parsedPlots[fileName] = JSON.parse(fileContent);
+			} catch {
+				parsedPlots[fileName] = null;
+			}
+		}
+		return parsedPlots;
 	}, [files]);
 
 	const templateName =
@@ -142,6 +156,7 @@ export function useDocument(
 		content: parsed.content,
 		frontmatter: parsed.data,
 		citations,
+		plots,
 		template: activeTemplate,
 		citationStyle,
 	};

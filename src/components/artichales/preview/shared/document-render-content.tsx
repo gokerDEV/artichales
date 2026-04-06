@@ -23,7 +23,10 @@ export function DocumentRenderContent({
 		<>
 			<TitleCorePlugin document={document} target={target} />
 			<article className={cn(contentClassName, articleClassName)}>
-				<MarkdownContent content={document.content} />
+				<MarkdownContent
+					content={document.content}
+					plotFiles={document.plots}
+				/>
 			</article>
 			<ReferencesCorePlugin document={document} target={target} />
 		</>
