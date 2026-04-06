@@ -31,12 +31,6 @@ export function PrintPreview({
 			: "210mm"
 		: "297mm";
 
-	const previewPageHeightPx = isA4
-		? orientation === "portrait"
-			? 1123
-			: 794
-		: 1123;
-
 	const margins = pageConfig?.margin;
 	const pagePaddingTop =
 		typeof margins?.top === "string" ? margins.top : "24mm";
@@ -56,7 +50,6 @@ export function PrintPreview({
 					style={{
 						transform: `scale(${scale / 100})`,
 						transformOrigin: "top center",
-						height: `calc(${previewPageHeightPx}px * ${scale / 100})`,
 					}}
 				>
 					<div

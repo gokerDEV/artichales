@@ -9,6 +9,7 @@ import { remarkCitation } from "@/components/artichales/plugins/citation.parser.
 import { CitationRender } from "@/components/artichales/plugins/citation.render.plugin";
 import { remarkPlotty } from "@/components/artichales/plugins/plotty.parser.plugin";
 import { createDirectiveDivRender } from "@/components/artichales/plugins/plotty.render.plugin";
+import { createRefRender } from "@/components/artichales/plugins/ref.render.plugin";
 import "katex/dist/katex.min.css";
 
 type MarkdownContentProps = {
@@ -17,9 +18,33 @@ type MarkdownContentProps = {
 };
 
 export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
+	const plotIndexById = React.useMemo(() => {
+		const regex = /:::plotty\[(.+?)\]/g;
+		const indexMap: Record<string, number> = {};
+		let match: RegExpExecArray | null = null;
+		let idx = 1;
+
+		while (true) {
+			match = regex.exec(content);
+			if (match === null) break;
+			const source = match[1]?.trim() || "";
+			const id = source.replace(/\.[^/.]+$/, "");
+			if (id && indexMap[id] === undefined) {
+				indexMap[id] = idx;
+				idx++;
+			}
+		}
+
+		return indexMap;
+	}, [content]);
+
 	const divRenderer = React.useMemo(
-		() => createDirectiveDivRender(plotFiles),
-		[plotFiles],
+		() => createDirectiveDivRender(plotFiles, plotIndexById),
+		[plotFiles, plotIndexById],
+	);
+	const refRenderer = React.useMemo(
+		() => createRefRender(plotIndexById),
+		[plotIndexById],
 	);
 
 	return (
@@ -33,7 +58,7 @@ export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
 				remarkDirective,
 			]}
 			rehypePlugins={[rehypeKatex]}
-			components={{ cite: CitationRender, div: divRenderer }}
+			components={{ cite: CitationRender, div: divRenderer, span: refRenderer }}
 		>
 			{content}
 		</ReactMarkdown>

@@ -41,6 +41,7 @@ export function ReferencesCorePlugin({
 				{Object.values(citations).map((ref, idx) => (
 					<div
 						key={ref.id}
+						id={`ref-${ref.id}`}
 						className={cn(
 							"flex gap-4",
 							isPrint

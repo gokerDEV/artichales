@@ -53,7 +53,11 @@ export const CitationRender: Components["cite"] = ({
 
 	// Safely retrieve IDs passed from the parser
 	const idsString =
-		node?.properties?.dataCiteIds || node?.properties?.["data-cite-ids"] || "";
+		node?.properties?.dataCiteId ||
+		node?.properties?.["data-cite-id"] ||
+		node?.properties?.dataCiteIds ||
+		node?.properties?.["data-cite-ids"] ||
+		"";
 
 	const ids =
 		typeof idsString === "string" && idsString.trim() !== ""
@@ -73,16 +77,21 @@ export const CitationRender: Components["cite"] = ({
 					.join(config.joiner)
 			: null;
 
+	const firstId = ids[0];
+	const href = firstId ? `#ref-${firstId}` : undefined;
+
 	return (
 		<cite
 			className={cn(
-				"mx-0.5 cursor-pointer rounded border border-emerald-200 bg-emerald-100/50 px-1 py-0.5 font-mono text-[0.85em] text-emerald-800 not-italic transition-colors hover:bg-emerald-200/50 dark:border-emerald-800/50 dark:bg-emerald-900/30 dark:text-emerald-300",
+				"mx-0.5 cursor-pointer rounded border border-emerald-200 bg-emerald-100/50 px-1 py-0.5 font-mono text-[0.85em] text-emerald-800 not-italic no-underline transition-colors hover:bg-emerald-200/50 dark:border-emerald-800/50 dark:bg-emerald-900/30 dark:text-emerald-300",
 				className,
 			)}
-			title={ids.length > 0 ? `Citations: ${ids.join(", ")}` : "Citation"}
+			title={ids.length > 0 ? `Citation: ${ids.join(", ")}` : "Citation"}
 			{...rest}
 		>
-			[{labels ? labels : children}]
+			<a href={href} className="no-underline">
+				[{labels ? labels : children}]
+			</a>
 		</cite>
 	);
 };

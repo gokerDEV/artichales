@@ -30,6 +30,13 @@ type PlottyChartProps = {
 	height?: number;
 };
 
+type PlotOverrideResult = {
+	layoutOverride: PlotLayout;
+	caption: string;
+};
+
+type PlotIndexMap = Record<string, number>;
+
 function isRecord(value: unknown): value is UnknownRecord {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -60,22 +67,62 @@ function mergeRecords(
 	return merged;
 }
 
+function normalizePlotId(source: string): string {
+	const trimmed = source.trim();
+	return trimmed.replace(/\.[^/.]+$/, "");
+}
+
+function resolvePlotOverride(bodyText: string): PlotOverrideResult {
+	if (!bodyText.trim()) {
+		return { layoutOverride: {}, caption: "" };
+	}
+
+	let parsedBody: unknown = {};
+	try {
+		parsedBody = parseYaml(bodyText);
+	} catch {
+		parsedBody = null;
+	}
+
+	if (isRecord(parsedBody)) {
+		const { caption, ...layoutOverride } = parsedBody;
+		return {
+			layoutOverride,
+			caption: typeof caption === "string" ? caption.trim() : "",
+		};
+	}
+
+	const lines = bodyText
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (lines.length > 1) {
+		const caption = lines[0];
+		const yamlTail = lines.slice(1).join("\n");
+		try {
+			const parsedTail = parseYaml(yamlTail);
+			if (isRecord(parsedTail)) {
+				return { layoutOverride: parsedTail, caption };
+			}
+		} catch {}
+	}
+
+	return {
+		layoutOverride: {},
+		caption:
+			typeof parsedBody === "string" ? parsedBody.trim() : bodyText.trim(),
+	};
+}
+
 function resolvePlotDefinition(
 	rawPlot: unknown,
-	layoutOverrideText: string,
+	layoutOverride: PlotLayout,
 ): PlotDefinition | null {
 	if (!isRecord(rawPlot) || !Array.isArray(rawPlot.data)) {
 		return null;
 	}
 
 	const baseLayout = isRecord(rawPlot.layout) ? rawPlot.layout : {};
-	let parsedLayout: unknown = {};
-	try {
-		parsedLayout = parseYaml(layoutOverrideText);
-	} catch {
-		parsedLayout = {};
-	}
-	const layoutOverride = isRecord(parsedLayout) ? parsedLayout : {};
 	const resolvedLayout = mergeRecords(baseLayout, layoutOverride);
 
 	return {
@@ -103,10 +150,10 @@ function getPlotSource(node: unknown): string {
 	return asString(value);
 }
 
-function getPlotLayoutText(node: unknown): string {
+function getPlotBodyText(node: unknown): string {
 	const value =
-		getNodeProperty(node, "data-plot-layout") ??
-		getNodeProperty(node, "dataPlotLayout");
+		getNodeProperty(node, "data-plot-body") ??
+		getNodeProperty(node, "dataPlotBody");
 	return asString(value);
 }
 
@@ -164,6 +211,7 @@ export const plottyRenderPlugin = {
 
 export function createDirectiveDivRender(
 	plotFiles: Record<string, unknown>,
+	plotIndexById: PlotIndexMap,
 ): Components["div"] {
 	return function DirectiveDivRender({
 		node,
@@ -183,12 +231,17 @@ export function createDirectiveDivRender(
 		}
 
 		const source = getPlotSource(node);
-		const layoutText = getPlotLayoutText(node);
+		const bodyText = getPlotBodyText(node);
+		const { layoutOverride, caption } = resolvePlotOverride(bodyText);
+		const plotId = normalizePlotId(source);
 		const rawPlot = plotFiles[source];
-		const resolvedPlot = resolvePlotDefinition(rawPlot, layoutText);
+		const resolvedPlot = resolvePlotDefinition(rawPlot, layoutOverride);
 		const resolvedLayout = resolvedPlot?.layout || {};
 		const width = toNumber(resolvedLayout.width);
 		const height = toNumber(resolvedLayout.height);
+		const figureNo = plotIndexById[plotId];
+		const titleFromLayout = asString(resolvedLayout.title);
+		const captionText = caption || titleFromLayout;
 
 		if (!resolvedPlot) {
 			return (
@@ -203,8 +256,18 @@ export function createDirectiveDivRender(
 		}
 
 		return (
-			<div {...rest} className="my-6 overflow-x-auto">
+			<div
+				{...rest}
+				id={plotId ? `plot-${plotId}` : undefined}
+				className="my-6 overflow-x-auto"
+			>
 				<PlottyChart plot={resolvedPlot} width={width} height={height} />
+				{captionText && (
+					<p className="mt-2 text-center text-neutral-600 text-xs italic">
+						{figureNo ? `Figure ${figureNo}. ` : ""}
+						{captionText}
+					</p>
+				)}
 			</div>
 		);
 	};

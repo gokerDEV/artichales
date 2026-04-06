@@ -158,5 +158,19 @@
     box-shadow: none !important;
     margin: 0 auto !important;
     position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] h1,
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] h2,
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] h3,
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] figure,
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] table,
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] pre,
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

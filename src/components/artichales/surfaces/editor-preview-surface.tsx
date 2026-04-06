@@ -36,25 +36,45 @@ Lorem ipsum dolor sit amet.
 :::
 
 # Introduction
-Lorem ipsum dolor sit amet [cite:knuth1984].
+Lorem ipsum dolor sit amet [cite:knuth1984, goker]. See [ref:plot_1].
+
+## Research Gap
+Lorem ipsum.
+
+## Literature Review
+Lorem ipsum [cite:goker].
+
+## Research Questions
+Lorem ipsum.
+ - RQ1: Lorem ipsum
+ - RQ2: Lorem ipsum
+ - RQ3: Lorem ipsum
+
+# Methodology 
+Lorem ipsum dolor sit amet [ref:plot_1].
+
+# Results
+Lorem ipsum dolor sit amet [ref:plot_1].
 
 :::plotty[plot_1.json]
-title: "Ribbon Plot"
-showlegend: false
-autosize: true
-width: 600
-height: 600
-scene:
-  xaxis:
-    title:
-      text: "Sample #"
-  yaxis:
-    title:
-      text: "Wavelength"
-  zaxis:
-    title:
-      text: "OD"
+Sample ribbon plot
 :::
+
+Lorem ipsum dolor sit amet [ref:datatable_1].
+
+:::datatable[datatable_1.json]
+Sample data table
+:::
+
+# Discussion
+Lorem ipsum.
+
+# Conclusion
+Lorem ipsum.
+
+# Acknowledgments
+Lorem ipsum.
+
 `;
 
 const SAMPLE_BIB = `@article{knuth1984,

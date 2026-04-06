@@ -72,7 +72,7 @@ export const remarkPlotty: Plugin<[], Root> = () => {
 			}
 
 			const source = extractDirectiveLabel(directive);
-			const layoutText = extractDirectiveBody(directive);
+			const bodyText = extractDirectiveBody(directive);
 
 			const data = (directive.data as UnknownRecord) || {};
 			directive.data = data;
@@ -81,7 +81,7 @@ export const remarkPlotty: Plugin<[], Root> = () => {
 				...(data.hProperties as UnknownRecord),
 				"data-directive": "plotty",
 				"data-plot-source": source,
-				"data-plot-layout": layoutText,
+				"data-plot-body": bodyText,
 			};
 
 			directive.children = [];

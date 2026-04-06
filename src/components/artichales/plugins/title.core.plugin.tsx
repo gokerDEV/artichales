@@ -83,9 +83,9 @@ export function TitleCorePlugin({
 
 			{titleBlock.showAuthors !== false && authors.length > 0 && (
 				<div className={cn("flex flex-wrap gap-x-6 gap-y-2", authorAlignClass)}>
-					{authors.map((author, idx) => (
+					{authors.map((author) => (
 						<AuthorCorePlugin
-							key={idx}
+							key={JSON.stringify(author)}
 							author={author as unknown as Author}
 							target={target}
 							docStyle={docStyle}
@@ -105,9 +105,9 @@ export function TitleCorePlugin({
 					>
 						Keywords:
 					</span>
-					{keywords.map((k, idx) => (
+					{keywords.map((k) => (
 						<span
-							key={idx}
+							key={k}
 							className={cn(
 								"text-xs",
 								isPrint
@@ -116,7 +116,6 @@ export function TitleCorePlugin({
 							)}
 						>
 							{String(k)}
-							{idx < keywords.length - 1 ? "," : ""}
 						</span>
 					))}
 				</div>
