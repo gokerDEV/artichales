@@ -286,12 +286,14 @@ export function createDirectiveDivRender(
 			<div
 				{...rest}
 				id={plotId ? `plot-${plotId}` : undefined}
-				className="my-6 overflow-x-auto"
+				className="plotty my-6 overflow-x-auto"
 			>
 				<PlottyChart plot={resolvedPlot} width={width} height={height} />
 				{captionText && (
-					<p className="mt-2 text-center text-neutral-600 text-xs italic">
-						{figureNo ? `Figure ${figureNo}. ` : ""}
+					<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+						{figureNo ? (
+							<span className="label">{`Figure ${figureNo}. `}</span>
+						) : null}
 						{captionText}
 					</p>
 				)}

@@ -81,17 +81,14 @@ export const CitationRender: Components["cite"] = ({
 	const href = firstId ? `#ref-${firstId}` : undefined;
 
 	return (
-		<cite
-			className={cn(
-				"mx-0.5 cursor-pointer rounded border border-emerald-200 bg-emerald-100/50 px-1 py-0.5 font-mono text-[0.85em] text-emerald-800 not-italic no-underline transition-colors hover:bg-emerald-200/50 dark:border-emerald-800/50 dark:bg-emerald-900/30 dark:text-emerald-300",
-				className,
-			)}
+		<a
+			href={href}
+			className={cn("cite", className)}
 			title={ids.length > 0 ? `Citation: ${ids.join(", ")}` : "Citation"}
-			{...rest}
 		>
-			<a href={href} className="no-underline">
+			<cite className={cn("cursor-pointer rounded border")} {...rest}>
 				[{labels ? labels : children}]
-			</a>
-		</cite>
+			</cite>
+		</a>
 	);
 };

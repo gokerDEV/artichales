@@ -20,7 +20,7 @@ export function DocumentRenderContent({
 	articleClassName,
 }: DocumentRenderContentProps) {
 	return (
-		<>
+		<div id="artichales" className={cn(`artichales artichales--${target}`)}>
 			<TitleCorePlugin document={document} target={target} />
 			<article className={cn(contentClassName, articleClassName)}>
 				<MarkdownContent
@@ -29,6 +29,6 @@ export function DocumentRenderContent({
 				/>
 			</article>
 			<ReferencesCorePlugin document={document} target={target} />
-		</>
+		</div>
 	);
 }

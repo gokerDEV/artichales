@@ -47,10 +47,21 @@ function parseIds(raw: string): string[] {
 		.filter(Boolean);
 }
 
+function parseTokenLabel(
+	label: string,
+): { kind: "cite" | "ref"; value: string } | null {
+	const match = label.match(/^(cite|ref)\s*:\s*(.+)$/i);
+	if (!match) return null;
+	const kind = match[1].toLowerCase() as "cite" | "ref";
+	const value = match[2].trim();
+	if (!value) return null;
+	return { kind, value };
+}
+
 export const remarkCitation: Plugin<[], Root> = () => {
 	return (tree: Root) => {
 		// PRE-PASS: Heal AST fractured by `remark-directive`
-		// `remark-directive` mistakenly shreds `[cite:knuth1984]` into `text("[cite")`, `textDirective(knuth1984)`, `text("]")`
+		// `remark-directive` can shred `[cite:knuth1984]` / `[ref:plot_1]` into broken text nodes.
 		visit(tree, (node: unknown) => {
 			if (!hasChildren(node)) return;
 
@@ -78,7 +89,7 @@ export const remarkCitation: Plugin<[], Root> = () => {
 				if (
 					childNode.type === "text" &&
 					typeof childNode.value === "string" &&
-					childNode.value.endsWith("[cite") &&
+					/\[(cite|ref)\s*$/i.test(childNode.value) &&
 					nextNode.type === "textDirective" &&
 					nextNextNode.type === "text" &&
 					typeof nextNode.name === "string" &&
@@ -86,12 +97,18 @@ export const remarkCitation: Plugin<[], Root> = () => {
 				) {
 					const endBracketIndex = nextNextNode.value.indexOf("]");
 					if (endBracketIndex !== -1) {
-						// Slice out the trailing `[cite` from the start node
-						const startVal = childNode.value.slice(0, -5);
+						const trailingTokenMatch = childNode.value.match(
+							/^(.*)\[(cite|ref)\s*$/i,
+						);
+						if (!trailingTokenMatch) {
+							i++;
+							continue;
+						}
+						const prefix = trailingTokenMatch[1] || "";
+						const tokenKind = trailingTokenMatch[2].toLowerCase();
 
-						// Reconstruct the citation literal
-						const citeStr =
-							"[cite:" +
+						const tokenStr =
+							`[${tokenKind}:` +
 							nextNode.name +
 							nextNextNode.value.slice(0, endBracketIndex + 1);
 
@@ -100,7 +117,7 @@ export const remarkCitation: Plugin<[], Root> = () => {
 
 						const mergedText: Text = {
 							type: "text",
-							value: startVal + citeStr + endVal,
+							value: prefix + tokenStr + endVal,
 						};
 
 						node.children.splice(i, 3, mergedText);
@@ -119,56 +136,51 @@ export const remarkCitation: Plugin<[], Root> = () => {
 			"linkReference",
 			(node: LinkReference, index?: number, parent?: Parent) => {
 				const label = node.label || "";
-				if (label.startsWith("cite:")) {
-					const ids = parseIds(label.replace("cite:", ""));
-
-					if (ids.length > 0 && parent && typeof index === "number") {
-						const replacementNodes: PhrasingContent[] = [];
-						ids.forEach((id, idx) => {
-							const citeNode: CitationNode = {
-								type: "cite",
-								data: {
-									hName: "cite",
-									hProperties: {
-										"data-cite-id": id,
-									},
-								},
-								children: [{ type: "text", value: `[${id}]` }],
-							};
-							replacementNodes.push(citeNode as unknown as PhrasingContent);
-							if (idx < ids.length - 1) {
-								replacementNodes.push({
-									type: "text",
-									value: ", ",
-								} as PhrasingContent);
-							}
-						});
-						parent.children.splice(index, 1, ...replacementNodes);
-						return index + replacementNodes.length;
-					}
+				const parsedLabel = parseTokenLabel(label);
+				if (!parsedLabel || !parent || typeof index !== "number") {
+					return undefined;
 				}
-				if (label.startsWith("ref:")) {
-					const refId = label.replace("ref:", "").trim();
-					if (refId && parent && typeof index === "number") {
-						const refNode: CrossRefNode = {
-							type: "xref",
+
+				if (parsedLabel.kind === "cite") {
+					const ids = parseIds(parsedLabel.value);
+					if (ids.length === 0) return undefined;
+
+					const replacementNodes: PhrasingContent[] = [];
+					ids.forEach((id, idx) => {
+						const citeNode: CitationNode = {
+							type: "cite",
 							data: {
-								hName: "span",
+								hName: "cite",
 								hProperties: {
-									"data-ref-id": refId,
+									"data-cite-id": id,
 								},
 							},
-							children: [{ type: "text", value: `[ref:${refId}]` }],
+							children: [{ type: "text", value: `[${id}]` }],
 						};
-						parent.children.splice(
-							index,
-							1,
-							refNode as unknown as PhrasingContent,
-						);
-						return index + 1;
-					}
+						replacementNodes.push(citeNode as unknown as PhrasingContent);
+						if (idx < ids.length - 1) {
+							replacementNodes.push({
+								type: "text",
+								value: ", ",
+							} as PhrasingContent);
+						}
+					});
+					parent.children.splice(index, 1, ...replacementNodes);
+					return index + replacementNodes.length;
 				}
-				return undefined;
+
+				const refNode: CrossRefNode = {
+					type: "xref",
+					data: {
+						hName: "span",
+						hProperties: {
+							"data-ref-id": parsedLabel.value,
+						},
+					},
+					children: [{ type: "text", value: `[ref:${parsedLabel.value}]` }],
+				};
+				parent.children.splice(index, 1, refNode as unknown as PhrasingContent);
+				return index + 1;
 			},
 		);
 

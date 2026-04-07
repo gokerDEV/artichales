@@ -1,5 +1,6 @@
 import * as React from "react";
 import { parse as parseYaml } from "yaml";
+import { DataTable } from "@/components/ui/data-table";
 
 type UnknownRecord = Record<string, unknown>;
 type DatatableIndexMap = Record<string, number>;
@@ -107,6 +108,10 @@ type DatatableRenderBlockProps = {
 	datatableIndexById: DatatableIndexMap;
 };
 
+type DatatableRow = UnknownRecord & {
+	__rowKey: string;
+};
+
 export function DatatableRenderBlock({
 	source,
 	bodyText,
@@ -139,9 +144,19 @@ export function DatatableRenderBlock({
 						toCellString(row[col.key]).toLowerCase().includes(normalizedQuery),
 					),
 				);
+	const keyedRows: DatatableRow[] = filteredRows.map((row) => ({
+		...row,
+		__rowKey:
+			typeof row.id === "string" && row.id.trim() !== ""
+				? row.id
+				: JSON.stringify(row),
+	}));
 
 	return (
-		<div id={tableId ? `datatable-${tableId}` : undefined} className="my-6">
+		<div
+			id={tableId ? `datatable-${tableId}` : undefined}
+			className="datatable my-6"
+		>
 			<div className="mb-2 flex items-center justify-between gap-3">
 				<input
 					type="text"
@@ -155,44 +170,21 @@ export function DatatableRenderBlock({
 				</span>
 			</div>
 			<div className="overflow-x-auto rounded-md border border-border">
-				<table className="min-w-full border-collapse text-sm">
-					<thead className="bg-muted/50">
-						<tr>
-							{definition.columns.map((col) => (
-								<th
-									key={col.key}
-									className="border-border border-b px-3 py-2 text-left font-semibold"
-								>
-									{col.label}
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{filteredRows.map((row) => {
-							const rowKey =
-								typeof row.id === "string" && row.id.trim() !== ""
-									? row.id
-									: JSON.stringify(row);
-							return (
-								<tr key={rowKey} className="even:bg-muted/20">
-									{definition.columns.map((col) => (
-										<td
-											key={col.key}
-											className="border-border border-b px-3 py-2 align-top"
-										>
-											{toCellString(row[col.key])}
-										</td>
-									))}
-								</tr>
-							);
-						})}
-					</tbody>
-				</table>
+				<DataTable
+					columns={definition.columns.map((col) => ({
+						key: col.key,
+						label: col.label,
+						getValue: (row: DatatableRow) => toCellString(row[col.key]),
+					}))}
+					rows={keyedRows}
+					rowKey={(row: DatatableRow) => row.__rowKey}
+				/>
 			</div>
 			{caption && (
-				<p className="mt-2 text-center text-neutral-600 text-xs italic">
-					{tableNo ? `Table ${tableNo}. ` : ""}
+				<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+					{tableNo ? (
+						<span className="label">{`Table ${tableNo}. `}</span>
+					) : null}
 					{caption}
 				</p>
 			)}

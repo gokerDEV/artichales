@@ -2,9 +2,6 @@ import type { JSX } from "react";
 import * as React from "react";
 import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
-// Statically imported MVP templates
-import classicPrintTemplate from "@/components/artichales/templates/classic_print.json";
-import classicWebTemplate from "@/components/artichales/templates/classic_web.json";
 import type { CitationEntry } from "@/lib/bibtex";
 import { parseBibtex } from "@/lib/bibtex";
 
@@ -72,6 +69,75 @@ export interface DocumentSource {
 	citationStyle: string;
 }
 
+const CLASSIC_WEB_TEMPLATE: DocumentTemplate = {
+	id: "classic_web",
+	target: "web",
+	container: "article",
+	headings: {
+		numbering: true,
+	},
+	figures: {
+		zoomable: true,
+	},
+	references: {
+		enabled: true,
+		title: "References",
+	},
+	citations: {
+		style: "numeric",
+	},
+};
+
+const CLASSIC_PRINT_TEMPLATE: DocumentTemplate = {
+	id: "classic_print",
+	target: "print",
+	page: {
+		size: "A4",
+		orientation: "portrait",
+		margin: {
+			top: "24mm",
+			right: "20mm",
+			bottom: "24mm",
+			left: "20mm",
+		},
+	},
+	document: {
+		lineHeight: 1.55,
+		fontFamily: {
+			body: "Source Serif 4",
+			heading: "Inter",
+		},
+		fontSize: {
+			body: "11pt",
+			h1: "20pt",
+			h2: "15pt",
+			h3: "12pt",
+		},
+		textAlign: "justify",
+	},
+	titleBlock: {
+		enabled: true,
+		align: "center",
+		showAuthors: true,
+		showAffiliations: true,
+		showKeywords: true,
+		spacingAfter: "12mm",
+	},
+	headings: {
+		numbering: true,
+	},
+	figures: {
+		zoomable: false,
+	},
+	references: {
+		enabled: true,
+		title: "References",
+	},
+	citations: {
+		style: "numeric",
+	},
+};
+
 export function useDocument(
 	files: Record<string, string>,
 	activeFile: string,
@@ -122,8 +188,8 @@ export function useDocument(
 	const templateByTarget: Record<PreviewTarget, DocumentTemplate> =
 		React.useMemo(
 			() => ({
-				web: classicWebTemplate as DocumentTemplate,
-				print: classicPrintTemplate as DocumentTemplate,
+				web: CLASSIC_WEB_TEMPLATE,
+				print: CLASSIC_PRINT_TEMPLATE,
 			}),
 			[],
 		);

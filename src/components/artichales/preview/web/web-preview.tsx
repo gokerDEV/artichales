@@ -40,7 +40,6 @@ export function WebPreview({
 							document={document}
 							target="web"
 							contentClassName={cn(
-								"prose prose-slate dark:prose-invert max-w-none",
 								"prose-a:text-emerald-600 hover:prose-a:text-emerald-500",
 								"prose-img:rounded-xl prose-img:border prose-img:border-border prose-img:shadow-sm",
 								"prose-pre:border prose-pre:border-border",
