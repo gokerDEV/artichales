@@ -86,7 +86,7 @@ export const CitationRender: Components["cite"] = ({
 			className={cn("cite", className)}
 			title={ids.length > 0 ? `Citation: ${ids.join(", ")}` : "Citation"}
 		>
-			<cite className={cn("cursor-pointer rounded border")} {...rest}>
+			<cite  {...rest}>
 				[{labels ? labels : children}]
 			</cite>
 		</a>

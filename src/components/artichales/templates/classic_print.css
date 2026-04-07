@@ -11,7 +11,14 @@
 }
 
 .artichales--print a.cite {
-	@apply rounded-sm border-b border-black/50 no-underline;
+	@apply px-1 not-italic no-underline text-sky-500 hover:text-sky-700;
+}
+.artichales--print a.cite cite {
+	@apply not-italic;
+}
+
+.artichales--print a.ref {
+	@apply rounded-xs border border-emerald-100 bg-emerald-50 px-1 not-italic no-underline;
 }
 
 .artichales--print .plotty {
@@ -25,5 +32,5 @@
 
 .artichales--print .plotty > .title > .label,
 .artichales--print .datatable > .title > .label {
-	@apply font-semibold;
+	@apply font-semibold not-italic;
 }
