@@ -1,0 +1,33 @@
+.artichales--web {
+	@apply prose prose-slate dark:prose-invert max-w-none;
+}
+
+.artichales--web h1 {
+	@apply mt-8 mb-4 font-bold text-3xl tracking-tight;
+}
+
+.artichales--web h2 {
+	@apply mt-7 mb-3 font-semibold text-2xl tracking-tight;
+}
+
+.artichales--web p > strong {
+	@apply font-semibold text-foreground;
+}
+
+.artichales--web a.cite {
+	@apply rounded-sm border-b border-emerald-500 no-underline;
+}
+
+.artichales--web .plotty {
+	@apply max-w-full;
+}
+
+.artichales--web .plotty > .title,
+.artichales--web .datatable > .title {
+	@apply italic;
+}
+
+.artichales--web .plotty > .title > .label,
+.artichales--web .datatable > .title > .label {
+	@apply font-semibold;
+}

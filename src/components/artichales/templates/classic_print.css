@@ -1,0 +1,29 @@
+.artichales--print h1 {
+	@apply mt-6 mb-3 font-bold text-2xl tracking-tight;
+}
+
+.artichales--print h2 {
+	@apply mt-5 mb-2 font-semibold text-xl tracking-tight;
+}
+
+.artichales--print p > strong {
+	@apply font-semibold text-black;
+}
+
+.artichales--print a.cite {
+	@apply rounded-sm border-b border-black/50 no-underline;
+}
+
+.artichales--print .plotty {
+	@apply max-w-full;
+}
+
+.artichales--print .plotty > .title,
+.artichales--print .datatable > .title {
+	@apply italic;
+}
+
+.artichales--print .plotty > .title > .label,
+.artichales--print .datatable > .title > .label {
+	@apply font-semibold;
+}
