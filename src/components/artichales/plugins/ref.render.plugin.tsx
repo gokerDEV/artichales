@@ -1,7 +1,13 @@
 import type React from "react";
 import type { Components } from "react-markdown";
 
-type PlotIndexMap = Record<string, number>;
+type RefIndexMap = Record<
+	string,
+	{
+		kind: "plot" | "datatable";
+		index: number;
+	}
+>;
 type RefRenderProps = {
 	node?: {
 		properties?: Record<string, unknown>;
@@ -14,9 +20,7 @@ function normalizePlotId(raw: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
-export function createRefRender(
-	plotIndexById: PlotIndexMap,
-): Components["span"] {
+export function createRefRender(refIndexById: RefIndexMap): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
 		const rawRefId =
 			node?.properties?.dataRefId || node?.properties?.["data-ref-id"] || "";
@@ -26,13 +30,22 @@ export function createRefRender(
 			return <span {...rest}>{children}</span>;
 		}
 
-		const figureNo = plotIndexById[normalizedRefId];
-		const label = figureNo ? `Figure ${figureNo}` : `ref:${normalizedRefId}`;
+		const target = refIndexById[normalizedRefId];
+		const label = target
+			? target.kind === "plot"
+				? `Figure ${target.index}`
+				: `Table ${target.index}`
+			: `ref:${normalizedRefId}`;
+		const href = target
+			? target.kind === "plot"
+				? `#plot-${normalizedRefId}`
+				: `#datatable-${normalizedRefId}`
+			: `#${normalizedRefId}`;
 
 		return (
 			<span {...rest}>
 				<a
-					href={`#plot-${normalizedRefId}`}
+					href={href}
 					className="rounded border border-sky-200 bg-sky-50 px-1 py-0.5 font-mono text-[0.85em] text-sky-800 no-underline hover:bg-sky-100"
 					title={`Go to ${normalizedRefId}`}
 				>

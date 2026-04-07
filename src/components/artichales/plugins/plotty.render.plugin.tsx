@@ -2,6 +2,7 @@ import * as React from "react";
 import type { Components } from "react-markdown";
 import { parse as parseYaml } from "yaml";
 import { AbstractRender } from "@/components/artichales/plugins/abstract.render.plugin";
+import { DatatableRenderBlock } from "@/components/artichales/plugins/datatable.render.plugin";
 
 type UnknownRecord = Record<string, unknown>;
 type PlotTrace = Record<string, unknown>;
@@ -36,6 +37,7 @@ type PlotOverrideResult = {
 };
 
 type PlotIndexMap = Record<string, number>;
+type DatatableIndexMap = Record<string, number>;
 
 function isRecord(value: unknown): value is UnknownRecord {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -157,6 +159,20 @@ function getPlotBodyText(node: unknown): string {
 	return asString(value);
 }
 
+function getDatatableSource(node: unknown): string {
+	const value =
+		getNodeProperty(node, "data-datatable-source") ??
+		getNodeProperty(node, "dataDatatableSource");
+	return asString(value);
+}
+
+function getDatatableBodyText(node: unknown): string {
+	const value =
+		getNodeProperty(node, "data-datatable-body") ??
+		getNodeProperty(node, "dataDatatableBody");
+	return asString(value);
+}
+
 function PlottyChart({ plot, width, height }: PlottyChartProps) {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [plotly, setPlotly] = React.useState<PlotlyModule | null>(null);
@@ -212,6 +228,7 @@ export const plottyRenderPlugin = {
 export function createDirectiveDivRender(
 	plotFiles: Record<string, unknown>,
 	plotIndexById: PlotIndexMap,
+	datatableIndexById: DatatableIndexMap,
 ): Components["div"] {
 	return function DirectiveDivRender({
 		node,
@@ -220,6 +237,16 @@ export function createDirectiveDivRender(
 	}: PlottyDivProps) {
 		const directive = getDirective(node);
 		if (directive !== "plotty") {
+			if (directive === "datatable") {
+				return (
+					<DatatableRenderBlock
+						source={getDatatableSource(node)}
+						bodyText={getDatatableBodyText(node)}
+						datatableFiles={plotFiles}
+						datatableIndexById={datatableIndexById}
+					/>
+				);
+			}
 			if (typeof AbstractRender === "function") {
 				return React.createElement(
 					AbstractRender as React.ComponentType<PlottyDivProps>,

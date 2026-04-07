@@ -7,6 +7,7 @@ import remarkMath from "remark-math";
 import { remarkAbstract } from "@/components/artichales/plugins/abstract.parser.plugin";
 import { remarkCitation } from "@/components/artichales/plugins/citation.parser.plugin";
 import { CitationRender } from "@/components/artichales/plugins/citation.render.plugin";
+import { remarkDatatable } from "@/components/artichales/plugins/datatable.parser.plugin";
 import { remarkPlotty } from "@/components/artichales/plugins/plotty.parser.plugin";
 import { createDirectiveDivRender } from "@/components/artichales/plugins/plotty.render.plugin";
 import { createRefRender } from "@/components/artichales/plugins/ref.render.plugin";
@@ -18,33 +19,58 @@ type MarkdownContentProps = {
 };
 
 export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
-	const plotIndexById = React.useMemo(() => {
-		const regex = /:::plotty\[(.+?)\]/g;
-		const indexMap: Record<string, number> = {};
-		let match: RegExpExecArray | null = null;
-		let idx = 1;
+	const { plotIndexById, datatableIndexById, refIndexById } =
+		React.useMemo(() => {
+			const regex = /:::(plotty|datatable)\[(.+?)\]/g;
+			const plotMap: Record<string, number> = {};
+			const datatableMap: Record<string, number> = {};
+			const refMap: Record<
+				string,
+				{
+					kind: "plot" | "datatable";
+					index: number;
+				}
+			> = {};
+			let match: RegExpExecArray | null = null;
+			let plotIdx = 1;
+			let datatableIdx = 1;
 
-		while (true) {
-			match = regex.exec(content);
-			if (match === null) break;
-			const source = match[1]?.trim() || "";
-			const id = source.replace(/\.[^/.]+$/, "");
-			if (id && indexMap[id] === undefined) {
-				indexMap[id] = idx;
-				idx++;
+			while (true) {
+				match = regex.exec(content);
+				if (match === null) break;
+				const kind = match[1]?.trim();
+				const source = match[2]?.trim() || "";
+				const id = source.replace(/\.[^/.]+$/, "");
+				if (!id) continue;
+
+				if (kind === "plotty" && plotMap[id] === undefined) {
+					plotMap[id] = plotIdx;
+					refMap[id] = { kind: "plot", index: plotIdx };
+					plotIdx++;
+					continue;
+				}
+				if (kind === "datatable" && datatableMap[id] === undefined) {
+					datatableMap[id] = datatableIdx;
+					refMap[id] = { kind: "datatable", index: datatableIdx };
+					datatableIdx++;
+				}
 			}
-		}
 
-		return indexMap;
-	}, [content]);
+			return {
+				plotIndexById: plotMap,
+				datatableIndexById: datatableMap,
+				refIndexById: refMap,
+			};
+		}, [content]);
 
 	const divRenderer = React.useMemo(
-		() => createDirectiveDivRender(plotFiles, plotIndexById),
-		[plotFiles, plotIndexById],
+		() =>
+			createDirectiveDivRender(plotFiles, plotIndexById, datatableIndexById),
+		[plotFiles, plotIndexById, datatableIndexById],
 	);
 	const refRenderer = React.useMemo(
-		() => createRefRender(plotIndexById),
-		[plotIndexById],
+		() => createRefRender(refIndexById),
+		[refIndexById],
 	);
 
 	return (
@@ -53,6 +79,7 @@ export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
 				remarkCitation,
 				remarkAbstract,
 				remarkPlotty,
+				remarkDatatable,
 				remarkGfm,
 				remarkMath,
 				remarkDirective,

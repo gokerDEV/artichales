@@ -1,0 +1,201 @@
+import * as React from "react";
+import { parse as parseYaml } from "yaml";
+
+type UnknownRecord = Record<string, unknown>;
+type DatatableIndexMap = Record<string, number>;
+
+type DatatableColumn = {
+	key: string;
+	label: string;
+};
+
+type DatatableDefinition = {
+	columns: DatatableColumn[];
+	rows: UnknownRecord[];
+};
+
+type DatatableOverrideResult = {
+	caption: string;
+};
+
+function isRecord(value: unknown): value is UnknownRecord {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeId(raw: string): string {
+	const trimmed = raw.trim();
+	return trimmed.replace(/\.[^/.]+$/, "");
+}
+
+function toCellString(value: unknown): string {
+	if (value === null || value === undefined) return "";
+	if (typeof value === "string") return value;
+	if (typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function resolveDatatableDefinition(
+	rawData: unknown,
+): DatatableDefinition | null {
+	if (!rawData) return null;
+
+	if (Array.isArray(rawData)) {
+		const rows = rawData.filter((item) => isRecord(item));
+		if (rows.length === 0) return null;
+		const firstRow = rows[0];
+		const columns = Object.keys(firstRow).map((key) => ({ key, label: key }));
+		return { columns, rows };
+	}
+
+	if (!isRecord(rawData)) return null;
+
+	const candidateRows = Array.isArray(rawData.rows)
+		? rawData.rows.filter((item) => isRecord(item))
+		: [];
+	if (candidateRows.length === 0) return null;
+
+	const candidateColumns = Array.isArray(rawData.columns)
+		? rawData.columns
+				.filter((col) => isRecord(col) && typeof col.key === "string")
+				.map((col) => ({
+					key: String(col.key),
+					label: typeof col.label === "string" ? col.label : String(col.key),
+				}))
+		: [];
+
+	const columns =
+		candidateColumns.length > 0
+			? candidateColumns
+			: Object.keys(candidateRows[0]).map((key) => ({ key, label: key }));
+
+	return {
+		columns,
+		rows: candidateRows,
+	};
+}
+
+function resolveDatatableOverride(bodyText: string): DatatableOverrideResult {
+	if (!bodyText.trim()) return { caption: "" };
+
+	let parsedBody: unknown = {};
+	try {
+		parsedBody = parseYaml(bodyText);
+	} catch {
+		return { caption: bodyText.trim() };
+	}
+
+	if (isRecord(parsedBody) && typeof parsedBody.caption === "string") {
+		return { caption: parsedBody.caption.trim() };
+	}
+
+	return {
+		caption:
+			typeof parsedBody === "string" ? parsedBody.trim() : bodyText.trim(),
+	};
+}
+
+type DatatableRenderBlockProps = {
+	source: string;
+	bodyText: string;
+	datatableFiles: Record<string, unknown>;
+	datatableIndexById: DatatableIndexMap;
+};
+
+export function DatatableRenderBlock({
+	source,
+	bodyText,
+	datatableFiles,
+	datatableIndexById,
+}: DatatableRenderBlockProps) {
+	const data = datatableFiles[source];
+	const definition = resolveDatatableDefinition(data);
+	const tableId = normalizeId(source);
+	const tableNo = datatableIndexById[tableId];
+	const { caption } = resolveDatatableOverride(bodyText);
+
+	const [query, setQuery] = React.useState("");
+	const normalizedQuery = query.trim().toLowerCase();
+
+	if (!definition) {
+		return (
+			<div className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs">
+				Datatable source not found or invalid:{" "}
+				<strong>{source || "(empty)"}</strong>
+			</div>
+		);
+	}
+
+	const filteredRows =
+		normalizedQuery.length === 0
+			? definition.rows
+			: definition.rows.filter((row) =>
+					definition.columns.some((col) =>
+						toCellString(row[col.key]).toLowerCase().includes(normalizedQuery),
+					),
+				);
+
+	return (
+		<div id={tableId ? `datatable-${tableId}` : undefined} className="my-6">
+			<div className="mb-2 flex items-center justify-between gap-3">
+				<input
+					type="text"
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+					placeholder="Filter table..."
+					className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+				/>
+				<span className="shrink-0 text-muted-foreground text-xs">
+					{filteredRows.length}/{definition.rows.length}
+				</span>
+			</div>
+			<div className="overflow-x-auto rounded-md border border-border">
+				<table className="min-w-full border-collapse text-sm">
+					<thead className="bg-muted/50">
+						<tr>
+							{definition.columns.map((col) => (
+								<th
+									key={col.key}
+									className="border-border border-b px-3 py-2 text-left font-semibold"
+								>
+									{col.label}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{filteredRows.map((row) => {
+							const rowKey =
+								typeof row.id === "string" && row.id.trim() !== ""
+									? row.id
+									: JSON.stringify(row);
+							return (
+								<tr key={rowKey} className="even:bg-muted/20">
+									{definition.columns.map((col) => (
+										<td
+											key={col.key}
+											className="border-border border-b px-3 py-2 align-top"
+										>
+											{toCellString(row[col.key])}
+										</td>
+									))}
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
+			{caption && (
+				<p className="mt-2 text-center text-neutral-600 text-xs italic">
+					{tableNo ? `Table ${tableNo}. ` : ""}
+					{caption}
+				</p>
+			)}
+		</div>
+	);
+}

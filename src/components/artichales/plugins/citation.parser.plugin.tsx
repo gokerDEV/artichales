@@ -147,6 +147,27 @@ export const remarkCitation: Plugin<[], Root> = () => {
 						return index + replacementNodes.length;
 					}
 				}
+				if (label.startsWith("ref:")) {
+					const refId = label.replace("ref:", "").trim();
+					if (refId && parent && typeof index === "number") {
+						const refNode: CrossRefNode = {
+							type: "xref",
+							data: {
+								hName: "span",
+								hProperties: {
+									"data-ref-id": refId,
+								},
+							},
+							children: [{ type: "text", value: `[ref:${refId}]` }],
+						};
+						parent.children.splice(
+							index,
+							1,
+							refNode as unknown as PhrasingContent,
+						);
+						return index + 1;
+					}
+				}
 				return undefined;
 			},
 		);
@@ -154,7 +175,7 @@ export const remarkCitation: Plugin<[], Root> = () => {
 		visit(tree, "text", (node: Text, index?: number, parent?: Parent) => {
 			if (!node.value) return;
 
-			const tokenRegex = /\[(cite|ref):([^\]]+)\]/g;
+			const tokenRegex = /\[(cite|ref)\s*:\s*([^\]]+)\]/g;
 			if (!tokenRegex.test(node.value)) return;
 
 			tokenRegex.lastIndex = 0;

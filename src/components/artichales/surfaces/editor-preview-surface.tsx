@@ -124,11 +124,30 @@ const SAMPLE_PLOT = `{
 }
 `;
 
+const SAMPLE_DATATABLE = `{
+  "columns": [
+    { "key": "sample", "label": "Sample" },
+    { "key": "condition", "label": "Condition" },
+    { "key": "mean_od", "label": "Mean OD" },
+    { "key": "std_od", "label": "Std Dev" }
+  ],
+  "rows": [
+    { "sample": "A1", "condition": "Control", "mean_od": 0.21, "std_od": 0.02 },
+    { "sample": "A2", "condition": "Control", "mean_od": 0.24, "std_od": 0.03 },
+    { "sample": "B1", "condition": "Treatment", "mean_od": 0.39, "std_od": 0.04 },
+    { "sample": "B2", "condition": "Treatment", "mean_od": 0.42, "std_od": 0.04 },
+    { "sample": "C1", "condition": "Recovery", "mean_od": 0.33, "std_od": 0.03 },
+    { "sample": "C2", "condition": "Recovery", "mean_od": 0.30, "std_od": 0.03 }
+  ]
+}
+`;
+
 const STORAGE_KEY = "artichales-editor-autosave";
 const DEFAULT_FILES: Record<string, string> = {
 	"article.mdx": SAMPLE_MARKDOWN,
 	"references.bib": SAMPLE_BIB,
 	"plot_1.json": SAMPLE_PLOT,
+	"datatable_1.json": SAMPLE_DATATABLE,
 };
 
 const TypedResizableGroup = ResizablePanelGroup as unknown as React.FC<
