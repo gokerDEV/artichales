@@ -229,6 +229,7 @@ export function createDirectiveDivRender(
 	plotFiles: Record<string, unknown>,
 	plotIndexById: PlotIndexMap,
 	datatableIndexById: DatatableIndexMap,
+	target: "web" | "print",
 ): Components["div"] {
 	return function DirectiveDivRender({
 		node,
@@ -244,6 +245,7 @@ export function createDirectiveDivRender(
 						bodyText={getDatatableBodyText(node)}
 						datatableFiles={plotFiles}
 						datatableIndexById={datatableIndexById}
+						target={target}
 					/>
 				);
 			}

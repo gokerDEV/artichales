@@ -167,6 +167,27 @@
     overflow: visible !important;
   }
 
+  body[data-artichales-printing="true"] [data-artichales-print-header="true"] {
+    position: fixed !important;
+    top: 12mm !important;
+    left: 20mm !important;
+    right: 20mm !important;
+    z-index: 20 !important;
+  }
+
+  body[data-artichales-printing="true"] [data-artichales-print-footer="true"] {
+    position: fixed !important;
+    bottom: 12mm !important;
+    left: 20mm !important;
+    right: 20mm !important;
+    z-index: 20 !important;
+  }
+
+  body[data-artichales-printing="true"] [data-artichales-page-number="true"]::after {
+    content: counter(page);
+    margin-left: 0.2rem;
+  }
+
   body[data-artichales-printing="true"] [data-artichales-print-root="true"] h1,
   body[data-artichales-printing="true"] [data-artichales-print-root="true"] h2,
   body[data-artichales-printing="true"] [data-artichales-print-root="true"] h3,
@@ -176,5 +197,17 @@
   body[data-artichales-printing="true"] [data-artichales-print-root="true"] blockquote {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  body[data-artichales-printing="true"] [data-artichales-print-root="true"] .footnotes {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-before: avoid-page;
+  }
+
+  @supports (position: running(artichales-footnotes)) {
+    body[data-artichales-printing="true"] [data-artichales-print-root="true"] .footnotes {
+      position: running(artichales-footnotes);
+    }
   }
 }

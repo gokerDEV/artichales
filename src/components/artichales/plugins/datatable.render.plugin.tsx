@@ -106,6 +106,7 @@ type DatatableRenderBlockProps = {
 	bodyText: string;
 	datatableFiles: Record<string, unknown>;
 	datatableIndexById: DatatableIndexMap;
+	target: "web" | "print";
 };
 
 type DatatableRow = UnknownRecord & {
@@ -117,6 +118,7 @@ export function DatatableRenderBlock({
 	bodyText,
 	datatableFiles,
 	datatableIndexById,
+	target,
 }: DatatableRenderBlockProps) {
 	const data = datatableFiles[source];
 	const definition = resolveDatatableDefinition(data);
@@ -157,18 +159,20 @@ export function DatatableRenderBlock({
 			id={tableId ? `datatable-${tableId}` : undefined}
 			className="datatable my-6"
 		>
-			<div className="mb-2 flex items-center justify-between gap-3">
-				<input
-					type="text"
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Filter table..."
-					className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-				/>
-				<span className="shrink-0 text-muted-foreground text-xs">
-					{filteredRows.length}/{definition.rows.length}
-				</span>
-			</div>
+			{target === "web" ? (
+				<div className="mb-2 flex items-center justify-between gap-3">
+					<input
+						type="text"
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder="Filter table..."
+						className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+					/>
+					<span className="shrink-0 text-muted-foreground text-xs">
+						{filteredRows.length}/{definition.rows.length}
+					</span>
+				</div>
+			) : null}
 			<div className="overflow-x-auto rounded-md border border-border">
 				<DataTable
 					columns={definition.columns.map((col) => ({

@@ -14,7 +14,7 @@ export function PrintPreview({
 	className,
 	scale = 100,
 }: PrintPreviewProps) {
-	const { template } = document;
+	const { template, frontmatter } = document;
 	const docStyle = template?.document || {};
 	const pageConfig = template?.page;
 	const orientation =
@@ -30,6 +30,11 @@ export function PrintPreview({
 			? "297mm"
 			: "210mm"
 		: "297mm";
+	const previewPageHeightPx = isA4
+		? orientation === "portrait"
+			? 1123
+			: 794
+		: 1123;
 
 	const margins = pageConfig?.margin;
 	const pagePaddingTop =
@@ -40,6 +45,28 @@ export function PrintPreview({
 		typeof margins?.bottom === "string" ? margins.bottom : "24mm";
 	const pagePaddingLeft =
 		typeof margins?.left === "string" ? margins.left : "20mm";
+	const headerFooterConfig = template?.headerFooter;
+	const showHeaderFooter = headerFooterConfig?.enabled !== false;
+
+	const resolveTokenText = (value: string | undefined): string => {
+		if (!value) return "";
+		const title =
+			typeof frontmatter?.title === "string" ? frontmatter.title : "";
+		return value.replace("{title}", title).replace("{pageNumber}", "");
+	};
+
+	const headerLeft = resolveTokenText(headerFooterConfig?.header?.left);
+	const headerCenter = resolveTokenText(headerFooterConfig?.header?.center);
+	const headerRight = resolveTokenText(headerFooterConfig?.header?.right);
+
+	const footerLeft = resolveTokenText(headerFooterConfig?.footer?.left);
+	const footerCenterRaw = headerFooterConfig?.footer?.center || "";
+	const footerRight = resolveTokenText(headerFooterConfig?.footer?.right);
+	const footerHasPageNumber = footerCenterRaw.includes("{pageNumber}");
+	const footerCenter = resolveTokenText(footerCenterRaw);
+
+	const headerArea = showHeaderFooter ? "10mm" : "0mm";
+	const footerArea = showHeaderFooter ? "10mm" : "0mm";
 
 	return (
 		<div className={cn("absolute inset-0 bg-neutral-100", className)}>
@@ -50,11 +77,12 @@ export function PrintPreview({
 					style={{
 						transform: `scale(${scale / 100})`,
 						transformOrigin: "top center",
+						backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${previewPageHeightPx - 24}px, rgb(226 232 240) ${previewPageHeightPx - 24}px, rgb(226 232 240) ${previewPageHeightPx}px)`,
 					}}
 				>
 					<div
 						data-artichales-print-root="true"
-						className="shrink-0 rounded-none bg-white shadow-xl ring-1 ring-border"
+						className="relative shrink-0 rounded-none bg-white shadow-xl ring-1 ring-border"
 						style={{
 							width: pageWidth,
 							minHeight: pageHeight,
@@ -64,12 +92,51 @@ export function PrintPreview({
 							textAlign: docStyle.textAlign,
 						}}
 					>
+						{showHeaderFooter ? (
+							<div
+								data-artichales-print-header="true"
+								className="pointer-events-none absolute text-[10px] text-neutral-500"
+								style={{
+									top: pagePaddingTop,
+									left: pagePaddingLeft,
+									right: pagePaddingRight,
+								}}
+							>
+								<div className="grid grid-cols-3 gap-2">
+									<span className="text-left">{headerLeft}</span>
+									<span className="text-center">{headerCenter}</span>
+									<span className="text-right">{headerRight}</span>
+								</div>
+							</div>
+						) : null}
+						{showHeaderFooter ? (
+							<div
+								data-artichales-print-footer="true"
+								className="pointer-events-none absolute text-[10px] text-neutral-500"
+								style={{
+									bottom: pagePaddingBottom,
+									left: pagePaddingLeft,
+									right: pagePaddingRight,
+								}}
+							>
+								<div className="grid grid-cols-3 gap-2">
+									<span className="text-left">{footerLeft}</span>
+									<span className="text-center">
+										{footerCenter}
+										{footerHasPageNumber ? (
+											<span data-artichales-page-number="true" />
+										) : null}
+									</span>
+									<span className="text-right">{footerRight}</span>
+								</div>
+							</div>
+						) : null}
 						<div
 							className="mx-auto min-h-full w-full space-y-6 text-[11px] text-black leading-relaxed"
 							style={{
-								paddingTop: pagePaddingTop,
+								paddingTop: `calc(${pagePaddingTop} + ${headerArea})`,
 								paddingRight: pagePaddingRight,
-								paddingBottom: pagePaddingBottom,
+								paddingBottom: `calc(${pagePaddingBottom} + ${footerArea})`,
 								paddingLeft: pagePaddingLeft,
 							}}
 						>

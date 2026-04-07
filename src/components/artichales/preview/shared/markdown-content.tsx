@@ -17,9 +17,14 @@ import "katex/dist/katex.min.css";
 type MarkdownContentProps = {
 	content: string;
 	plotFiles: Record<string, unknown>;
+	target: "web" | "print";
 };
 
-export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
+export function MarkdownContent({
+	content,
+	plotFiles,
+	target,
+}: MarkdownContentProps) {
 	const { plotIndexById, datatableIndexById, refIndexById } =
 		React.useMemo(() => {
 			const regex = /:::(plotty|datatable)\[(.+?)\]/g;
@@ -66,8 +71,13 @@ export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
 
 	const divRenderer = React.useMemo(
 		() =>
-			createDirectiveDivRender(plotFiles, plotIndexById, datatableIndexById),
-		[plotFiles, plotIndexById, datatableIndexById],
+			createDirectiveDivRender(
+				plotFiles,
+				plotIndexById,
+				datatableIndexById,
+				target,
+			),
+		[plotFiles, plotIndexById, datatableIndexById, target],
 	);
 	const refRenderer = React.useMemo(
 		() => createRefRender(refIndexById),

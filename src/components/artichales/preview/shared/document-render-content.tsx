@@ -26,6 +26,7 @@ export function DocumentRenderContent({
 				<MarkdownContent
 					content={document.content}
 					plotFiles={document.plots}
+					target={target}
 				/>
 			</article>
 			<ReferencesCorePlugin document={document} target={target} />

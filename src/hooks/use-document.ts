@@ -58,6 +58,19 @@ export type DocumentTemplate = {
 	citations?: {
 		style?: string;
 	};
+	headerFooter?: {
+		enabled?: boolean;
+		header?: {
+			left?: string;
+			center?: string;
+			right?: string;
+		};
+		footer?: {
+			left?: string;
+			center?: string;
+			right?: string;
+		};
+	};
 };
 
 export interface DocumentSource {
@@ -85,6 +98,9 @@ const CLASSIC_WEB_TEMPLATE: DocumentTemplate = {
 	},
 	citations: {
 		style: "numeric",
+	},
+	headerFooter: {
+		enabled: false,
 	},
 };
 
@@ -135,6 +151,19 @@ const CLASSIC_PRINT_TEMPLATE: DocumentTemplate = {
 	},
 	citations: {
 		style: "numeric",
+	},
+	headerFooter: {
+		enabled: true,
+		header: {
+			left: "",
+			center: "",
+			right: "{title}",
+		},
+		footer: {
+			left: "",
+			center: "{pageNumber}",
+			right: "",
+		},
 	},
 };
 
