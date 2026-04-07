@@ -3,11 +3,12 @@ import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import { remarkAbstract } from "@/components/artichales/plugins/abstract.parser.plugin";
 import { remarkCitation } from "@/components/artichales/plugins/citation.parser.plugin";
 import { CitationRender } from "@/components/artichales/plugins/citation.render.plugin";
+import { CodeRender } from "@/components/artichales/plugins/code.render.plugin";
 import { remarkDatatable } from "@/components/artichales/plugins/datatable.parser.plugin";
+import { remarkMathEquation } from "@/components/artichales/plugins/math.parser.plugin";
 import { remarkPlotty } from "@/components/artichales/plugins/plotty.parser.plugin";
 import { createDirectiveDivRender } from "@/components/artichales/plugins/plotty.render.plugin";
 import { createRefRender } from "@/components/artichales/plugins/ref.render.plugin";
@@ -81,11 +82,16 @@ export function MarkdownContent({ content, plotFiles }: MarkdownContentProps) {
 				remarkPlotty,
 				remarkDatatable,
 				remarkGfm,
-				remarkMath,
+				remarkMathEquation,
 				remarkDirective,
 			]}
 			rehypePlugins={[rehypeKatex]}
-			components={{ cite: CitationRender, div: divRenderer, span: refRenderer }}
+			components={{
+				cite: CitationRender,
+				code: CodeRender,
+				div: divRenderer,
+				span: refRenderer,
+			}}
 		>
 			{content}
 		</ReactMarkdown>

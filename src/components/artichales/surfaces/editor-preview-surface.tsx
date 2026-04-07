@@ -17,15 +17,15 @@ import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
 
 const SAMPLE_MARKDOWN = `---
----
-title: "A Shared Markdown Pipeline"
+title: "Artichales Markdown Showcase"
 authors:
   - name: "Goker Cebeci"
     affiliation: "KODKAFA"
     orcid: "0000-0002-1825-0097"
 keywords:
   - markdown
-  - publishing
+  - scientific-writing
+  - reproducibility
 template: "classic"
 references:
   - style: "ieee"
@@ -33,188 +33,96 @@ references:
 ---
 
 :::abstract
-Lorem ipsum dolor sit amet.
+This document demonstrates core Markdown features, citation and reference tokens, code blocks, math equations, and custom Artichales directives.
 :::
 
-# Introduction
-Lorem ipsum dolor sit amet.
-Paragraphs are separated by a blank line.
+# Heading Level 1
+Regular paragraph with **bold**, *italic*, ~~strikethrough~~, and \`inline code\`.
 
-2nd paragraph. *Italic*, **bold**, and \`monospace\`. Itemized lists
-look like:
+## Heading Level 2
+Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3).
 
-  * this one
-  * that one
-  * the other one
+### Heading Level 3
+Citation tokens: [cite:knuth1984, goker] and [cite: knuth1984, goker].
+Cross refs: [ref:plot_1], [ref: plot_1], [ref:datatable_1].
 
-Note that --- not considering the asterisk --- the actual text
-content starts at 4-columns in.
+#### Heading Level 4
+- Unordered item
+- Another item
+  - Nested item
 
-> Block quotes are
-> written like so.
+##### Heading Level 5
+1. Ordered item one
+2. Ordered item two
+3. Ordered item three
+
+###### Heading Level 6
+- [x] Task item checked
+- [ ] Task item unchecked
+
+> Blockquote line one.
+> Blockquote line two with \`inline\` code.
 >
-> They can span multiple paragraphs,
-> if you like.
+> - Quote list item A
+> - Quote list item B
 
-Use 3 dashes for an em-dash. Use 2 dashes for ranges (ex., "it's all
-in chapters 12--14"). Three dots ... will be converted to an ellipsis.
-Unicode is supported. ☺
+---
 
+## Table Sample
 
+| Metric | Control | Treatment |
+| ------ | ------- | --------- |
+| Mean   | 0.24    | 0.39      |
+| Std    | 0.03    | 0.04      |
 
-An h2 header
-------------
+## Code Sample
 
-Here's a numbered list:
+~~~ts
+type Result = {
+  sample: string;
+  od: number;
+};
 
- 1. first item
- 2. second item
- 3. third item
-
-Note again how the actual text starts at 4 columns in (4 characters
-from the left side). Here's a code sample:
-
-    # Let me re-iterate ...
-    for i in 1 .. 10 { do-something(i) }
-
-As you probably guessed, indented 4 spaces. By the way, instead of
-indenting the block, you can use delimited blocks, if you like:
-
-~~~
-define foobar() {
-    print "Welcome to flavor country!";
-}
+const computeMean = (rows: Result[]): number => {
+  const total = rows.reduce((acc, row) => acc + row.od, 0);
+  return Number((total / rows.length).toFixed(3));
+};
 ~~~
 
-(which makes copying & pasting easier). You can optionally mark the
-delimited block for Pandoc to syntax highlight it:
-
-~~~python
-import time
-# Quick, count to ten!
-for i in range(10):
-    # (but not *too* quick)
-    time.sleep(0.5)
-    print i
+~~~bash
+npm run lint
+npm run build
 ~~~
 
+## Math Sample
 
+Inline math: $E = mc^2$ and $alpha + \beta = gamma$.
 
-### An h3 header ###
+Block equation:
 
-Now a nested list:
+$$
+\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}
+$$
 
- 1. First, get these ingredients:
+$$
+\\int_0^1 x^2\\,dx = \\frac{1}{3}
+$$
 
-      * carrots
-      * celery
-      * lentils
-
- 2. Boil some water.
-
- 3. Dump everything in the pot and follow
-    this algorithm:
-
-        find wooden spoon
-        uncover pot
-        stir
-        cover pot
-        balance wooden spoon precariously on pot handle
-        wait 10 minutes
-        goto first step (or shut off burner when done)
-
-    Do not bump wooden spoon or it will fall.
-
-Notice again how text always lines up on 4-space indents (including
-that last line which continues item 3 above).
-
-Here's a link to [a website](http://foo.bar), to a [local
-doc](local-doc.html), and to a [section heading in the current
-doc](#an-h2-header). Here's a footnote [^1].
-
-[^1]: Footnote text goes here.
-
-Tables can look like this:
-
-size  material      color
-----  ------------  ------------
-9     leather       brown
-10    hemp canvas   natural
-11    glass         transparent
-
-Table: Shoes, their sizes, and what they're made of
-
-(The above is the caption for the table.) Pandoc also supports
-multi-line tables:
-
---------  -----------------------
-keyword   text
---------  -----------------------
-red       Sunsets, apples, and
-          other red or reddish
-          things.
-
-green     Leaves, grass, frogs
-          and other things it's
-          not easy being.
---------  -----------------------
-
-A horizontal rule follows.
-
-***
-
-Here's a definition list:
-
-apples
-  : Good for making applesauce.
-oranges
-  : Citrus!
-tomatoes
-  : There's no "e" in tomatoe.
-
-Again, text is indented 4 spaces. (Put a blank line between each
-term/definition pair to spread things out more.)
-
-## Research Gap
-Lorem ipsum.
-
-## Literature Review
-Lorem ipsum [cite:goker].
-
-## Research Questions
-Lorem ipsum.
-
- - RQ1: Lorem ipsum
- - RQ2: Lorem ipsum
- - RQ3: Lorem ipsum
-
-# Methodology 
-Lorem ipsum dolor sit amet [ref:plot_1].
-
-# Results
-Lorem ipsum dolor sit amet [ref:plot_1].
+## Custom Directives
 
 :::plotty[plot_1.json]
 Sample ribbon plot
 :::
 
-Lorem ipsum dolor sit amet [ref:datatable_1].
-
 :::datatable[datatable_1.json]
 Sample data table
 :::
 
-# Discussion
-Lorem ipsum.
+## Footnotes
 
-# Conclusion
-Lorem ipsum.
+Footnote example [^note1].
 
-# Acknowledgments
-Lorem ipsum.
-
-
-
+[^note1]: This is a sample footnote rendered by GFM.
 `;
 
 const SAMPLE_BIB = `@article{knuth1984,
@@ -225,6 +133,14 @@ const SAMPLE_BIB = `@article{knuth1984,
   volume = {27},
   number = {2},
   pages = {97--111}
+}
+
+@inproceedings{goker,
+  author = {Goker Cebeci},
+  title = {Composable Markdown Pipelines for Academic Publishing},
+  booktitle = {Proceedings of the Open Writing Systems Workshop},
+  year = {2025},
+  pages = {12--21}
 }
 `;
 
