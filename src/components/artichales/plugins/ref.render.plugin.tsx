@@ -1,10 +1,12 @@
 import type React from "react";
 import type { Components } from "react-markdown";
 
+type RefKind = "plot" | "datatable";
+
 type RefIndexMap = Record<
 	string,
 	{
-		kind: "plot" | "datatable";
+		kind: RefKind;
 		index: number;
 	}
 >;
@@ -15,7 +17,23 @@ type RefRenderProps = {
 	children?: React.ReactNode;
 } & React.HTMLAttributes<HTMLSpanElement>;
 
-function normalizePlotId(raw: string): string {
+type RefKindConfig = {
+	label: string;
+	anchorPrefix: string;
+};
+
+const REF_KIND_CONFIG: Record<RefKind, RefKindConfig> = {
+	plot: {
+		label: "Figure",
+		anchorPrefix: "plot",
+	},
+	datatable: {
+		label: "Table",
+		anchorPrefix: "datatable",
+	},
+};
+
+function normalizeRefId(raw: string): string {
 	const trimmed = raw.trim();
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
@@ -25,28 +43,27 @@ export function createRefRender(refIndexById: RefIndexMap): Components["span"] {
 		const rawRefId =
 			node?.properties?.dataRefId || node?.properties?.["data-ref-id"] || "";
 		const refId = typeof rawRefId === "string" ? rawRefId.trim() : "";
-		const normalizedRefId = normalizePlotId(refId);
-		if (!normalizedRefId) {
-			return <span {...rest}>{children}</span>;
-		}
+		const normalizedRefId = normalizeRefId(refId);
+		const hasRefId = normalizedRefId !== "";
 
 		const target = refIndexById[normalizedRefId];
-		const label = target
-			? target.kind === "plot"
-				? `Figure ${target.index}`
-				: `Table ${target.index}`
+		const config = target ? REF_KIND_CONFIG[target.kind] : null;
+		const label = config
+			? `${config.label} ${target.index}`
 			: `ref:${normalizedRefId}`;
-		const href = target
-			? target.kind === "plot"
-				? `#plot-${normalizedRefId}`
-				: `#datatable-${normalizedRefId}`
+		const href = config
+			? `#${config.anchorPrefix}-${normalizedRefId}`
 			: `#${normalizedRefId}`;
 
 		return (
 			<span {...rest}>
-				<a href={href} className="ref" title={`Go to ${normalizedRefId}`}>
-					{label || children}
-				</a>
+				{hasRefId ? (
+					<a href={href} className="ref" title={`Go to ${normalizedRefId}`}>
+						{label || children}
+					</a>
+				) : (
+					children
+				)}
 			</span>
 		);
 	};

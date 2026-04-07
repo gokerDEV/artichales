@@ -86,9 +86,7 @@ export const CitationRender: Components["cite"] = ({
 			className={cn("cite", className)}
 			title={ids.length > 0 ? `Citation: ${ids.join(", ")}` : "Citation"}
 		>
-			<cite  {...rest}>
-				[{labels ? labels : children}]
-			</cite>
+			<cite {...rest}>[{labels ? labels : children}]</cite>
 		</a>
 	);
 };
