@@ -18,8 +18,16 @@
 	@apply ml-4 list-decimal;
 }
 
+.artichales--print blockquote {
+	@apply pl-2.5 py-1.5 border-l-2 bg-accent italic;
+}
+
 .artichales--print p > strong {
 	@apply font-semibold text-black;
+}
+
+.artichales--print a {
+	@apply rounded-xs border border-sky-100 bg-sky-50 px-0.5 no-underline;
 }
 
 .artichales--print a.cite {
@@ -31,6 +39,10 @@
 
 .artichales--print a.ref {
 	@apply rounded-xs border border-emerald-100 bg-emerald-50 px-1 not-italic no-underline;
+}
+
+.artichales--print pre, .artichales--print pre > code {
+	@apply font-mono;
 }
 
 .artichales--print .plotty {
@@ -45,4 +57,8 @@
 .artichales--print .plotty > .title > .label,
 .artichales--print .datatable > .title > .label {
 	@apply font-semibold not-italic;
+}
+
+.artichales--print .footnotes {
+	@apply pt-2 border-t  border-dashed;
 }
