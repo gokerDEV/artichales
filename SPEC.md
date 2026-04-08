@@ -4,7 +4,7 @@
 
 Artichales is an offline-first academic writing and publishing system centered on a Markdown-first workflow and delivered primarily as a Chrome extension editor. It uses a shadcn-compatible component architecture and a plugin-based pipeline to produce two render targets from a single source: print (PDF) and web (HTML/React). The initial product is intentionally local-first and focuses on a single current document.
 
-Authoring inputs are a single Markdown file and a single BibTeX file. The same Markdown source renders to both print output (templating → PDF) and web output (templating → HTML as a React surface). Templates are selected by a single string name and resolved from `templates/<name>_print.json` and `templates/<name>_web.json`.
+Authoring inputs are a Markdown file, a BibTeX file, and a workspace-level `template.json`. The same Markdown source renders to both print output (templating → PDF) and web output (templating → HTML as a React surface). Visual template behavior is primarily CSS-driven (`templates/classic_web.css`, `templates/classic_print.css`), while `template.json` stores layout-only data that CSS cannot represent (page size/margins, header/footer tokens, print layout options).
 
 Plugin contracts, hook signatures, and directive payload schemas are defined in `PLUGIN_SPEC.md`.
 Extension runtime behavior, storage details, and filesystem interactions are defined in `EXTENSION.md`.
@@ -14,6 +14,7 @@ Asset embedding, loading, and accessibility rules for artifacts are defined in `
 - Markdown document body
 - gray-matter frontmatter
 - BibTeX entries (single `.bib` source)
+- `template.json` (layout-only template config for `web` and `print`)
 - local assets
 - selected template name
 - enabled built-in plugins
@@ -144,15 +145,20 @@ Artichales is plugin-extensible. Built-in plugins extend parsing, rendering, edi
 
 Artichales is artifact-aware. PDF and asset behavior are defined separately in `ARTIFACT_SPEC.md`.
 
+Artichales keeps template scope layout-centric. Feature behavior flags that belong to the feature itself (for example interaction toggles) are not part of template config.
+
 **Detailed features**
 - Markdown editor with local persistence
 - print preview and web preview
 - full render and partial render
-- template selection by name (resolves to `templates/<name>_print.json` and `templates/<name>_web.json`)
+- template selection by name (currently `classic`) with CSS template styles plus `template.json` layout config
 - plugin registry and plugin lifecycle
 - BibTeX import, parse, normalize, validate, and bibliography render
-- citation linking and cross-reference indexing
+- citation linking and cross-reference indexing (`[cite:...]`, `[ref:...]`)
 - figures, tables, captions, equations, and academic blocks
+- `plotty` directive rendering with caption + cross-reference anchors
+- `datatable` directive rendering with sortable table UI (filter shown in web target only)
+- print header/footer and page number token support (`{pageNumber}`)
 - embeddable React surfaces
 - Chrome extension packaging
 - shadcn-compatible component composition
@@ -161,7 +167,8 @@ Artichales is artifact-aware. PDF and asset behavior are defined separately in `
 - raw Markdown content
 - frontmatter metadata
 - BibTeX text or normalized reference entries
-- template name (string; resolves to print and web template JSON files)
+- template name (string; currently `classic`)
+- `template.json` data (print/web layout metadata)
 - plugin definitions and plugin configuration
 - local assets
 - editor interactions
@@ -230,8 +237,8 @@ src/
       panels/
       surfaces/
       templates/
-        classic_print.json
-        classic_web.json
+        classic_print.css
+        classic_web.css
       plugins/
         citation.core.plugin.tsx
         citation.parser.plugin.tsx
@@ -261,9 +268,8 @@ src/
 #### Full render pipeline
 - load normalized document model
 - resolve render target as print or web
-- resolve selected template name into template files:
-  - `templates/<name>_print.json`
-  - `templates/<name>_web.json`
+- resolve selected template name into template CSS files
+- merge default layout config with workspace `template.json` (`web` / `print`)
 - run render plugins
 - generate target HTML structure
 - attach target styles, assets, and metadata
@@ -288,7 +294,7 @@ src/
 #### Extension pipeline
 - mount shared editor or preview surface inside popup, options page, or content script host
 - use shared core for parsing and rendering
-- autosave current Markdown and BibTeX into extension local storage for offline persistence
+- autosave current Markdown, BibTeX, `template.json`, and local data files into extension local storage for offline persistence
 - expose export, preview, and insertion actions through extension UI
 
 #### Shadcn integration pipeline

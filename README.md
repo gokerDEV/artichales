@@ -5,10 +5,15 @@ Artichales is an offline-first academic writing and publishing system built arou
 ## Key Features
 
 - Markdown-first authoring with frontmatter and BibTeX inputs
+- Workspace template config via `template.json` (layout-only)
 - Shared render tree powering print and web outputs
 - Switchable print preview and web preview
 - Deterministic, built-in plugin pipeline (core, parser, render, editor)
-- Template-based layouts for print and web (`templates/<name>_print.json`, `templates/<name>_web.json`)
+- CSS-based templates for print and web (`templates/classic_print.css`, `templates/classic_web.css`)
+- Built-in academic directives: `:::plotty[...]` and `:::datatable[...]`
+- Citation and cross-ref tokens: `[cite:...]` and `[ref:...]`
+- Math + code rendering plugins (KaTeX + fenced/inline code styling)
+- Print header/footer with `{pageNumber}` token support
 - Offline-first, single-document workflow
 - Shadcn-compatible component distribution under `components/artichales/`
 
@@ -35,10 +40,20 @@ src/
       panels/
       surfaces/
       templates/
+        classic_web.css
+        classic_print.css
       plugins/
   hooks/
   lib/
 ```
+
+## Workspace Files
+
+- `article.mdx`: main markdown document
+- `references.bib`: bibliography source
+- `template.json`: non-CSS template layout data (`web` + `print`)
+- `plot_*.json`: plot data files for `plotty`
+- `datatable_*.json`: table data files for `datatable`
 
 ## Development
 
