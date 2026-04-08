@@ -46,13 +46,14 @@ export function PrintPreview({
 	const headerArea = showHeaderFooter ? "10mm" : "0mm";
 	const footerArea = showHeaderFooter ? "10mm" : "0mm";
 	const pageHeightPx = pageConfig?.orientation === "landscape" ? 794 : 1123;
+	const columnGap = template.layout?.columnGap || "7mm";
 
 	return (
 		<div className={cn("absolute inset-0 bg-neutral-100", className)}>
 			<ScrollArea className="h-full w-full">
 				<div
 					data-artichales-print-preview-shell="true"
-					className="flex min-w-max flex-col items-center gap-8 p-8 transition-transform duration-200"
+					className="flex w-full flex-col items-center gap-8 p-8 transition-transform duration-200"
 					style={{
 						transform: `scale(${scale / 100})`,
 						transformOrigin: "top center",
@@ -135,7 +136,7 @@ export function PrintPreview({
 											// Default document flow is column-based; page-span nodes use `column-span: all`
 											// and automatically return control to the configured column count afterward.
 											columnCount: bodyRegion.columns,
-											columnGap: "7mm",
+											columnGap,
 											columnFill: "auto",
 										}}
 									>
@@ -186,6 +187,9 @@ export function PrintPreview({
 														plotFiles={document.plots}
 														target="print"
 														indexContent={document.content}
+														templateDefaults={{
+															components: document.template.componentDefaults,
+														}}
 													/>
 												</div>
 											);

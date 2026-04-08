@@ -43,6 +43,25 @@ type PlotOverrideResult = {
 
 type PlotIndexMap = Record<string, number>;
 type DatatableIndexMap = Record<string, number>;
+type ComponentTemplateDefaults = {
+	figure?: {
+		captionPosition?: "top" | "bottom";
+		defaultSpan?: "column" | "full";
+		spacingBefore?: string;
+		spacingAfter?: string;
+	};
+	table?: {
+		captionPosition?: "top" | "bottom";
+		defaultSpan?: "column" | "full";
+		spacingBefore?: string;
+		spacingAfter?: string;
+	};
+};
+
+const SPAN_MAP: Record<"column" | "full", "column" | "page"> = {
+	column: "column",
+	full: "page",
+};
 
 function isRecord(value: unknown): value is UnknownRecord {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -79,9 +98,12 @@ function normalizePlotId(source: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
-function resolvePlotOverride(bodyText: string): PlotOverrideResult {
+function resolvePlotOverride(
+	bodyText: string,
+	defaultSpan: "column" | "full",
+): PlotOverrideResult {
 	const defaultFlow = {
-		span: "column" as const,
+		span: SPAN_MAP[defaultSpan],
 		breakBefore: "auto" as const,
 		breakAfter: "auto" as const,
 	};
@@ -255,6 +277,7 @@ export function createDirectiveDivRender(
 	plotIndexById: PlotIndexMap,
 	datatableIndexById: DatatableIndexMap,
 	target: "web" | "print",
+	componentDefaults?: ComponentTemplateDefaults,
 ): Components["div"] {
 	return function DirectiveDivRender({
 		node,
@@ -271,6 +294,7 @@ export function createDirectiveDivRender(
 						datatableFiles={plotFiles}
 						datatableIndexById={datatableIndexById}
 						target={target}
+						defaults={componentDefaults?.table}
 					/>
 				);
 			}
@@ -286,7 +310,15 @@ export function createDirectiveDivRender(
 
 		const source = getPlotSource(node);
 		const bodyText = getPlotBodyText(node);
-		const { layoutOverride, caption, flow } = resolvePlotOverride(bodyText);
+		const defaults = componentDefaults?.figure;
+		const captionPosition = defaults?.captionPosition || "bottom";
+		const spacingBefore = defaults?.spacingBefore || "0";
+		const spacingAfter = defaults?.spacingAfter || "0";
+		const defaultSpan = defaults?.defaultSpan || "column";
+		const { layoutOverride, caption, flow } = resolvePlotOverride(
+			bodyText,
+			defaultSpan,
+		);
 		const plotId = normalizePlotId(source);
 		const rawPlot = plotFiles[source];
 		const resolvedPlot = resolvePlotDefinition(rawPlot, layoutOverride);
@@ -317,16 +349,28 @@ export function createDirectiveDivRender(
 				data-flow-span={flow.span}
 				data-flow-break-before={flow.breakBefore}
 				data-flow-break-after={flow.breakAfter}
+				style={{
+					marginTop: spacingBefore,
+					marginBottom: spacingAfter,
+				}}
 			>
-				<PlottyChart plot={resolvedPlot} width={width} height={height} />
-				{captionText && (
+				{captionText && captionPosition === "top" ? (
 					<p className="title mt-2 text-center text-neutral-600 text-xs italic">
 						{figureNo ? (
 							<span className="label">{`Figure ${figureNo}. `}</span>
 						) : null}
 						{captionText}
 					</p>
-				)}
+				) : null}
+				<PlottyChart plot={resolvedPlot} width={width} height={height} />
+				{captionText && captionPosition === "bottom" ? (
+					<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+						{figureNo ? (
+							<span className="label">{`Figure ${figureNo}. `}</span>
+						) : null}
+						{captionText}
+					</p>
+				) : null}
 			</div>
 		);
 	};

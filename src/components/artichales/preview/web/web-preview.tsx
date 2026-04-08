@@ -18,6 +18,14 @@ export function WebPreview({
 
 	const isWeb = template?.target === "web";
 	const Container = isWeb ? template.container || "article" : "article";
+	const webLayout = template?.webLayout || {};
+	const containerWidth = webLayout.containerWidth || "800px";
+	const containerClass =
+		webLayout.containerClass ||
+		"shrink-0 rounded-xl border border-border bg-card shadow-sm";
+	const containerPaddingClass =
+		webLayout.containerPaddingClass || "p-12 md:p-16";
+	const contentClass = webLayout.contentClass || "max-w-none";
 
 	return (
 		<div className={cn("absolute inset-0 bg-background", className)}>
@@ -30,11 +38,15 @@ export function WebPreview({
 						paddingBottom: `calc(40vh * ${scale / 100})`,
 					}}
 				>
-					<Container className="w-[800px] shrink-0 rounded-xl border border-border bg-card p-12 shadow-sm md:p-16">
+					<Container
+						className={cn("w-full", containerClass, containerPaddingClass)}
+						style={{ maxWidth: containerWidth }}
+					>
 						<DocumentRenderContent
 							document={document}
 							target="web"
 							contentClassName={cn(
+								contentClass,
 								"prose-a:text-emerald-600 hover:prose-a:text-emerald-500",
 								"prose-img:rounded-xl prose-img:border prose-img:border-border prose-img:shadow-sm",
 								"prose-img:cursor-zoom-in",

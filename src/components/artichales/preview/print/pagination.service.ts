@@ -19,20 +19,35 @@ type PrintTemplateConfig = {
 			left?: string;
 		};
 	};
-	document?: {
-		columns?: number;
+	layout?: {
+		firstPageColumns?: number;
+		defaultPageColumns?: number;
 	};
 	headerFooter?: {
 		enabled?: boolean;
-		header?: {
-			left?: string;
-			center?: string;
-			right?: string;
+		firstPage?: {
+			header?: {
+				left?: string;
+				center?: string;
+				right?: string;
+			};
+			footer?: {
+				left?: string;
+				center?: string;
+				right?: string;
+			};
 		};
-		footer?: {
-			left?: string;
-			center?: string;
-			right?: string;
+		defaultPage?: {
+			header?: {
+				left?: string;
+				center?: string;
+				right?: string;
+			};
+			footer?: {
+				left?: string;
+				center?: string;
+				right?: string;
+			};
 		};
 	};
 };
@@ -52,7 +67,8 @@ type PageBoxMetrics = {
 	headerHeightPx: number;
 	footerHeightPx: number;
 	bodyHeightPx: number;
-	columns: number;
+	firstPageColumns: number;
+	defaultPageColumns: number;
 };
 
 type HeaderFooterText = {
@@ -104,7 +120,8 @@ function resolvePageBox(template: PrintTemplateConfig): PageBoxMetrics {
 		headerHeightPx,
 		footerHeightPx,
 		bodyHeightPx: Math.max(220, Math.floor(bodyHeightPx)),
-		columns: Math.max(1, template.document?.columns || 1),
+		firstPageColumns: Math.max(1, template.layout?.firstPageColumns || 1),
+		defaultPageColumns: Math.max(1, template.layout?.defaultPageColumns || 1),
 	};
 }
 
@@ -216,10 +233,12 @@ function resolveHeaderFooterText(
 	template: PrintTemplateConfig,
 	title: string,
 	pageNumber: number,
+	isFirstPage: boolean,
 ): HeaderFooterText {
 	const hf = template.headerFooter;
-	const header = hf?.header || {};
-	const footer = hf?.footer || {};
+	const pageTokens = isFirstPage ? hf?.firstPage : hf?.defaultPage;
+	const header = pageTokens?.header || {};
+	const footer = pageTokens?.footer || {};
 	const tokenMap: Record<string, string> = {
 		title,
 		pageNumber: String(pageNumber),
@@ -283,7 +302,13 @@ export function buildPaginatedPageTree({
 	const pushPage = () => {
 		if (currentNodes.length === 0) return;
 		const pageNumber = pages.length + 1;
-		const text = resolveHeaderFooterText(template, title, pageNumber);
+		const isFirstPage = pageNumber === 1;
+		const text = resolveHeaderFooterText(
+			template,
+			title,
+			pageNumber,
+			isFirstPage,
+		);
 		const regions: PageRegion[] = [
 			{
 				type: "header",
@@ -293,7 +318,9 @@ export function buildPaginatedPageTree({
 			},
 			{
 				type: "body",
-				columns: pageBox.columns,
+				columns: isFirstPage
+					? pageBox.firstPageColumns
+					: pageBox.defaultPageColumns,
 				nodes: currentNodes,
 			},
 			{
@@ -339,7 +366,7 @@ export function buildPaginatedPageTree({
 			headerHeightPx: pageBox.headerHeightPx,
 			footerHeightPx: pageBox.footerHeightPx,
 			bodyHeightPx: pageBox.bodyHeightPx,
-			columns: pageBox.columns,
+			columns: pageBox.defaultPageColumns,
 		},
 		pages,
 	};

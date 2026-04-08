@@ -19,6 +19,22 @@ type MarkdownContentProps = {
 	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
 	indexContent?: string;
+	templateDefaults?: {
+		components?: {
+			figure?: {
+				captionPosition?: "top" | "bottom";
+				defaultSpan?: "column" | "full";
+				spacingBefore?: string;
+				spacingAfter?: string;
+			};
+			table?: {
+				captionPosition?: "top" | "bottom";
+				defaultSpan?: "column" | "full";
+				spacingBefore?: string;
+				spacingAfter?: string;
+			};
+		};
+	};
 };
 
 export function MarkdownContent({
@@ -26,6 +42,7 @@ export function MarkdownContent({
 	plotFiles,
 	target,
 	indexContent,
+	templateDefaults,
 }: MarkdownContentProps) {
 	const indexingSource = indexContent || content;
 	const { plotIndexById, datatableIndexById, refIndexById } =
@@ -79,8 +96,9 @@ export function MarkdownContent({
 				plotIndexById,
 				datatableIndexById,
 				target,
+				templateDefaults?.components,
 			),
-		[plotFiles, plotIndexById, datatableIndexById, target],
+		[plotFiles, plotIndexById, datatableIndexById, target, templateDefaults],
 	);
 	const refRenderer = React.useMemo(
 		() => createRefRender(refIndexById),

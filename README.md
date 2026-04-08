@@ -1,93 +1,74 @@
 # Artichales
 
-Artichales is an offline-first academic writing and publishing system built around a Markdown-first workflow. A single Markdown source renders to both print (PDF) and web (HTML/React) targets via a shared normalized render tree. The initial product ships as a Chrome extension editor and keeps everything local-first.
+Artichales is an offline-first, Markdown-first academic publishing editor.
+Each workspace is driven by one canonical content file (`article.mdx`) and one canonical template file (`template.json`), with references in `references.bib`.
 
-## Key Features
+## Core Model
 
-- Markdown-first authoring with frontmatter and BibTeX inputs
-- Workspace template config via `template.json` (layout-only)
-- Shared render tree powering print and web outputs
-- Switchable print preview and web preview
-- Deterministic, built-in plugin pipeline (core, parser, render, editor)
-- CSS-based templates for print and web (`templates/classic_print.css`, `templates/classic_web.css`)
-- Built-in academic directives: `:::plotty[...]` and `:::datatable[...]`
-- Citation and cross-ref tokens: `[cite:...]` and `[ref:...]`
-- Math + code rendering plugins (KaTeX + fenced/inline code styling)
-- Print header/footer with `{pageNumber}` token support
-- Offline-first, single-document workflow
-- Shadcn-compatible component distribution under `components/artichales/`
-
-## Tech Stack
-
-- **Runtime / Tooling**: Bun, TypeScript, Vite, React
-- **UI**: Tailwind CSS v4, shadcn/ui, Radix UI, clsx, tailwind-merge, lucide-react
-- **Quality**: Biome
-- **Extension**: @crxjs/vite-plugin, MV3 Manifest
-
-## Project Structure
-
-```
-src/
-  app/
-    editor/
-      page.tsx
-  components/
-    artichales/
-      editor/
-      preview/
-        web/
-        print/
-      panels/
-      surfaces/
-      templates/
-        classic_web.css
-        classic_print.css
-      plugins/
-  hooks/
-  lib/
-```
+- Single content source: `article.mdx`
+- Single template source: `template.json`
+- Single bibliography source: `references.bib`
+- One render pipeline for both `web` and `print`
+- Paginated print preview used by PDF export
 
 ## Workspace Files
 
-- `article.mdx`: main markdown document
-- `references.bib`: bibliography source
-- `template.json`: non-CSS template layout data (`web` + `print`)
-- `plot_*.json`: plot data files for `plotty`
-- `datatable_*.json`: table data files for `datatable`
+Pinned in file tree (always first):
+
+1. `template.json`
+2. `article.mdx`
+3. `references.bib`
+
+All remaining assets (plots, tables, data/media files) are listed alphabetically after pinned files.
+
+## Template Format
+
+`template.json` is the only layout/style config source and supports:
+
+- `version`
+- `journal`
+- `default`
+- `print`
+- `web`
+
+It includes typography, colors, component defaults (figure/table caption + span + spacing), page settings, columns, header/footer tokens, and web layout overrides.
+
+## Print Preview
+
+Print uses an internal paginated page tree:
+
+- `Page`
+- `PageRegion`
+- `PaginatedPageTree`
+
+Supported behavior:
+
+- multi-page preview
+- per-page header/footer
+- repeated page numbers
+- first-page columns vs default-page columns
+- full-width (`span: page`) figure/table flow breaks inside multi-column layouts
+
+## Features
+
+- Citation tokens: `[cite:knuth1984, goker]` (click each citation separately)
+- Reference tokens: `[ref:plot_1]` and `[ref: plot_1]`
+- Plot directive: `:::plotty[file.json]`
+- Datatable directive: `:::datatable[file.json]` (sortable; filter hidden in print)
+- Math equations (KaTeX)
+- Code rendering (inline + fenced)
 
 ## Development
-
-### Prerequisites
-
-- Bun (v1.0+)
-- Node.js (v20+)
-
-### Setup
 
 ```bash
 bun install
 bun dev
+bun lint
+bun build
 ```
 
-### Load the extension
+## Specs
 
-1. Open `chrome://extensions`
-2. Enable **Developer mode**
-3. Click **Load unpacked**
-4. Select the `dist/` folder
-
-## Specs & References
-
-- `SPEC.md` — product specification and architecture
-- `PLUGIN_SPEC.md` — plugin contracts and hooks
-- `ARTIFACT_SPEC.md` — asset embedding and artifact rules
-
-## Contributing
-
-- Follow Conventional Commits
-- Keep changes aligned with the spec docs
-- Run lint/format/build before PR (`bun lint`, `bun format`, `bun build`)
-
-## License
-
-MIT License. See `LICENSE`.
+- `SPEC.md`
+- `PLUGIN_SPEC.md`
+- `ARTIFACT_SPEC.md`

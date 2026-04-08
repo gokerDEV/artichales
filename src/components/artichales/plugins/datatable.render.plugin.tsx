@@ -23,6 +23,12 @@ type DatatableOverrideResult = {
 		breakAfter: "auto" | "page";
 	};
 };
+type DatatableTemplateDefaults = {
+	captionPosition?: "top" | "bottom";
+	defaultSpan?: "column" | "full";
+	spacingBefore?: string;
+	spacingAfter?: string;
+};
 
 function isRecord(value: unknown): value is UnknownRecord {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -86,9 +92,18 @@ function resolveDatatableDefinition(
 	};
 }
 
-function resolveDatatableOverride(bodyText: string): DatatableOverrideResult {
+const SPAN_MAP: Record<"column" | "full", "column" | "page"> = {
+	column: "column",
+	full: "page",
+};
+
+function resolveDatatableOverride(
+	bodyText: string,
+	templateDefaults?: DatatableTemplateDefaults,
+): DatatableOverrideResult {
+	const templateSpan = templateDefaults?.defaultSpan || "column";
 	const defaultFlow = {
-		span: "column" as const,
+		span: SPAN_MAP[templateSpan],
 		breakBefore: "auto" as const,
 		breakAfter: "auto" as const,
 	};
@@ -126,6 +141,7 @@ type DatatableRenderBlockProps = {
 	datatableFiles: Record<string, unknown>;
 	datatableIndexById: DatatableIndexMap;
 	target: "web" | "print";
+	defaults?: DatatableTemplateDefaults;
 };
 
 type DatatableRow = UnknownRecord & {
@@ -138,12 +154,16 @@ export function DatatableRenderBlock({
 	datatableFiles,
 	datatableIndexById,
 	target,
+	defaults,
 }: DatatableRenderBlockProps) {
 	const data = datatableFiles[source];
 	const definition = resolveDatatableDefinition(data);
 	const tableId = normalizeId(source);
 	const tableNo = datatableIndexById[tableId];
-	const { caption, flow } = resolveDatatableOverride(bodyText);
+	const { caption, flow } = resolveDatatableOverride(bodyText, defaults);
+	const captionPosition = defaults?.captionPosition || "bottom";
+	const spacingBefore = defaults?.spacingBefore || "0";
+	const spacingAfter = defaults?.spacingAfter || "0";
 
 	const [query, setQuery] = React.useState("");
 	const normalizedQuery = query.trim().toLowerCase();
@@ -180,7 +200,19 @@ export function DatatableRenderBlock({
 			data-flow-span={flow.span}
 			data-flow-break-before={flow.breakBefore}
 			data-flow-break-after={flow.breakAfter}
+			style={{
+				marginTop: spacingBefore,
+				marginBottom: spacingAfter,
+			}}
 		>
+			{caption && captionPosition === "top" ? (
+				<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+					{tableNo ? (
+						<span className="label">{`Table ${tableNo}. `}</span>
+					) : null}
+					{caption}
+				</p>
+			) : null}
 			{target === "web" ? (
 				<div className="mb-2 flex items-center justify-between gap-3">
 					<input
@@ -206,14 +238,14 @@ export function DatatableRenderBlock({
 					rowKey={(row: DatatableRow) => row.__rowKey}
 				/>
 			</div>
-			{caption && (
+			{caption && captionPosition === "bottom" ? (
 				<p className="title mt-2 text-center text-neutral-600 text-xs italic">
 					{tableNo ? (
 						<span className="label">{`Table ${tableNo}. `}</span>
 					) : null}
 					{caption}
 				</p>
-			)}
+			) : null}
 		</div>
 	);
 }

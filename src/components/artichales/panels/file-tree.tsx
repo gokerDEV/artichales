@@ -8,12 +8,24 @@ export interface FileTreeProps {
 }
 
 export function FileTree({ activeFile, onSelectFile, files }: FileTreeProps) {
+	const pinnedOrder = ["template.json", "article.mdx", "references.bib"];
+	const orderedFiles = [...files].sort((a, b) => {
+		const aPin = pinnedOrder.indexOf(a);
+		const bPin = pinnedOrder.indexOf(b);
+		if (aPin !== -1 || bPin !== -1) {
+			if (aPin === -1) return 1;
+			if (bPin === -1) return -1;
+			return aPin - bPin;
+		}
+		return a.localeCompare(b);
+	});
+
 	return (
 		<div className="flex h-full flex-col gap-2">
 			<div className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
 				Workspace
 			</div>
-			{files.map((file) => {
+			{orderedFiles.map((file) => {
 				const isBib = file.endsWith(".bib");
 				return (
 					<button

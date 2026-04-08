@@ -26,7 +26,6 @@ keywords:
   - markdown
   - scientific-writing
   - reproducibility
-template: "classic"
 references:
   - style: "ieee"
   - source: "./refs.bib"
@@ -229,17 +228,64 @@ const SAMPLE_DATATABLE = `{
 `;
 
 const SAMPLE_TEMPLATE = `{
+  "version": 1,
+  "journal": {
+    "id": "demo-journal",
+    "name": "Demo Journal"
+  },
+  "default": {
+    "typography": {
+      "fontFamily": {
+        "body": "Source Serif 4",
+        "heading": "Inter",
+        "mono": "JetBrains Mono"
+      },
+      "fontSize": {
+        "body": "11pt",
+        "h1": "20pt",
+        "h2": "15pt",
+        "h3": "12pt"
+      },
+      "lineHeight": 1.55,
+      "textAlign": "justify"
+    },
+    "colors": {
+      "text": "#111111",
+      "muted": "#666666",
+      "border": "#d1d5db",
+      "link": "#0f766e"
+    },
+    "components": {
+      "figure": {
+        "captionPosition": "bottom",
+        "defaultSpan": "column",
+        "spacingBefore": "0",
+        "spacingAfter": "0"
+      },
+      "table": {
+        "captionPosition": "bottom",
+        "defaultSpan": "column",
+        "spacingBefore": "0",
+        "spacingAfter": "0"
+      }
+    },
+    "utilities": {
+      "cite": "cite",
+      "ref": "ref",
+      "plot": "plotty",
+      "table": "datatable"
+    },
+    "citationStyle": "numeric"
+  },
   "web": {
-    "id": "classic_web",
-    "target": "web",
-    "container": "article",
-    "headerFooter": {
-      "enabled": false
+    "layout": {
+      "containerWidth": "800px",
+      "containerClass": "shrink-0 rounded-xl border border-border bg-card shadow-sm",
+      "containerPaddingClass": "p-12 md:p-16",
+      "contentClass": "max-w-none"
     }
   },
   "print": {
-    "id": "classic_print",
-    "target": "print",
     "page": {
       "size": "A4",
       "orientation": "portrait",
@@ -250,20 +296,10 @@ const SAMPLE_TEMPLATE = `{
         "left": "20mm"
       }
     },
-    "document": {
-      "columns": 2,
-      "lineHeight": 1.55,
-      "fontFamily": {
-        "body": "Source Serif 4",
-        "heading": "Inter"
-      },
-      "fontSize": {
-        "body": "11pt",
-        "h1": "20pt",
-        "h2": "15pt",
-        "h3": "12pt"
-      },
-      "textAlign": "justify"
+    "layout": {
+      "firstPageColumns": 1,
+      "defaultPageColumns": 2,
+      "columnGap": "7mm"
     },
     "titleBlock": {
       "enabled": true,
@@ -275,15 +311,29 @@ const SAMPLE_TEMPLATE = `{
     },
     "headerFooter": {
       "enabled": true,
-      "header": {
-        "left": "",
-        "center": "",
-        "right": "{title}"
+      "firstPage": {
+        "header": {
+          "left": "",
+          "center": "",
+          "right": "{title}"
+        },
+        "footer": {
+          "left": "",
+          "center": "{pageNumber}",
+          "right": ""
+        }
       },
-      "footer": {
-        "left": "",
-        "center": "{pageNumber}",
-        "right": ""
+      "defaultPage": {
+        "header": {
+          "left": "",
+          "center": "",
+          "right": "{title}"
+        },
+        "footer": {
+          "left": "",
+          "center": "{pageNumber}",
+          "right": ""
+        }
       }
     }
   }

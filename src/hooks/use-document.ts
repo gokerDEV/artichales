@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
 import type { CitationEntry } from "@/lib/bibtex";
 import { parseBibtex } from "@/lib/bibtex";
+import { parseTemplateFile } from "@/lib/template";
 
 type RenderTarget = "web" | "print";
 
@@ -12,6 +13,7 @@ type DocumentStyle = {
 	fontFamily?: {
 		body?: string;
 		heading?: string;
+		mono?: string;
 	};
 	fontSize?: {
 		body?: string;
@@ -24,8 +26,12 @@ type DocumentStyle = {
 };
 
 export type DocumentTemplate = {
-	id?: string;
-	target?: RenderTarget;
+	version: number;
+	journal: {
+		id: string;
+		name: string;
+	};
+	target: RenderTarget;
 	container?: keyof JSX.IntrinsicElements;
 	page?: {
 		size?: "A4" | string;
@@ -46,33 +52,50 @@ export type DocumentTemplate = {
 		align?: "left" | "right" | "center";
 		spacingAfter?: string;
 	};
-	headings?: {
-		h1?: {
-			marginTop?: string;
-			marginBottom?: string;
-		};
-		h2?: {
-			marginTop?: string;
-			marginBottom?: string;
-		};
-		h3?: {
-			marginTop?: string;
-			marginBottom?: string;
-		};
-	};
 	headerFooter?: {
 		enabled?: boolean;
-		header?: {
-			left?: string;
-			center?: string;
-			right?: string;
+		firstPage?: {
+			header?: { left?: string; center?: string; right?: string };
+			footer?: { left?: string; center?: string; right?: string };
 		};
-		footer?: {
-			left?: string;
-			center?: string;
-			right?: string;
+		defaultPage?: {
+			header?: { left?: string; center?: string; right?: string };
+			footer?: { left?: string; center?: string; right?: string };
 		};
 	};
+	layout?: {
+		firstPageColumns?: number;
+		defaultPageColumns?: number;
+		columnGap?: string;
+	};
+	componentDefaults?: {
+		figure?: {
+			captionPosition?: "top" | "bottom";
+			defaultSpan?: "column" | "full";
+			spacingBefore?: string;
+			spacingAfter?: string;
+		};
+		table?: {
+			captionPosition?: "top" | "bottom";
+			defaultSpan?: "column" | "full";
+			spacingBefore?: string;
+			spacingAfter?: string;
+		};
+	};
+	webLayout?: {
+		containerWidth?: string;
+		containerClass?: string;
+		containerPaddingClass?: string;
+		contentClass?: string;
+	};
+	utilities?: Record<string, string>;
+	colors?: {
+		text?: string;
+		muted?: string;
+		border?: string;
+		link?: string;
+	};
+	citationStyle?: string;
 };
 
 export interface DocumentSource {
@@ -84,121 +107,48 @@ export interface DocumentSource {
 	citationStyle: string;
 }
 
-type TemplateFileConfig = {
-	web?: DocumentTemplate;
-	print?: DocumentTemplate;
-};
-
-const DEFAULT_WEB_TEMPLATE: DocumentTemplate = {
-	id: "classic_web",
-	target: "web",
-	container: "article",
-	headerFooter: {
-		enabled: false,
-	},
-};
-
-const DEFAULT_PRINT_TEMPLATE: DocumentTemplate = {
-	id: "classic_print",
-	target: "print",
-	page: {
-		size: "A4",
-		orientation: "portrait",
-		margin: {
-			top: "24mm",
-			right: "20mm",
-			bottom: "24mm",
-			left: "20mm",
-		},
-	},
-	document: {
-		columns: 1,
-		lineHeight: 1.55,
-		fontFamily: {
-			body: "Source Serif 4",
-			heading: "Inter",
-		},
-		fontSize: {
-			body: "11pt",
-			h1: "20pt",
-			h2: "15pt",
-			h3: "12pt",
-		},
-		textAlign: "justify",
-	},
-	titleBlock: {
-		enabled: true,
-		align: "center",
-		showAuthors: true,
-		showAffiliations: true,
-		showKeywords: true,
-		spacingAfter: "12mm",
-	},
-	headerFooter: {
-		enabled: true,
-		header: {
-			left: "",
-			center: "",
-			right: "{title}",
-		},
-		footer: {
-			left: "",
-			center: "{pageNumber}",
-			right: "",
-		},
-	},
-};
-
-function mergeTemplate(
-	base: DocumentTemplate,
-	override: DocumentTemplate,
+function resolveTemplateForTarget(
+	rawTemplateText: string | undefined,
+	target: PreviewTarget,
 ): DocumentTemplate {
-	return {
-		...base,
-		...override,
-		page: {
-			...base.page,
-			...override.page,
-			margin: {
-				...base.page?.margin,
-				...override.page?.margin,
-			},
-		},
+	const templateFile = parseTemplateFile(rawTemplateText);
+	const defaults = templateFile.default;
+	const print = templateFile.print;
+	const web = templateFile.web;
+
+	const baseTemplate: Omit<DocumentTemplate, "target"> = {
+		version: templateFile.version,
+		journal: templateFile.journal,
+		container: "article",
 		document: {
-			...base.document,
-			...override.document,
-			fontFamily: {
-				...base.document?.fontFamily,
-				...override.document?.fontFamily,
-			},
-			fontSize: {
-				...base.document?.fontSize,
-				...override.document?.fontSize,
-			},
+			columns: print.layout.defaultPageColumns,
+			fontFamily: defaults.typography.fontFamily,
+			fontSize: defaults.typography.fontSize,
+			lineHeight: defaults.typography.lineHeight,
+			textAlign: defaults.typography.textAlign,
 		},
-		titleBlock: {
-			...base.titleBlock,
-			...override.titleBlock,
+		page: {
+			size: print.page.size,
+			orientation: print.page.orientation,
+			margin: print.page.margin,
 		},
-		headings: {
-			...base.headings,
-			...override.headings,
-			h1: { ...base.headings?.h1, ...override.headings?.h1 },
-			h2: { ...base.headings?.h2, ...override.headings?.h2 },
-			h3: { ...base.headings?.h3, ...override.headings?.h3 },
+		titleBlock: print.titleBlock,
+		headerFooter: print.headerFooter,
+		layout: {
+			firstPageColumns: print.layout.firstPageColumns,
+			defaultPageColumns: print.layout.defaultPageColumns,
+			columnGap: print.layout.columnGap,
 		},
-		headerFooter: {
-			...base.headerFooter,
-			...override.headerFooter,
-			header: {
-				...base.headerFooter?.header,
-				...override.headerFooter?.header,
-			},
-			footer: {
-				...base.headerFooter?.footer,
-				...override.headerFooter?.footer,
-			},
-		},
+		componentDefaults: defaults.components,
+		webLayout: web.layout,
+		utilities: defaults.utilities,
+		colors: defaults.colors,
+		citationStyle: defaults.citationStyle,
+	};
+
+	return {
+		...baseTemplate,
+		target,
 	};
 }
 
@@ -209,7 +159,6 @@ export function useDocument(
 ): DocumentSource {
 	const parsed = React.useMemo(() => {
 		const text = files[activeFile] || "";
-		// Naive frontmatter splitting
 		const match = text.match(/^---\n([\s\S]*?)\n---/);
 		if (!match) return { content: text, data: {} };
 
@@ -233,18 +182,6 @@ export function useDocument(
 		return parseBibtex(files["references.bib"] || "");
 	}, [files]);
 
-	const templateFile = React.useMemo(() => {
-		const rawTemplate = files["template.json"];
-		if (!rawTemplate) return null;
-		try {
-			const parsed = JSON.parse(rawTemplate) as TemplateFileConfig;
-			return parsed;
-		} catch (error) {
-			console.error("Template Parse Error:", error);
-			return null;
-		}
-	}, [files]);
-
 	const plots = React.useMemo(() => {
 		const parsedPlots: Record<string, unknown> = {};
 		for (const [fileName, fileContent] of Object.entries(files)) {
@@ -258,28 +195,10 @@ export function useDocument(
 		return parsedPlots;
 	}, [files]);
 
-	const templateName =
-		typeof parsed.data.template === "string" ? parsed.data.template : "classic";
-
-	const activeTemplate = React.useMemo(() => {
-		const normalizedTemplateName = templateName.toLowerCase();
-		if (normalizedTemplateName !== "classic") {
-			return target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE;
-		}
-
-		const fromFile = templateFile?.[target];
-		if (!fromFile || typeof fromFile !== "object") {
-			return target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE;
-		}
-
-		return mergeTemplate(
-			target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE,
-			{
-				...fromFile,
-				target,
-			},
-		);
-	}, [templateName, target, templateFile]);
+	const activeTemplate = React.useMemo(
+		() => resolveTemplateForTarget(files["template.json"], target),
+		[files, target],
+	);
 
 	const citationStyle = React.useMemo(() => {
 		const refs = parsed.data.references;
@@ -294,8 +213,8 @@ export function useDocument(
 			overrideStyle = String((refs as { style: unknown }).style);
 		}
 
-		return overrideStyle || "author-year";
-	}, [parsed.data.references]);
+		return overrideStyle || activeTemplate.citationStyle || "author-year";
+	}, [parsed.data.references, activeTemplate.citationStyle]);
 
 	return {
 		content: parsed.content,

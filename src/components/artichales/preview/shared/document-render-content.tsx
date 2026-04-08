@@ -27,6 +27,7 @@ export function DocumentRenderContent({
 					content={document.content}
 					plotFiles={document.plots}
 					target={target}
+					templateDefaults={{ components: document.template.componentDefaults }}
 				/>
 			</article>
 			<ReferencesCorePlugin document={document} target={target} />
