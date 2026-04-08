@@ -1,111 +1,111 @@
-#artichales.artichales--print {
+.artichales--print {
 	@apply max-w-none text-black;
 }
 
-#artichales.artichales--print h1 {
+.artichales--print h1 {
 	@apply mt-6 mb-3 font-bold text-3xl tracking-tight;
 }
 
-#artichales.artichales--print h2 {
+.artichales--print h2 {
 	@apply mt-5 mb-2.5 font-semibold text-2xl tracking-tight;
 }
 
-#artichales.artichales--print h3 {
+.artichales--print h3 {
 	@apply mt-4 mb-2 font-semibold text-xl tracking-tight;
 }
 
-#artichales.artichales--print h4,
-#artichales.artichales--print h5,
-#artichales.artichales--print h6 {
+.artichales--print h4,
+.artichales--print h5,
+.artichales--print h6 {
 	@apply mt-3 mb-1.5 font-semibold;
 }
 
-#artichales.artichales--print p {
+.artichales--print p {
 	@apply leading-7;
 }
 
-#artichales.artichales--print p > strong {
+.artichales--print p > strong {
 	@apply font-semibold text-black;
 }
 
-#artichales.artichales--print ul {
+.artichales--print ul {
 	@apply list-disc pl-6;
 }
 
-#artichales.artichales--print ol {
+.artichales--print ol {
 	@apply list-decimal pl-6;
 }
 
-#artichales.artichales--print li {
+.artichales--print li {
 	@apply my-1;
 }
 
-#artichales.artichales--print blockquote {
+.artichales--print blockquote {
 	@apply border-l-2 border-neutral-400 bg-neutral-100 py-1 pr-3 pl-3 italic;
 }
 
-#artichales.artichales--print hr {
+.artichales--print hr {
 	@apply my-6 border-neutral-300;
 }
 
-#artichales.artichales--print a {
+.artichales--print a {
 	@apply text-black underline-offset-2;
 }
 
-#artichales.artichales--print a.cite {
+.artichales--print a.cite {
 	@apply rounded-sm border-b border-black/60 px-0.5 no-underline;
 }
 
-#artichales.artichales--print a.ref {
+.artichales--print a.ref {
 	@apply rounded-sm border-b border-black/50 px-0.5 no-underline;
 }
 
-#artichales.artichales--print pre {
+.artichales--print pre {
 	@apply overflow-x-auto rounded border border-neutral-300 bg-neutral-50 p-3;
 }
 
-#artichales.artichales--print pre > code {
+.artichales--print pre > code {
 	@apply bg-transparent p-0 text-[0.95em];
 }
 
-#artichales.artichales--print code {
+.artichales--print code {
 	@apply rounded bg-neutral-100 px-1 py-0.5 font-mono text-[0.9em];
 }
 
-#artichales.artichales--print table {
+.artichales--print table {
 	@apply w-full border-collapse;
 }
 
-#artichales.artichales--print th {
+.artichales--print th {
 	@apply border-b border-neutral-400 px-2.5 py-1.5 text-left font-semibold;
 }
 
-#artichales.artichales--print td {
+.artichales--print td {
 	@apply border-b border-neutral-300 px-2.5 py-1.5 align-top;
 }
 
-#artichales.artichales--print .katex-display {
+.artichales--print .katex-display {
 	@apply my-4 overflow-x-auto;
 }
 
-#artichales.artichales--print .plotty {
+.artichales--print .plotty {
 	@apply max-w-full;
 }
 
-#artichales.artichales--print .datatable {
+.artichales--print .datatable {
 	@apply max-w-full;
 }
 
-#artichales.artichales--print .plotty > .title,
-#artichales.artichales--print .datatable > .title {
+.artichales--print .plotty > .title,
+.artichales--print .datatable > .title {
 	@apply italic;
 }
 
-#artichales.artichales--print .plotty > .title > .label,
-#artichales.artichales--print .datatable > .title > .label {
+.artichales--print .plotty > .title > .label,
+.artichales--print .datatable > .title > .label {
 	@apply font-semibold not-italic;
 }
 
-#artichales.artichales--print .footnotes {
+.artichales--print .footnotes {
 	@apply border-dashed border-t border-neutral-400 pt-2;
 }

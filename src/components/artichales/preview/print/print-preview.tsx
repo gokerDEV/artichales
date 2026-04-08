@@ -121,7 +121,7 @@ export function PrintPreview({
 								) : null}
 
 								<div
-									className="mx-auto h-full w-full text-[11px] text-black leading-relaxed"
+									className="artichales artichales--print mx-auto h-full w-full text-[11px] text-black leading-relaxed"
 									style={{
 										paddingTop: `calc(${pagePaddingTop} + ${headerArea})`,
 										paddingRight: pagePaddingRight,
@@ -136,6 +136,7 @@ export function PrintPreview({
 											// and automatically return control to the configured column count afterward.
 											columnCount: bodyRegion.columns,
 											columnGap: "7mm",
+											columnFill: "auto",
 										}}
 									>
 										{bodyRegion.nodes.map((node) => {
