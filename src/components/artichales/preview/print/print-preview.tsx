@@ -1,4 +1,8 @@
-import { DocumentRenderContent } from "@/components/artichales/preview/shared/document-render-content";
+import * as React from "react";
+import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
+import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
+import { buildPaginatedPageTree } from "@/components/artichales/preview/print/pagination.service";
+import { MarkdownContent } from "@/components/artichales/preview/shared/markdown-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
@@ -15,27 +19,20 @@ export function PrintPreview({
 	scale = 100,
 }: PrintPreviewProps) {
 	const { template, frontmatter } = document;
+	const paginatedTree = React.useMemo(
+		() =>
+			buildPaginatedPageTree({
+				content: document.content,
+				template: template,
+				title: typeof frontmatter?.title === "string" ? frontmatter.title : "",
+				includeTitleNode: true,
+				includeReferencesNode: true,
+			}),
+		[document.content, template, frontmatter],
+	);
+
 	const docStyle = template?.document || {};
 	const pageConfig = template?.page;
-	const orientation =
-		pageConfig?.orientation === "landscape" ? "landscape" : "portrait";
-	const isA4 = pageConfig?.size === "A4";
-	const pageWidth = isA4
-		? orientation === "portrait"
-			? "210mm"
-			: "297mm"
-		: "210mm";
-	const pageHeight = isA4
-		? orientation === "portrait"
-			? "297mm"
-			: "210mm"
-		: "297mm";
-	const previewPageHeightPx = isA4
-		? orientation === "portrait"
-			? 1123
-			: 794
-		: 1123;
-
 	const margins = pageConfig?.margin;
 	const pagePaddingTop =
 		typeof margins?.top === "string" ? margins.top : "24mm";
@@ -45,108 +42,158 @@ export function PrintPreview({
 		typeof margins?.bottom === "string" ? margins.bottom : "24mm";
 	const pagePaddingLeft =
 		typeof margins?.left === "string" ? margins.left : "20mm";
-	const headerFooterConfig = template?.headerFooter;
-	const showHeaderFooter = headerFooterConfig?.enabled !== false;
-
-	const resolveTokenText = (value: string | undefined): string => {
-		if (!value) return "";
-		const title =
-			typeof frontmatter?.title === "string" ? frontmatter.title : "";
-		return value.replace("{title}", title).replace("{pageNumber}", "");
-	};
-
-	const headerLeft = resolveTokenText(headerFooterConfig?.header?.left);
-	const headerCenter = resolveTokenText(headerFooterConfig?.header?.center);
-	const headerRight = resolveTokenText(headerFooterConfig?.header?.right);
-
-	const footerLeft = resolveTokenText(headerFooterConfig?.footer?.left);
-	const footerCenterRaw = headerFooterConfig?.footer?.center || "";
-	const footerRight = resolveTokenText(headerFooterConfig?.footer?.right);
-	const footerHasPageNumber = footerCenterRaw.includes("{pageNumber}");
-	const footerCenter = resolveTokenText(footerCenterRaw);
-
+	const showHeaderFooter = template?.headerFooter?.enabled !== false;
 	const headerArea = showHeaderFooter ? "10mm" : "0mm";
 	const footerArea = showHeaderFooter ? "10mm" : "0mm";
+	const pageHeightPx = pageConfig?.orientation === "landscape" ? 794 : 1123;
 
 	return (
 		<div className={cn("absolute inset-0 bg-neutral-100", className)}>
 			<ScrollArea className="h-full w-full">
 				<div
 					data-artichales-print-preview-shell="true"
-					className="flex min-w-max justify-center p-8 transition-transform duration-200"
+					className="flex min-w-max flex-col items-center gap-8 p-8 transition-transform duration-200"
 					style={{
 						transform: `scale(${scale / 100})`,
 						transformOrigin: "top center",
-						backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${previewPageHeightPx - 24}px, rgb(226 232 240) ${previewPageHeightPx - 24}px, rgb(226 232 240) ${previewPageHeightPx}px)`,
+						backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${pageHeightPx - 24}px, rgb(226 232 240) ${pageHeightPx - 24}px, rgb(226 232 240) ${pageHeightPx}px)`,
 					}}
 				>
-					<div
-						data-artichales-print-root="true"
-						className="relative shrink-0 rounded-none bg-white shadow-xl ring-1 ring-border"
-						style={{
-							width: pageWidth,
-							minHeight: pageHeight,
-							fontFamily: docStyle.fontFamily?.body,
-							fontSize: docStyle.fontSize?.body,
-							lineHeight: docStyle.lineHeight,
-							textAlign: docStyle.textAlign,
-						}}
-					>
-						{showHeaderFooter ? (
+					{paginatedTree.pages.map((page) => {
+						const headerRegion = page.regions.find((r) => r.type === "header");
+						const bodyRegion = page.regions.find((r) => r.type === "body");
+						const footerRegion = page.regions.find((r) => r.type === "footer");
+						if (!bodyRegion || bodyRegion.type !== "body") return null;
+
+						return (
 							<div
-								data-artichales-print-header="true"
-								className="pointer-events-none absolute text-[10px] text-neutral-500"
+								key={`print-page-${page.number}`}
+								data-artichales-print-root="true"
+								data-artichales-print-page="true"
+								className="relative shrink-0 rounded-none bg-white shadow-xl ring-1 ring-border"
 								style={{
-									top: pagePaddingTop,
-									left: pagePaddingLeft,
-									right: pagePaddingRight,
+									width: paginatedTree.pageBox.width,
+									height: paginatedTree.pageBox.height,
+									fontFamily: docStyle.fontFamily?.body,
+									fontSize: docStyle.fontSize?.body,
+									lineHeight: docStyle.lineHeight,
+									textAlign: docStyle.textAlign,
 								}}
 							>
-								<div className="grid grid-cols-3 gap-2">
-									<span className="text-left">{headerLeft}</span>
-									<span className="text-center">{headerCenter}</span>
-									<span className="text-right">{headerRight}</span>
+								{showHeaderFooter &&
+								headerRegion &&
+								headerRegion.type === "header" ? (
+									<div
+										data-artichales-print-header="true"
+										className="pointer-events-none absolute text-[10px] text-neutral-500"
+										style={{
+											top: pagePaddingTop,
+											left: pagePaddingLeft,
+											right: pagePaddingRight,
+										}}
+									>
+										<div className="grid grid-cols-3 gap-2">
+											<span className="text-left">{headerRegion.left}</span>
+											<span className="text-center">{headerRegion.center}</span>
+											<span className="text-right">{headerRegion.right}</span>
+										</div>
+									</div>
+								) : null}
+
+								{showHeaderFooter &&
+								footerRegion &&
+								footerRegion.type === "footer" ? (
+									<div
+										data-artichales-print-footer="true"
+										className="pointer-events-none absolute text-[10px] text-neutral-500"
+										style={{
+											bottom: pagePaddingBottom,
+											left: pagePaddingLeft,
+											right: pagePaddingRight,
+										}}
+									>
+										<div className="grid grid-cols-3 gap-2">
+											<span className="text-left">{footerRegion.left}</span>
+											<span className="text-center">{footerRegion.center}</span>
+											<span className="text-right">{footerRegion.right}</span>
+										</div>
+									</div>
+								) : null}
+
+								<div
+									className="mx-auto h-full w-full text-[11px] text-black leading-relaxed"
+									style={{
+										paddingTop: `calc(${pagePaddingTop} + ${headerArea})`,
+										paddingRight: pagePaddingRight,
+										paddingBottom: `calc(${pagePaddingBottom} + ${footerArea})`,
+										paddingLeft: pagePaddingLeft,
+									}}
+								>
+									<div
+										className="h-full"
+										style={{
+											// Default document flow is column-based; page-span nodes use `column-span: all`
+											// and automatically return control to the configured column count afterward.
+											columnCount: bodyRegion.columns,
+											columnGap: "7mm",
+										}}
+									>
+										{bodyRegion.nodes.map((node) => {
+											const spanClass =
+												node.layoutHint.span === "page"
+													? "print-flow-span-page"
+													: "print-flow-span-column";
+											const breakBeforeClass =
+												node.layoutHint.breakBefore === "page"
+													? "print-flow-break-before-page"
+													: "";
+											const breakAfterClass =
+												node.layoutHint.breakAfter === "page"
+													? "print-flow-break-after-page"
+													: "";
+											const flowClass = cn(
+												"print-flow-node mb-3 break-inside-avoid",
+												spanClass,
+												breakBeforeClass,
+												breakAfterClass,
+											);
+
+											if (node.kind === "title") {
+												return (
+													<div key={node.id} className={flowClass}>
+														<TitleCorePlugin
+															document={document}
+															target="print"
+														/>
+													</div>
+												);
+											}
+											if (node.kind === "references") {
+												return (
+													<div key={node.id} className={flowClass}>
+														<ReferencesCorePlugin
+															document={document}
+															target="print"
+														/>
+													</div>
+												);
+											}
+											return (
+												<div key={node.id} className={flowClass}>
+													<MarkdownContent
+														content={node.markdown || ""}
+														plotFiles={document.plots}
+														target="print"
+														indexContent={document.content}
+													/>
+												</div>
+											);
+										})}
+									</div>
 								</div>
 							</div>
-						) : null}
-						{showHeaderFooter ? (
-							<div
-								data-artichales-print-footer="true"
-								className="pointer-events-none absolute text-[10px] text-neutral-500"
-								style={{
-									bottom: pagePaddingBottom,
-									left: pagePaddingLeft,
-									right: pagePaddingRight,
-								}}
-							>
-								<div className="grid grid-cols-3 gap-2">
-									<span className="text-left">{footerLeft}</span>
-									<span className="text-center">
-										{footerCenter}
-										{footerHasPageNumber ? (
-											<span data-artichales-page-number="true" />
-										) : null}
-									</span>
-									<span className="text-right">{footerRight}</span>
-								</div>
-							</div>
-						) : null}
-						<div
-							className="mx-auto min-h-full w-full space-y-6 text-[11px] text-black leading-relaxed"
-							style={{
-								paddingTop: `calc(${pagePaddingTop} + ${headerArea})`,
-								paddingRight: pagePaddingRight,
-								paddingBottom: `calc(${pagePaddingBottom} + ${footerArea})`,
-								paddingLeft: pagePaddingLeft,
-							}}
-						>
-							<DocumentRenderContent
-								document={document}
-								target="print"
-								contentClassName="space-y-3 text-[11px] text-neutral-700"
-							/>
-						</div>
-					</div>
+						);
+					})}
 				</div>
 			</ScrollArea>
 		</div>

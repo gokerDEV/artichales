@@ -8,6 +8,7 @@ import { parseBibtex } from "@/lib/bibtex";
 type RenderTarget = "web" | "print";
 
 type DocumentStyle = {
+	columns?: number;
 	fontFamily?: {
 		body?: string;
 		heading?: string;
@@ -111,6 +112,7 @@ const DEFAULT_PRINT_TEMPLATE: DocumentTemplate = {
 		},
 	},
 	document: {
+		columns: 1,
 		lineHeight: 1.55,
 		fontFamily: {
 			body: "Source Serif 4",
@@ -146,6 +148,59 @@ const DEFAULT_PRINT_TEMPLATE: DocumentTemplate = {
 		},
 	},
 };
+
+function mergeTemplate(
+	base: DocumentTemplate,
+	override: DocumentTemplate,
+): DocumentTemplate {
+	return {
+		...base,
+		...override,
+		page: {
+			...base.page,
+			...override.page,
+			margin: {
+				...base.page?.margin,
+				...override.page?.margin,
+			},
+		},
+		document: {
+			...base.document,
+			...override.document,
+			fontFamily: {
+				...base.document?.fontFamily,
+				...override.document?.fontFamily,
+			},
+			fontSize: {
+				...base.document?.fontSize,
+				...override.document?.fontSize,
+			},
+		},
+		titleBlock: {
+			...base.titleBlock,
+			...override.titleBlock,
+		},
+		headings: {
+			...base.headings,
+			...override.headings,
+			h1: { ...base.headings?.h1, ...override.headings?.h1 },
+			h2: { ...base.headings?.h2, ...override.headings?.h2 },
+			h3: { ...base.headings?.h3, ...override.headings?.h3 },
+		},
+		headerFooter: {
+			...base.headerFooter,
+			...override.headerFooter,
+			header: {
+				...base.headerFooter?.header,
+				...override.headerFooter?.header,
+			},
+			footer: {
+				...base.headerFooter?.footer,
+				...override.headerFooter?.footer,
+			},
+		},
+	};
+}
 
 export function useDocument(
 	files: Record<string, string>,
@@ -217,11 +272,13 @@ export function useDocument(
 			return target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE;
 		}
 
-		return {
-			...(target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE),
-			...fromFile,
-			target,
-		};
+		return mergeTemplate(
+			target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE,
+			{
+				...fromFile,
+				target,
+			},
+		);
 	}, [templateName, target, templateFile]);
 
 	const citationStyle = React.useMemo(() => {

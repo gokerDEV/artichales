@@ -18,13 +18,16 @@ type MarkdownContentProps = {
 	content: string;
 	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
+	indexContent?: string;
 };
 
 export function MarkdownContent({
 	content,
 	plotFiles,
 	target,
+	indexContent,
 }: MarkdownContentProps) {
+	const indexingSource = indexContent || content;
 	const { plotIndexById, datatableIndexById, refIndexById } =
 		React.useMemo(() => {
 			const regex = /:::(plotty|datatable)\[(.+?)\]/g;
@@ -42,7 +45,7 @@ export function MarkdownContent({
 			let datatableIdx = 1;
 
 			while (true) {
-				match = regex.exec(content);
+				match = regex.exec(indexingSource);
 				if (match === null) break;
 				const kind = match[1]?.trim();
 				const source = match[2]?.trim() || "";
@@ -67,7 +70,7 @@ export function MarkdownContent({
 				datatableIndexById: datatableMap,
 				refIndexById: refMap,
 			};
-		}, [content]);
+		}, [indexingSource]);
 
 	const divRenderer = React.useMemo(
 		() =>

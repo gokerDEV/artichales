@@ -111,11 +111,15 @@ $$
 ## Custom Directives
 
 :::plotty[plot_1.json]
-Sample ribbon plot
+caption: "Full-width ribbon plot in two-column print layout"
+span: page
+breakBefore: page
+breakAfter: page
 :::
 
 :::datatable[datatable_1.json]
-Sample data table
+caption: "Column-flow datatable after full-width figure"
+span: column
 :::
 
 ## Footnotes
@@ -123,6 +127,33 @@ Sample data table
 Footnote example [^note1].
 
 [^note1]: This is a sample footnote rendered by GFM.
+
+## Long Flow Demo
+
+This section intentionally extends content length to force a multi-page print preview.
+In two-column mode, text should continue in columns, break into the next page, and keep
+header/footer repeated with page numbering.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
 `;
 
 const SAMPLE_BIB = `@article{knuth1984,
@@ -220,6 +251,7 @@ const SAMPLE_TEMPLATE = `{
       }
     },
     "document": {
+      "columns": 2,
       "lineHeight": 1.55,
       "fontFamily": {
         "body": "Source Serif 4",

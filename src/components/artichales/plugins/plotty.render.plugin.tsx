@@ -34,6 +34,11 @@ type PlottyChartProps = {
 type PlotOverrideResult = {
 	layoutOverride: PlotLayout;
 	caption: string;
+	flow: {
+		span: "column" | "page";
+		breakBefore: "auto" | "page";
+		breakAfter: "auto" | "page";
+	};
 };
 
 type PlotIndexMap = Record<string, number>;
@@ -75,8 +80,13 @@ function normalizePlotId(source: string): string {
 }
 
 function resolvePlotOverride(bodyText: string): PlotOverrideResult {
+	const defaultFlow = {
+		span: "column" as const,
+		breakBefore: "auto" as const,
+		breakAfter: "auto" as const,
+	};
 	if (!bodyText.trim()) {
-		return { layoutOverride: {}, caption: "" };
+		return { layoutOverride: {}, caption: "", flow: defaultFlow };
 	}
 
 	let parsedBody: unknown = {};
@@ -87,10 +97,16 @@ function resolvePlotOverride(bodyText: string): PlotOverrideResult {
 	}
 
 	if (isRecord(parsedBody)) {
-		const { caption, ...layoutOverride } = parsedBody;
+		const { caption, span, breakBefore, breakAfter, ...layoutOverride } =
+			parsedBody;
 		return {
 			layoutOverride,
 			caption: typeof caption === "string" ? caption.trim() : "",
+			flow: {
+				span: span === "page" ? "page" : "column",
+				breakBefore: breakBefore === "page" ? "page" : "auto",
+				breakAfter: breakAfter === "page" ? "page" : "auto",
+			},
 		};
 	}
 
@@ -104,7 +120,15 @@ function resolvePlotOverride(bodyText: string): PlotOverrideResult {
 		try {
 			const parsedTail = parseYaml(yamlTail);
 			if (isRecord(parsedTail)) {
-				return { layoutOverride: parsedTail, caption };
+				return {
+					layoutOverride: parsedTail,
+					caption,
+					flow: {
+						span: parsedTail.span === "page" ? "page" : "column",
+						breakBefore: parsedTail.breakBefore === "page" ? "page" : "auto",
+						breakAfter: parsedTail.breakAfter === "page" ? "page" : "auto",
+					},
+				};
 			}
 		} catch {}
 	}
@@ -113,6 +137,7 @@ function resolvePlotOverride(bodyText: string): PlotOverrideResult {
 		layoutOverride: {},
 		caption:
 			typeof parsedBody === "string" ? parsedBody.trim() : bodyText.trim(),
+		flow: defaultFlow,
 	};
 }
 
@@ -261,7 +286,7 @@ export function createDirectiveDivRender(
 
 		const source = getPlotSource(node);
 		const bodyText = getPlotBodyText(node);
-		const { layoutOverride, caption } = resolvePlotOverride(bodyText);
+		const { layoutOverride, caption, flow } = resolvePlotOverride(bodyText);
 		const plotId = normalizePlotId(source);
 		const rawPlot = plotFiles[source];
 		const resolvedPlot = resolvePlotDefinition(rawPlot, layoutOverride);
@@ -289,6 +314,9 @@ export function createDirectiveDivRender(
 				{...rest}
 				id={plotId ? `plot-${plotId}` : undefined}
 				className="plotty my-6 overflow-x-auto"
+				data-flow-span={flow.span}
+				data-flow-break-before={flow.breakBefore}
+				data-flow-break-after={flow.breakAfter}
 			>
 				<PlottyChart plot={resolvedPlot} width={width} height={height} />
 				{captionText && (

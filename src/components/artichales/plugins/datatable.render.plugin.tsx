@@ -17,6 +17,11 @@ type DatatableDefinition = {
 
 type DatatableOverrideResult = {
 	caption: string;
+	flow: {
+		span: "column" | "page";
+		breakBefore: "auto" | "page";
+		breakAfter: "auto" | "page";
+	};
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -82,22 +87,36 @@ function resolveDatatableDefinition(
 }
 
 function resolveDatatableOverride(bodyText: string): DatatableOverrideResult {
-	if (!bodyText.trim()) return { caption: "" };
+	const defaultFlow = {
+		span: "column" as const,
+		breakBefore: "auto" as const,
+		breakAfter: "auto" as const,
+	};
+	if (!bodyText.trim()) return { caption: "", flow: defaultFlow };
 
 	let parsedBody: unknown = {};
 	try {
 		parsedBody = parseYaml(bodyText);
 	} catch {
-		return { caption: bodyText.trim() };
+		return { caption: bodyText.trim(), flow: defaultFlow };
 	}
 
-	if (isRecord(parsedBody) && typeof parsedBody.caption === "string") {
-		return { caption: parsedBody.caption.trim() };
+	if (isRecord(parsedBody)) {
+		return {
+			caption:
+				typeof parsedBody.caption === "string" ? parsedBody.caption.trim() : "",
+			flow: {
+				span: parsedBody.span === "page" ? "page" : "column",
+				breakBefore: parsedBody.breakBefore === "page" ? "page" : "auto",
+				breakAfter: parsedBody.breakAfter === "page" ? "page" : "auto",
+			},
+		};
 	}
 
 	return {
 		caption:
 			typeof parsedBody === "string" ? parsedBody.trim() : bodyText.trim(),
+		flow: defaultFlow,
 	};
 }
 
@@ -124,7 +143,7 @@ export function DatatableRenderBlock({
 	const definition = resolveDatatableDefinition(data);
 	const tableId = normalizeId(source);
 	const tableNo = datatableIndexById[tableId];
-	const { caption } = resolveDatatableOverride(bodyText);
+	const { caption, flow } = resolveDatatableOverride(bodyText);
 
 	const [query, setQuery] = React.useState("");
 	const normalizedQuery = query.trim().toLowerCase();
@@ -158,6 +177,9 @@ export function DatatableRenderBlock({
 		<div
 			id={tableId ? `datatable-${tableId}` : undefined}
 			className="datatable my-6"
+			data-flow-span={flow.span}
+			data-flow-break-before={flow.breakBefore}
+			data-flow-break-after={flow.breakAfter}
 		>
 			{target === "web" ? (
 				<div className="mb-2 flex items-center justify-between gap-3">

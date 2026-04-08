@@ -167,25 +167,42 @@
     overflow: visible !important;
   }
 
+  body[data-artichales-printing="true"] [data-artichales-print-page="true"] {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  body[data-artichales-printing="true"] [data-artichales-print-page="true"]:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
   body[data-artichales-printing="true"] [data-artichales-print-header="true"] {
-    position: fixed !important;
-    top: 12mm !important;
-    left: 20mm !important;
-    right: 20mm !important;
+    position: absolute !important;
     z-index: 20 !important;
   }
 
   body[data-artichales-printing="true"] [data-artichales-print-footer="true"] {
-    position: fixed !important;
-    bottom: 12mm !important;
-    left: 20mm !important;
-    right: 20mm !important;
+    position: absolute !important;
     z-index: 20 !important;
   }
 
-  body[data-artichales-printing="true"] [data-artichales-page-number="true"]::after {
-    content: counter(page);
-    margin-left: 0.2rem;
+  body[data-artichales-printing="true"] .print-flow-span-page {
+    column-span: all;
+  }
+
+  body[data-artichales-printing="true"] .print-flow-span-column {
+    column-span: none;
+  }
+
+  body[data-artichales-printing="true"] .print-flow-break-before-page {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  body[data-artichales-printing="true"] .print-flow-break-after-page {
+    break-after: page;
+    page-break-after: always;
   }
 
   body[data-artichales-printing="true"] [data-artichales-print-root="true"] h1,

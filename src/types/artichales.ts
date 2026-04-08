@@ -152,3 +152,58 @@ export interface RenderResult {
 	fragments?: Record<string, RenderTreeNode[]>;
 	diagnostics?: Diagnostic[];
 }
+
+export type FlowSpan = "column" | "page";
+export type FlowBreak = "auto" | "page";
+
+export interface PrintLayoutHint {
+	span: FlowSpan;
+	breakBefore: FlowBreak;
+	breakAfter: FlowBreak;
+}
+
+export interface PrintFlowNode {
+	id: string;
+	kind: "title" | "markdown" | "references";
+	markdown?: string;
+	layoutHint: PrintLayoutHint;
+	estimatedHeightPx: number;
+}
+
+export type PageRegion =
+	| {
+			type: "header";
+			left: string;
+			center: string;
+			right: string;
+	  }
+	| {
+			type: "body";
+			columns: number;
+			nodes: PrintFlowNode[];
+	  }
+	| {
+			type: "footer";
+			left: string;
+			center: string;
+			right: string;
+			pageNumber: number;
+	  };
+
+export interface Page {
+	number: number;
+	regions: PageRegion[];
+}
+
+export interface PaginatedPageTree {
+	target: "print";
+	pageBox: {
+		width: string;
+		height: string;
+		headerHeightPx: number;
+		footerHeightPx: number;
+		bodyHeightPx: number;
+		columns: number;
+	};
+	pages: Page[];
+}
