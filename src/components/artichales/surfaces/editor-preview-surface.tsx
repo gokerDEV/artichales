@@ -197,10 +197,72 @@ const SAMPLE_DATATABLE = `{
 }
 `;
 
+const SAMPLE_TEMPLATE = `{
+  "web": {
+    "id": "classic_web",
+    "target": "web",
+    "container": "article",
+    "headerFooter": {
+      "enabled": false
+    }
+  },
+  "print": {
+    "id": "classic_print",
+    "target": "print",
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "24mm",
+        "right": "20mm",
+        "bottom": "24mm",
+        "left": "20mm"
+      }
+    },
+    "document": {
+      "lineHeight": 1.55,
+      "fontFamily": {
+        "body": "Source Serif 4",
+        "heading": "Inter"
+      },
+      "fontSize": {
+        "body": "11pt",
+        "h1": "20pt",
+        "h2": "15pt",
+        "h3": "12pt"
+      },
+      "textAlign": "justify"
+    },
+    "titleBlock": {
+      "enabled": true,
+      "align": "center",
+      "showAuthors": true,
+      "showAffiliations": true,
+      "showKeywords": true,
+      "spacingAfter": "12mm"
+    },
+    "headerFooter": {
+      "enabled": true,
+      "header": {
+        "left": "",
+        "center": "",
+        "right": "{title}"
+      },
+      "footer": {
+        "left": "",
+        "center": "{pageNumber}",
+        "right": ""
+      }
+    }
+  }
+}
+`;
+
 const STORAGE_KEY = "artichales-editor-autosave";
 const DEFAULT_FILES: Record<string, string> = {
 	"article.mdx": SAMPLE_MARKDOWN,
 	"references.bib": SAMPLE_BIB,
+	"template.json": SAMPLE_TEMPLATE,
 	"plot_1.json": SAMPLE_PLOT,
 	"datatable_1.json": SAMPLE_DATATABLE,
 };

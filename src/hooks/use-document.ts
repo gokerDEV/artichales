@@ -46,17 +46,18 @@ export type DocumentTemplate = {
 		spacingAfter?: string;
 	};
 	headings?: {
-		numbering?: boolean;
-	};
-	figures?: {
-		zoomable?: boolean;
-	};
-	references?: {
-		enabled?: boolean;
-		title?: string;
-	};
-	citations?: {
-		style?: string;
+		h1?: {
+			marginTop?: string;
+			marginBottom?: string;
+		};
+		h2?: {
+			marginTop?: string;
+			marginBottom?: string;
+		};
+		h3?: {
+			marginTop?: string;
+			marginBottom?: string;
+		};
 	};
 	headerFooter?: {
 		enabled?: boolean;
@@ -82,29 +83,21 @@ export interface DocumentSource {
 	citationStyle: string;
 }
 
-const CLASSIC_WEB_TEMPLATE: DocumentTemplate = {
+type TemplateFileConfig = {
+	web?: DocumentTemplate;
+	print?: DocumentTemplate;
+};
+
+const DEFAULT_WEB_TEMPLATE: DocumentTemplate = {
 	id: "classic_web",
 	target: "web",
 	container: "article",
-	headings: {
-		numbering: true,
-	},
-	figures: {
-		zoomable: true,
-	},
-	references: {
-		enabled: true,
-		title: "References",
-	},
-	citations: {
-		style: "numeric",
-	},
 	headerFooter: {
 		enabled: false,
 	},
 };
 
-const CLASSIC_PRINT_TEMPLATE: DocumentTemplate = {
+const DEFAULT_PRINT_TEMPLATE: DocumentTemplate = {
 	id: "classic_print",
 	target: "print",
 	page: {
@@ -138,19 +131,6 @@ const CLASSIC_PRINT_TEMPLATE: DocumentTemplate = {
 		showAffiliations: true,
 		showKeywords: true,
 		spacingAfter: "12mm",
-	},
-	headings: {
-		numbering: true,
-	},
-	figures: {
-		zoomable: false,
-	},
-	references: {
-		enabled: true,
-		title: "References",
-	},
-	citations: {
-		style: "numeric",
 	},
 	headerFooter: {
 		enabled: true,
@@ -198,6 +178,18 @@ export function useDocument(
 		return parseBibtex(files["references.bib"] || "");
 	}, [files]);
 
+	const templateFile = React.useMemo(() => {
+		const rawTemplate = files["template.json"];
+		if (!rawTemplate) return null;
+		try {
+			const parsed = JSON.parse(rawTemplate) as TemplateFileConfig;
+			return parsed;
+		} catch (error) {
+			console.error("Template Parse Error:", error);
+			return null;
+		}
+	}, [files]);
+
 	const plots = React.useMemo(() => {
 		const parsedPlots: Record<string, unknown> = {};
 		for (const [fileName, fileContent] of Object.entries(files)) {
@@ -214,22 +206,23 @@ export function useDocument(
 	const templateName =
 		typeof parsed.data.template === "string" ? parsed.data.template : "classic";
 
-	const templateByTarget: Record<PreviewTarget, DocumentTemplate> =
-		React.useMemo(
-			() => ({
-				web: CLASSIC_WEB_TEMPLATE,
-				print: CLASSIC_PRINT_TEMPLATE,
-			}),
-			[],
-		);
-
 	const activeTemplate = React.useMemo(() => {
 		const normalizedTemplateName = templateName.toLowerCase();
-		if (normalizedTemplateName === "classic") {
-			return templateByTarget[target];
+		if (normalizedTemplateName !== "classic") {
+			return target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE;
 		}
-		return templateByTarget[target];
-	}, [templateName, target, templateByTarget]);
+
+		const fromFile = templateFile?.[target];
+		if (!fromFile || typeof fromFile !== "object") {
+			return target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE;
+		}
+
+		return {
+			...(target === "web" ? DEFAULT_WEB_TEMPLATE : DEFAULT_PRINT_TEMPLATE),
+			...fromFile,
+			target,
+		};
+	}, [templateName, target, templateFile]);
 
 	const citationStyle = React.useMemo(() => {
 		const refs = parsed.data.references;
@@ -244,8 +237,8 @@ export function useDocument(
 			overrideStyle = String((refs as { style: unknown }).style);
 		}
 
-		return overrideStyle || activeTemplate?.citations?.style || "author-year";
-	}, [parsed.data.references, activeTemplate?.citations?.style]);
+		return overrideStyle || "author-year";
+	}, [parsed.data.references]);
 
 	return {
 		content: parsed.content,

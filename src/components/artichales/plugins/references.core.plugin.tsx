@@ -12,11 +12,9 @@ export function ReferencesCorePlugin({
 }) {
 	const { template, citations } = document;
 	const isPrint = target === "print";
-
-	const showRefs = template?.references?.enabled !== false;
 	const docStyle = template?.document || {};
 
-	if (!showRefs || Object.keys(citations).length === 0) return null;
+	if (Object.keys(citations).length === 0) return null;
 
 	return (
 		<div
@@ -35,7 +33,7 @@ export function ReferencesCorePlugin({
 					isPrint ? { fontFamily: docStyle.fontFamily?.heading } : undefined
 				}
 			>
-				{template?.references?.title || "References"}
+				{"References"}
 			</h2>
 			<div className="flex flex-col gap-2">
 				{Object.values(citations).map((ref, idx) => (

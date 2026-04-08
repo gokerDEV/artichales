@@ -27,7 +27,7 @@ export function PreviewHeader({
 	onExportPdf,
 }: PreviewHeaderProps) {
 	return (
-		<div className="flex h-[48px] w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
+		<div className="flex h-12 w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
 			<div className="flex items-center gap-3">
 				<Tabs
 					value={target}
@@ -55,7 +55,7 @@ export function PreviewHeader({
 					value={String(scale)}
 					onValueChange={(val) => onScaleChange(Number(val))}
 				>
-					<SelectTrigger className="h-8 w-[80px] font-medium text-xs">
+					<SelectTrigger className="h-8 w-20 font-medium text-xs">
 						<SelectValue placeholder="Scale" />
 					</SelectTrigger>
 					<SelectContent>

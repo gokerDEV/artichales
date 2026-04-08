@@ -18,11 +18,6 @@ export function WebPreview({
 
 	const isWeb = template?.target === "web";
 	const Container = isWeb ? template.container || "article" : "article";
-	const HeadingClass =
-		template?.headings?.numbering === false ? "" : "prose-headings:font-bold";
-	const ZoomedImages = template?.figures?.zoomable
-		? "prose-img:cursor-zoom-in"
-		: "";
 
 	return (
 		<div className={cn("absolute inset-0 bg-background", className)}>
@@ -42,10 +37,10 @@ export function WebPreview({
 							contentClassName={cn(
 								"prose-a:text-emerald-600 hover:prose-a:text-emerald-500",
 								"prose-img:rounded-xl prose-img:border prose-img:border-border prose-img:shadow-sm",
+								"prose-img:cursor-zoom-in",
 								"prose-pre:border prose-pre:border-border",
 								"prose-blockquote:border-emerald-500 prose-blockquote:border-l-4 prose-blockquote:bg-emerald-50/50 prose-blockquote:py-1 prose-blockquote:pr-4 dark:prose-blockquote:bg-emerald-950/20",
-								HeadingClass,
-								ZoomedImages,
+								"prose-headings:font-bold",
 							)}
 						/>
 					</Container>
