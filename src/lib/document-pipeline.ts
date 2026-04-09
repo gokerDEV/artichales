@@ -213,6 +213,25 @@ function validatePluginConfigs(
 	return diagnostics;
 }
 
+function emitPluginTrace(
+	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+	pluginConfigDiagnostics: PipelineDiagnostic[],
+): void {
+	if (!import.meta.env.DEV) return;
+	const activePlugins = loadPluginRegistry(templatePlugins).map((p) => p.id);
+	const failedPlugins = pluginConfigDiagnostics
+		.map((diag) => diag.pluginId)
+		.filter((id): id is string => typeof id === "string");
+
+	console.groupCollapsed("[artichales:pipeline] plugin-processing");
+	console.debug("activePlugins", activePlugins);
+	console.debug("configValidationErrors", pluginConfigDiagnostics.length);
+	if (failedPlugins.length > 0) {
+		console.debug("failedPlugins", failedPlugins);
+	}
+	console.groupEnd();
+}
+
 export function runDocumentPipeline(
 	files: Record<string, string>,
 	target: "web" | "print",
@@ -250,6 +269,7 @@ export function runDocumentPipeline(
 		pluginMapResult.configMap,
 		templateResult.template.plugins,
 	);
+	emitPluginTrace(templateResult.template.plugins, pluginConfigDiagnostics);
 	pushStage("plugin-processing");
 	pushStage("render-active-target");
 

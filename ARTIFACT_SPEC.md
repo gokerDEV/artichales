@@ -1,132 +1,99 @@
 # ARTIFACT_SPEC.md
 
-## Overview
+## Normative Source
 
-Artifacts are embedded document resources.
+`SPEC.md` is the only normative source.  
+This file summarizes v1 asset/artifact behavior aligned to `SPEC.md`.
 
-In the initial version, artifacts are limited to:
-- images
-- table data
-- chart data
+## Workspace Asset Model (v1)
 
-This specification only defines what an artifact is, how it is represented, and how it is used in print and web rendering.
+Artifacts are user-managed workspace files stored in OPFS.
 
-## Artifact Types
+Supported asset file types:
 
-### Image artifact
+- `.json`
+- `.svg`
+- `.png`
+- `.jpg`
+- `.jpeg`
+- `.gif`
 
-An image artifact is a visual resource used directly in the document.
+Unsupported formats (including `webp`) are out of scope for v1.
+
+## File Size Policy
+
+- Default limit: `2MB`
+- Optional template override: `default.assets.maxFileSize`
+- Hard security ceiling: `20MB`
+
+Effective runtime limit:
+
+- `min(default.assets.maxFileSize, 20MB)` when override exists
+- otherwise `2MB`
+
+## File Operations
+
+Supported workspace operations:
+
+- drag-and-drop insert
+- file-picker insert
+- rename (assets only)
+- delete (assets only)
+- `Download Source` export as `source.zip`
+
+Core files are protected and not deletable:
+
+- `template.json`
+- `article.mda`
+- `references.bib`
+
+## Directive-Related Asset Usage
+
+Directive syntax:
+
+- `:::plugin_id[span=column|page]`
+- `:::plugin_id[data_file][span=column|page]`
+
+Rules:
+
+- only one `data_file` binding per directive
+- base grammar allows missing `data_file`
+- plugin may still require `data_file` and emit plugin error later
+- directive identity uniqueness:
+  - unkeyed: `plugin_id`
+  - keyed: `plugin_id + data_file`
+
+## Captions and References
+
+Caption syntax:
+
+- `[caption:type:key]`
+- `[caption:type:key](Title)`
+
+Reference syntax:
+
+- `[ref:type:key]`
+- `[ref:type]` (singleton unkeyed targets only)
+
+Captions are always keyed and do not participate in singleton short-form reference eligibility.
+
+## Rename Behavior
+
+Renaming an asset does not rewrite source references automatically.
+Broken references are handled later by diagnostics/rendering.
+
+## Diagnostics and Blocking
+
+Asset-related errors are explicit diagnostics (never silent).
 
 Examples:
-- png
-- jpg
-- jpeg
-- svg
-- webp
 
-### Table artifact
+- unsupported file type
+- file size limit exceeded
+- invalid JSON asset parse
+- plugin-required `data_file` missing
 
-A table artifact is structured table content stored as JSON.
+Blocking behavior follows severity:
 
-It is used as the source for table rendering.
-
-### Chart artifact
-
-A chart artifact is structured chart content stored as JSON.
-
-It is used as the source for chart rendering.
-
-## Artifact Representation
-
-### Image artifact
-
-Image artifacts are referenced by path.
-
-Example:
-
-```json
-{
-  "type": "image",
-  "path": "./artifacts/figure-1.png"
-}
-```
-
-### Table artifact
-
-Table artifacts can store data directly as JSON, or act as a pointer using a `path` if the data is too large to keep inline.
-
-Example (Inline):
-
-```json
-{
-  "type": "table",
-  "columns": ["Name", "Score"],
-  "rows": [
-    ["Alice", 95],
-    ["Bob", 88]
-  ]
-}
-```
-
-Example (Path):
-
-```json
-{
-  "type": "table",
-  "path": "./artifacts/table-1-data.json"
-}
-```
-
-### Chart artifact
-
-Chart artifacts can store data directly as JSON, or act as a pointer using a `path` if the data is too large.
-
-Example (Inline):
-
-```json
-{
-  "type": "chart",
-  "chartType": "bar",
-  "labels": ["A", "B", "C"],
-  "series": [
-    {
-      "name": "Scores",
-      "data": [10, 20, 30]
-    }
-  ]
-}
-```
-
-Example (Path):
-
-```json
-{
-  "type": "chart",
-  "chartType": "bar",
-  "path": "./artifacts/chart-1-data.json"
-}
-```
-
-## Print Behavior
-
-For print and PDF generation:
-- image artifacts may be used directly
-- table artifacts are rendered to visual output
-- chart artifacts are rendered to visual output
-- table and chart artifacts are converted to SVG or PNG
-- the resulting visual output is embedded into the document
-
-## Web Behavior
-
-For web rendering:
-- image artifacts are shown from their saved location
-- table artifacts are rendered from their JSON source
-- chart artifacts are rendered from their JSON source
-- artifacts must remain accessible from their saved location
-
-## Rules
-
-- artifacts are document resources
-- table and chart artifacts use JSON
-- print uses embedded visual output
-- web uses the saved artifact source
+- `error` blocks rendering and triggers file-switch lock when current file is blocking
+- `warning` and `info` are non-blocking

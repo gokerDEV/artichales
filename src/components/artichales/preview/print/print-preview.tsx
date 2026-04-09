@@ -18,6 +18,35 @@ export type PrintPreviewProps = {
 	scale?: number;
 };
 
+type PagedPreviewerInstance = {
+	preview: (
+		content: string,
+		stylesheets: string[],
+		renderTo: HTMLElement,
+	) => Promise<unknown>;
+};
+
+function resolvePagedPreviewerFactory(
+	module: unknown,
+): (() => PagedPreviewerInstance) | null {
+	if (typeof module !== "object" || module === null) return null;
+	const candidate = module as {
+		Previewer?: new () => PagedPreviewerInstance;
+		default?: {
+			Previewer?: new () => PagedPreviewerInstance;
+		};
+	};
+	const previewerCtor = candidate.Previewer;
+	if (previewerCtor) {
+		return () => new previewerCtor();
+	}
+	const defaultPreviewerCtor = candidate.default?.Previewer;
+	if (defaultPreviewerCtor) {
+		return () => new defaultPreviewerCtor();
+	}
+	return null;
+}
+
 export function PrintPreview({
 	document,
 	className,
@@ -130,22 +159,12 @@ export function PrintPreview({
 
 			try {
 				const pagedModule = await import("pagedjs");
-				const PreviewerClass = (
-					pagedModule as unknown as {
-						Previewer?: new () => {
-							preview: (
-								content: string,
-								stylesheets: string[],
-								renderTo: HTMLElement,
-							) => Promise<unknown>;
-						};
-					}
-				).Previewer;
-				if (!PreviewerClass) {
+				const createPreviewer = resolvePagedPreviewerFactory(pagedModule);
+				if (!createPreviewer) {
 					throw new Error("Paged.js Previewer export is unavailable.");
 				}
 
-				const previewer = new PreviewerClass();
+				const previewer = createPreviewer();
 				await previewer.preview(
 					pagedSourceRef.current.innerHTML,
 					[],
