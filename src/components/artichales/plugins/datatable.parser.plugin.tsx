@@ -1,6 +1,7 @@
 import type { Root } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
+import { z } from "zod";
 import type { PluginDefinition } from "./plugin.contract";
 
 type UnknownRecord = Record<string, unknown>;
@@ -60,6 +61,13 @@ export const datatableParserPlugin: PluginDefinition = {
 	category: "parser",
 	name: "Datatable Parser",
 	ownsSyntax: ["datatable"],
+	configSchema: z
+		.object({
+			requireDataFile: z.boolean().optional(),
+			defaultSpan: z.enum(["column", "page"]).optional(),
+			enableFilteringInPrint: z.boolean().optional(),
+		})
+		.strict(),
 	hooks: {},
 };
 

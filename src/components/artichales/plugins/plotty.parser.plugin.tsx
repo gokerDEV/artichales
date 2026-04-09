@@ -1,6 +1,7 @@
 import type { Root } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
+import { z } from "zod";
 import type { PluginDefinition } from "./plugin.contract";
 
 type UnknownRecord = Record<string, unknown>;
@@ -60,6 +61,13 @@ export const plottyParserPlugin: PluginDefinition = {
 	category: "parser",
 	name: "Plotty Parser",
 	ownsSyntax: ["plotty"],
+	configSchema: z
+		.object({
+			requireDataFile: z.boolean().optional(),
+			defaultSpan: z.enum(["column", "page"]).optional(),
+			defaultCaptionPosition: z.enum(["top", "bottom"]).optional(),
+		})
+		.strict(),
 	hooks: {},
 };
 

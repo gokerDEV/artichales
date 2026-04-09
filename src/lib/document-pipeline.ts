@@ -1,4 +1,5 @@
 import { parse as parseYaml } from "yaml";
+import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import {
 	type ArticleAnalysisDiagnostic,
 	analyzeArticleSource,
@@ -34,12 +35,15 @@ export type PipelineDiagnostic = {
 	code:
 		| "pipeline-stage-complete"
 		| "article-frontmatter-invalid"
-		| "asset-json-invalid";
+		| "asset-json-invalid"
+		| "plugin-config-invalid"
+		| "plugin-config-map-invalid";
 	severity: "error" | "warning" | "info";
-	source: "pipeline" | "parser";
+	source: "pipeline" | "parser" | "plugin";
 	message: string;
 	stage?: PipelineStage;
 	fileName?: string;
+	pluginId?: string;
 };
 
 export type PipelineResult = {
@@ -147,6 +151,68 @@ function parseAssetJsonFiles(files: Record<string, string>): {
 	return { plots, diagnostics };
 }
 
+function parsePluginConfigMap(frontmatter: Record<string, unknown>): {
+	configMap: Record<string, unknown>;
+	diagnostics: PipelineDiagnostic[];
+} {
+	const rawPlugins = frontmatter.plugins;
+	if (rawPlugins === undefined) {
+		return { configMap: {}, diagnostics: [] };
+	}
+	if (
+		typeof rawPlugins !== "object" ||
+		rawPlugins === null ||
+		Array.isArray(rawPlugins)
+	) {
+		return {
+			configMap: {},
+			diagnostics: [
+				{
+					code: "plugin-config-map-invalid",
+					severity: "error",
+					source: "plugin",
+					stage: "plugin-processing",
+					message:
+						"Frontmatter `plugins` must be an object map keyed by plugin id.",
+				},
+			],
+		};
+	}
+	return {
+		configMap: rawPlugins as Record<string, unknown>,
+		diagnostics: [],
+	};
+}
+
+function validatePluginConfigs(
+	configMap: Record<string, unknown>,
+	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+): PipelineDiagnostic[] {
+	const diagnostics: PipelineDiagnostic[] = [];
+	const activePlugins = loadPluginRegistry(templatePlugins);
+
+	for (const plugin of activePlugins) {
+		if (!plugin.configSchema) continue;
+		const candidateConfig = configMap[plugin.id] ?? {};
+		const parsed = plugin.configSchema.safeParse(candidateConfig);
+		if (parsed.success) continue;
+
+		const issueMessage =
+			parsed.error.issues[0]?.message ||
+			"Unknown plugin config validation error.";
+		diagnostics.push({
+			code: "plugin-config-invalid",
+			severity: "error",
+			source: "plugin",
+			pluginId: plugin.id,
+			stage: "plugin-processing",
+			message: `Plugin config is invalid for "${plugin.id}": ${issueMessage}`,
+		});
+	}
+
+	return diagnostics;
+}
+
 export function runDocumentPipeline(
 	files: Record<string, string>,
 	target: "web" | "print",
@@ -179,6 +245,11 @@ export function runDocumentPipeline(
 	const articleAnalysis = analyzeArticleSource(articleResult.content);
 	pushStage("build-registry-and-numbering");
 
+	const pluginMapResult = parsePluginConfigMap(articleResult.frontmatter);
+	const pluginConfigDiagnostics = validatePluginConfigs(
+		pluginMapResult.configMap,
+		templateResult.template.plugins,
+	);
 	pushStage("plugin-processing");
 	pushStage("render-active-target");
 
@@ -195,6 +266,8 @@ export function runDocumentPipeline(
 		articleDiagnostics: [
 			...articleResult.diagnostics,
 			...articleAnalysis.diagnostics,
+			...pluginMapResult.diagnostics,
+			...pluginConfigDiagnostics,
 		],
 		resolvedReferences: articleAnalysis.resolvedReferences,
 		pipelineDiagnostics: stageDiagnostics,

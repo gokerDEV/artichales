@@ -1,3 +1,5 @@
+import type { ZodType } from "zod";
+
 export type PluginCategory = "core" | "parser" | "render" | "editor";
 
 export type PluginHooks = {
@@ -15,6 +17,6 @@ export type PluginDefinition = {
 	version?: string;
 	description?: string;
 	ownsSyntax?: string[];
-	configSchema?: unknown;
+	configSchema?: ZodType<unknown>;
 	hooks: PluginHooks;
 };
