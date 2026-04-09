@@ -272,14 +272,16 @@ Reference autocomplete must work from indexed referencable targets.
 
 This includes both:
 
-* caption-defined targets
+* keyed caption-defined targets
 * directive-defined targets
 
 Examples of expected behavior:
 
 * when the user types `ref:`, the system should allow selecting from known targets
-* when the user types a scoped form such as `ref:plotty:`, the system should offer matching targets owned by that directive type
-* when the user types `ref:abstract`, the system may resolve that as a singleton target type if parsing and normalization determine that exactly one such target exists in the normalized reference registry
+* when the user types a scoped keyed form such as `ref:plotty:`, the system should offer matching keyed targets owned by that directive type
+* when the user types `ref:abstract`, the system should resolve that only when parsing and normalization determine that exactly one unkeyed `abstract` target exists in the normalized reference registry
+* keyed targets of the same type do not make `ref:abstract` valid and do not satisfy its singleton condition
+* captions do not use singleton short-form autocomplete because caption syntax is always keyed as `[caption:type:key]`
 
 ### 9.7 Undo and Redo
 
@@ -374,6 +376,8 @@ Example behavior:
 * mapped target: `Table 1`
 * unmapped target: `? 1`
 
+For singleton short-form references that resolve to an unkeyed target, rendering omits numbering. In that case, the mapped label renders by itself, such as `Abstract`, and implementations may treat the singleton numbering value as an empty string.
+
 ### 11.8 Language and Character Support
 
 The template may declare a language value such as `lang: "en"`.
@@ -413,19 +417,43 @@ Base reference syntax supports both forms:
 
 The keyed form `[ref:target_type:target_key]` may be used for any valid keyed target.
 
-The short form `[ref:target_type]` is allowed only when parsing and normalization determine that exactly one target with that `target_type` exists in the normalized reference registry.
+The short form `[ref:target_type]` is allowed only for unkeyed targets.
 
-For such singleton cases, the target type itself is sufficient for reference resolution.
+In practice, for directives this means the target must have no `data_file`.
 
-For non-singleton cases, the keyed form `[ref:target_type:target_key]` is required.
+The short form is valid only when parsing and normalization determine that exactly one unkeyed target with that `target_type` exists in the normalized reference registry.
+
+Short-form eligibility is computed over the unkeyed subset of the registry for that type. Keyed targets of the same type neither satisfy nor invalidate that singleton condition.
+
+Captions are always keyed because caption syntax is `[caption:type:key]`. Captions therefore do not use the singleton short reference form.
+
+For singleton cases, the target type itself is sufficient for reference resolution.
+
+If the count of unkeyed targets for that type is greater than `1`, the short form `[ref:target_type]` is a parser/normalization error because it cannot be mapped uniquely.
+
+If there are `0` unkeyed targets for that type, the short form is also invalid and the keyed form is required when a keyed target exists.
+
+Successful singleton references render without numbering.
+
+Example:
+
+```txt
+[ref:abstract] -> Abstract
+```
+
+not:
+
+```txt
+Abstract 1
+```
+
+Implementation note: singleton numbering may be represented as an empty string.
 
 Grouped references normalize into separate reference nodes.
 
 Reference resolution is performed against the normalized reference registry produced after parsing and core processing.
 
-The initial parse and normalization process is therefore sufficient to know how many targets exist for a given type and whether the short form `[ref:target_type]` is valid for that document.
-
-If the user writes a short-form reference for a target type that resolves to more than one target, that is a parser/normalization error because the reference cannot be mapped uniquely.
+The initial parse and normalization process is therefore sufficient to know whether the short form `[ref:target_type]` is valid for that document.
 
 If a reference remains unresolved at render time despite being syntactically valid, the rendered output falls back to `?` behavior and a warning diagnostic must be emitted.
 
@@ -465,7 +493,7 @@ A caption participates in:
 
 For keyed caption targets, the `type:key` pair must be unique within the workspace document.
 
-A caption may also become a singleton target type when parsing and normalization determine that exactly one target of that type exists in the normalized reference registry.
+Because caption syntax is always keyed, captions participate only in keyed reference form such as `[ref:type:key]`. They are not eligible for singleton short-form references such as `[ref:type]`.
 
 ### 12.5 Display Math
 
@@ -569,7 +597,19 @@ However, a specific plugin may require one and may raise an error later in plugi
 
 Only a single data file binding is allowed per directive.
 
-A directive may still become referencable without a `data_file` if parsing and normalization produce a valid unique reference target.
+A directive without `data_file` may become a valid unkeyed reference target if parsing and normalization produce exactly one unkeyed target for that type.
+
+Example:
+
+```txt
+:::abstract
+Abstract
+:::
+```
+
+A single valid unkeyed target of this form may support `[ref:abstract]`.
+
+A directive with `data_file` participates as a keyed target and therefore does not use the singleton short reference form.
 
 ### 14.4 Supported Data Inputs
 
@@ -595,6 +635,8 @@ As a result:
 
 * two directives with the same `plugin_id` and no `data_file` are invalid
 * two directives with the same `plugin_id` and the same `data_file` are invalid
+* the same `data_file` may be reused across different plugin types
+* only the same `plugin_id + data_file` combination is forbidden when `data_file` is present
 * a directive identity must map uniquely during node parsing
 
 Examples:
@@ -606,20 +648,29 @@ Examples:
 :::
 ```
 
-is a parser/normalization error because the directive identity cannot be unique.
+is a parser/normalization error because the directive identity collides under `plugin_id`.
 
 Likewise:
 
 ```txt
-:::plotty[data_file]
+:::plotty[data.json]
 :::
-:::plotty[data_file]
+:::plotty[data.json]
 :::
 ```
 
-is also a parser/normalization error because the directive identity collides.
+is also a parser/normalization error because the directive identity collides under `plugin_id + data_file`.
 
-A single `data_file` may not be reused by multiple directives.
+By contrast:
+
+```txt
+:::plotty[data.json]
+:::
+:::chartsmith[data.json]
+:::
+```
+
+is valid because the shared `data_file` is reused across different plugin types.
 
 ### 14.6 Inner Content Rules
 
@@ -696,7 +747,9 @@ Plugin configuration should be validated at compile time.
 
 Plugins that participate in reference behavior may define `baseRef` and use template label mapping during rendering.
 
-Whether a target can be referenced in short form is not declared ahead of time; it is determined after parsing and normalization based on how many targets of that type exist in the normalized reference registry.
+Whether a target can be referenced in short form is not declared ahead of time. It is determined after parsing and normalization based on whether exactly one unkeyed target of that type exists in the normalized reference registry.
+
+Targets backed by `data_file` remain keyed targets and do not participate in singleton short-form references.
 
 ### 15.6 Failure Model
 
@@ -741,6 +794,8 @@ Nodes used for diagnostics or editor navigation must carry:
 Numbering is assigned during core processing after parse completion, not during final rendering.
 
 All downstream consumers, including references, diagnostics, and render plugins, must read from the same resolved numbering state.
+
+For singleton short-form references to unkeyed targets, the resolved numbering value may be the empty string.
 
 ## 17. Parsing, Normalization, and Rendering Pipeline
 
@@ -793,8 +848,9 @@ Diagnostics should be displayed as lists and should identify the responsible par
 ### 18.4 Examples
 
 * unresolved reference: warning
-* ambiguous short-form reference such as `[ref:type]` resolving to multiple targets: error
-* duplicate directive identity: error
+* ambiguous short-form reference such as `[ref:type]` resolving to more than one unkeyed target: error
+* duplicate directive identity under `plugin_id`: error
+* duplicate directive identity under `plugin_id + data_file`: error
 * plugin-required `data_file` missing on an otherwise syntactically valid directive: error
 * missing mapped label fallback: warning if rendering can continue
 * save failure alert: explicit UI alert, not a silent background event
