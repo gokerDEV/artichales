@@ -3,6 +3,7 @@ import type { Components } from "react-markdown";
 import { parse as parseYaml } from "yaml";
 import { AbstractRender } from "@/components/artichales/plugins/abstract.render.plugin";
 import { DatatableRenderBlock } from "@/components/artichales/plugins/datatable.render.plugin";
+import type { PluginDefinition } from "./plugin.contract";
 
 type UnknownRecord = Record<string, unknown>;
 type PlotTrace = Record<string, unknown>;
@@ -266,10 +267,11 @@ type PlottyDivProps = {
 	children?: React.ReactNode;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, "children">;
 
-export const plottyRenderPlugin = {
+export const plottyRenderPlugin: PluginDefinition = {
 	id: "plotty-render",
-	kind: "render",
+	category: "render",
 	name: "Plotty Render",
+	hooks: {},
 };
 
 export function createDirectiveDivRender(

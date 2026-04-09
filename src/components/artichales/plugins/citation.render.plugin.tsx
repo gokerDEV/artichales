@@ -2,11 +2,13 @@ import type { Components } from "react-markdown";
 import type { CitationEntry } from "@/lib/bibtex";
 import { cn } from "@/lib/utils";
 import { useCitations } from "./citation.context";
+import type { PluginDefinition } from "./plugin.contract";
 
-export const citationRenderPlugin = {
+export const citationRenderPlugin: PluginDefinition = {
 	id: "citation-render",
-	kind: "render",
+	category: "render",
 	name: "Citation Render",
+	hooks: {},
 };
 
 type CitationFormatter = (

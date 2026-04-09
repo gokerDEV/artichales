@@ -1,4 +1,5 @@
 import type React from "react";
+import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
 import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
 import type { DocumentSource } from "@/hooks/use-document";
@@ -46,13 +47,21 @@ export function DocumentRenderContent({
 	contentClassName,
 	articleClassName,
 }: DocumentRenderContentProps) {
+	const enabledPluginIds = new Set(
+		loadPluginRegistry(document.template.plugins).map((plugin) => plugin.id),
+	);
+	const showTitle = enabledPluginIds.has("title-core");
+	const showReferences = enabledPluginIds.has("references-core");
+
 	return (
 		<div
 			id="artichales"
 			className={cn(`artichales artichales--${target}`)}
 			style={buildTemplateCssVars(document)}
 		>
-			<TitleCorePlugin document={document} target={target} />
+			{showTitle ? (
+				<TitleCorePlugin document={document} target={target} />
+			) : null}
 			<article className={cn(contentClassName, articleClassName)}>
 				<MarkdownContent
 					content={document.content}
@@ -60,9 +69,12 @@ export function DocumentRenderContent({
 					target={target}
 					templateDefaults={{ components: document.template.componentDefaults }}
 					utilityClasses={document.template.utilities}
+					pluginRegistry={document.template.plugins}
 				/>
 			</article>
-			<ReferencesCorePlugin document={document} target={target} />
+			{showReferences ? (
+				<ReferencesCorePlugin document={document} target={target} />
+			) : null}
 		</div>
 	);
 }

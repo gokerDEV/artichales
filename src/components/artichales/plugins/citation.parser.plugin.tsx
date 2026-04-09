@@ -1,11 +1,14 @@
 import type { LinkReference, Parent, PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
+import type { PluginDefinition } from "./plugin.contract";
 
-export const citationParserPlugin = {
+export const citationParserPlugin: PluginDefinition = {
 	id: "citation-parser",
-	kind: "parser",
+	category: "parser",
 	name: "Citation Parser",
+	ownsSyntax: ["cite", "ref"],
+	hooks: {},
 };
 
 export interface CitationNode extends Parent {
@@ -41,10 +44,13 @@ function hasChildren(node: unknown): node is UnknownParentNode {
 }
 
 function parseIds(raw: string): string[] {
-	return raw
-		.split(",")
-		.map((id: string) => id.trim())
-		.filter(Boolean);
+	const normalizeId = (id: string): string => {
+		const trimmed = id.trim();
+		const tokenized = trimmed.match(/^cite\s*:\s*(.+)$/i);
+		return tokenized ? tokenized[1].trim() : trimmed;
+	};
+
+	return raw.split(",").map(normalizeId).filter(Boolean);
 }
 
 function parseTokenLabel(

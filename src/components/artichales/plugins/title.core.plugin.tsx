@@ -1,6 +1,14 @@
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
 import { type Author, AuthorCorePlugin } from "./author.core.plugin";
+import type { PluginDefinition } from "./plugin.contract";
+
+export const titleCorePlugin: PluginDefinition = {
+	id: "title-core",
+	category: "core",
+	name: "Title Core",
+	hooks: {},
+};
 
 export function TitleCorePlugin({
 	document,

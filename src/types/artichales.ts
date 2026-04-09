@@ -41,7 +41,7 @@ export interface Diagnostic {
 export interface DocumentBlock {
 	id: string;
 	type: string;
-	range?: SourceRange; // optional just in case
+	range: SourceRange;
 	data?: Record<string, unknown>;
 	children?: DocumentBlock[];
 }
@@ -133,7 +133,7 @@ export interface RenderTreeNode {
 	id: string;
 	type: string;
 	props?: Record<string, unknown>;
-	children?: RenderTreeNode[] | string;
+	children?: RenderTreeNode[];
 }
 
 export interface RenderRequest {

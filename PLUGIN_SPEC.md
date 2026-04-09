@@ -2,603 +2,218 @@
 
 ## Overview
 
-This document defines the Artichales plugin contract for the initial version.
-It covers plugin categories, file conventions, registration, execution order,
-hook contracts, configuration, syntax ownership, conflict resolution, and diagnostics.
+This document defines the Artichales plugin contract and runtime behavior.
+The system is category-based and template-driven.
 
-It does not redefine main system architecture, extension behavior, or artifact rules.
 
 ---
 
 ## Plugin Categories
 
-Artichales supports four built-in plugin categories:
+Artichales supports four categories:
 
-- core
-- parser
-- render
-- editor
+- `core`
+- `editor`
+- `parser`
+- `render`
 
-### core plugins
+### core
 
-Core plugins operate on normalized document data after parsing.
-They may enrich document state, indexes, numbering, cross-reference data, and diagnostics.
+Builds shared document state (indexes, numbering, diagnostics).
 
-### parser plugins
+### editor
 
-Parser plugins recognize and transform owned syntax into normalized document blocks.
-They may emit diagnostics for invalid syntax.
+Provides editor-facing behavior (commands, panels, diagnostics).
 
-### render plugins
+### parser
 
-Render plugins transform normalized document data into normalized render tree nodes.
-They must declare which render targets they support via the `targets` field.
-They receive `RenderTarget` as a parameter in the render context and produce target-specific output.
-The same plugin may produce different output structures for `print` vs `web` targets.
+Parses owned markdown/directive syntax and emits normalized nodes.
 
-### editor plugins
+### render
 
-Editor plugins provide editor-facing behavior such as commands, panels, quick actions,
-and plugin-specific diagnostics.
+Produces target-specific output by receiving `target: "web" | "print"` in render context.
+A render plugin must handle both targets through the same hook contract.
+
 
 ---
 
-## File Naming Convention
+## File Naming
 
-Built-in plugins must use one of the following file names:
-
-- `x.core.plugin.tsx`
-- `x.parser.plugin.tsx`
-- `x.render.plugin.tsx`
-- `x.editor.plugin.tsx`
-
-Where `x` is the feature name.
-
-Examples:
-
-- `citation.core.plugin.tsx`
-- `citation.parser.plugin.tsx`
-- `citation.render.plugin.tsx`
-- `citation.editor.plugin.tsx`
-- `table.parser.plugin.tsx`
-- `table.render.plugin.tsx`
-
-A feature may implement one or more plugin files.
-
-### Installed Location
-
-Built-in plugins must be installed under:
+Built-in plugins live under:
 
 ```txt
-components/
-  artichales/
-    plugins/
+src/components/artichales/plugins/
 ```
+
+Expected file naming:
+
+- `x.core.plugin.tsx`
+- `x.editor.plugin.tsx`
+- `x.parser.plugin.tsx`
+- `x.render.plugin.tsx`
 
 ---
 
-## Registration Rules
+## Plugin Definition Contract
 
-Each plugin module must export exactly one plugin definition.
+```ts
+export type PluginCategory = "core" | "editor" | "parser" | "render";
 
-Each plugin definition must declare:
+export type PluginHooks = {
+  setup?: () => void;
+  parse?: unknown;
+  process?: unknown;
+  render?: unknown;
+  editor?: unknown;
+};
+
+export type PluginDefinition = {
+  id: string;
+  name: string;
+  category: PluginCategory;
+  version?: string;
+  description?: string;
+  ownsSyntax?: string[];
+  configSchema?: unknown;
+  hooks: PluginHooks;
+};
+```
+
+Required fields:
 
 - `id`
 - `name`
 - `category`
-- `order`
-- `enabledByDefault`
 - `hooks`
 
-A plugin may also declare:
+---
 
-- `version`
-- `description`
-- `targets`
-- `ownsSyntax`
-- `configSchema`
+## Registry Source of Truth
 
-Only built-in plugins are supported in the initial version.
-No remote loading, runtime installation, or untrusted plugin execution is allowed.
+Plugin loading is controlled by `template.json`.
+Registry order in that array is authoritative.
+
+Example:
+
+```json
+{
+  "plugins": [
+     "abstract",
+     "citation",
+     "ref",
+     "plotty",
+     "datatable"
+  ]
+}
+```
+
+Rules:
+
+- entries are applied in listed order
+- unknown plugins are ignored (log  as  console.warnning)
+- duplicate keep the first occurrence
+- if `plugins` is missing/empty, do nothing 
 
 ---
 
-## Execution Order
+## Execution Model
 
-Plugin execution must be deterministic.
+1. registry is loaded from `template.json.plugins`
+2. plugins are filtered by `category`
+3. category pipeline runs in fixed stage order:
+   - `parser`
+   - `core`
+   - `render`
+   - `editor`
 
-### Ordering Rules
-
-1. Plugins are grouped by category.
-2. Within a category, plugins are sorted by ascending `order`.
-3. If two plugins have the same `order`, they are sorted by ascending `id`.
-
-### Category Order
-
-Pipeline execution order:
-
-1. parser
-2. core
-3. render
-4. editor
+Within a category, execution order equals registry order from `template.json.plugins`.
 
 ---
 
-## Models
-
-### PluginCategory
-
-```ts
-export type PluginCategory = "core" | "parser" | "render" | "editor";
-```
-
-### RenderTarget
-
-```ts
-export type RenderTarget = "print" | "web";
-```
-
-### SourceRange
-
-```ts
-export interface SourceRange {
-  start: number;
-  end: number;
-}
-```
-
-### DiagnosticSeverity
-
-```ts
-export type DiagnosticSeverity = "error" | "warning" | "info";
-```
-
-### Diagnostic
-
-```ts
-export interface Diagnostic {
-  code: string;
-  message: string;
-  severity: DiagnosticSeverity;
-  range?: SourceRange;
-  pluginId?: string;
-}
-```
-
-### PluginConfigValue
-
-```ts
-export type PluginConfigValue =
-  | string
-  | number
-  | boolean
-  | null
-  | PluginConfigValue[]
-  | { [key: string]: PluginConfigValue };
-```
-
-### PluginConfigMap
-
-```ts
-export type PluginConfigMap = Record<string, PluginConfigValue>;
-```
-
-### DocumentBlock
-
-```ts
-export interface DocumentBlock {
-  id: string;
-  type: string;
-  range: SourceRange;
-  data?: Record<string, unknown>;
-  children?: DocumentBlock[];
-}
-```
-
-### RenderTreeNode
-
-```ts
-export interface RenderTreeNode {
-  id: string;
-  type: string;
-  props?: Record<string, unknown>;
-  children?: RenderTreeNode[];
-}
-```
-
-### PluginContextBase
-
-```ts
-export interface PluginContextBase {
-  pluginId: string;
-  diagnostics: Diagnostic[];
-  config: PluginConfigValue | undefined;
-}
-```
-
-### ParserPluginContext
-
-```ts
-export interface ParserPluginContext extends PluginContextBase {
-  markdown: string;
-  blocks: DocumentBlock[];
-}
-```
-
-### CorePluginContext
-
-```ts
-export interface CorePluginContext extends PluginContextBase {
-  document: unknown;
-}
-```
-
-### RenderPluginContext
-
-```ts
-export interface RenderPluginContext extends PluginContextBase {
-  document: unknown;
-  target: RenderTarget;
-  tree: RenderTreeNode[];
-  template: unknown;
-}
-```
-
-### EditorPluginContext
-
-```ts
-export interface EditorPluginContext extends PluginContextBase {
-  document: unknown;
-  target: RenderTarget;
-}
-```
-
-### ParserPluginResult
-
-```ts
-export interface ParserPluginResult {
-  blocks?: DocumentBlock[];
-  diagnostics?: Diagnostic[];
-}
-```
-
-### CorePluginResult
-
-```ts
-export interface CorePluginResult {
-  document?: unknown;
-  diagnostics?: Diagnostic[];
-}
-```
-
-### RenderPluginResult
-
-```ts
-export interface RenderPluginResult {
-  tree?: RenderTreeNode[];
-  diagnostics?: Diagnostic[];
-}
-```
-
-### EditorCommand
-
-```ts
-export interface EditorCommand {
-  id: string;
-  label: string;
-  run(): void;
-}
-```
-
-### EditorPanelDefinition
-
-```ts
-export interface EditorPanelDefinition {
-  id: string;
-  title: string;
-  slot: "left" | "right" | "bottom";
-}
-```
-
-### EditorPluginResult
-
-```ts
-export interface EditorPluginResult {
-  commands?: EditorCommand[];
-  panels?: EditorPanelDefinition[];
-  diagnostics?: Diagnostic[];
-}
-```
-
-### PluginHooks
-
-```ts
-export interface PluginHooks {
-  setup?(): void;
-  parse?(context: ParserPluginContext): ParserPluginResult;
-  process?(context: CorePluginContext): CorePluginResult;
-  render?(context: RenderPluginContext): RenderPluginResult;
-  editor?(context: EditorPluginContext): EditorPluginResult;
-}
-```
-
-### PluginDefinition
-
-```ts
-export interface PluginDefinition {
-  id: string;
-  name: string;
-  category: PluginCategory;
-  order: number;
-  enabledByDefault: boolean;
-  version?: string;
-  description?: string;
-  targets?: RenderTarget[];
-  ownsSyntax?: string[];
-  configSchema?: unknown;
-  hooks: PluginHooks;
-}
-```
-
----
-
-## Hook Contract
+## Hook Responsibilities
 
 ### setup
 
-Optional one-time local setup for the plugin module.
-
-Rules:
-- must not perform network access
-- must not mutate source content
+Optional local setup.
+Must not mutate source content.
 
 ### parse
 
-Used by parser plugins.
-
-Responsibilities:
-- parse owned syntax
-- emit normalized document blocks
-- emit syntax diagnostics
-
-Rules:
-- must not produce final render output
-- should preserve source ranges where possible
+Parser plugins only.
+Transforms source syntax into normalized blocks + diagnostics.
 
 ### process
 
-Used by core plugins.
-
-Responsibilities:
-- enrich normalized document data
-- build or update shared academic state
-- emit diagnostics
-
-Rules:
-- must not produce target-specific render nodes
-- must not mutate source markdown
+Core plugins only.
+Enriches normalized document state.
 
 ### render
 
-Used by render plugins.
-
-Responsibilities:
-- transform normalized document data into normalized render tree nodes
-- support `print` and `web` targets where needed
-- produce target-specific output based on the `target` parameter in context
-
-Rules:
-- must return normalized render tree nodes
-- must not return raw HTML as the canonical result
-- may produce different tree structures depending on `context.target`
-- must only process targets declared in plugin `targets` field
+Render plugins only.
+Receives `target` parameter and returns target-specific render tree output.
+No separate `targets` field is used in plugin definitions.
 
 ### editor
 
-Used by editor plugins.
-
-Responsibilities:
-- provide commands
-- provide panels
-- provide editor-facing diagnostics and quick actions
-
-Rules:
-- must not redefine parsing or render contracts
-- must not silently rewrite source content
+Editor plugins only.
+Adds editor commands/panels/diagnostics.
 
 ---
 
 ## Configuration
 
-Plugin configuration may be provided through frontmatter.
+Plugin-specific settings can be provided by `template.json` surfaces.
+If a plugin declares `configSchema`, resolved config must be validated before execution.
 
-Example:
+Validation failure rules:
 
-```yaml
-plugins:
-  citation: true
-  tables:
-    numbering: true
-    overflowX: auto
-  references:
-    enabled: true
-    title: References
-```
-
-### Resolution Order
-
-Resolved plugin configuration is built from:
-
-1. built-in defaults
-2. application-level overrides
-3. document frontmatter overrides
-
-### Validation
-
-If a plugin declares `configSchema`, the resolved configuration must be validated
-before execution.
-
-Invalid configuration must:
 - emit diagnostics
-- prevent execution of the invalid plugin
-- leave the rest of the system operational
+- skip only the invalid plugin
+- keep other plugins operational
 
 ---
 
 ## Syntax Ownership
 
 A plugin may declare `ownsSyntax`.
-If it does, that plugin is responsible for parsing and validating the declared syntax.
+If no enabled plugin owns used syntax, emit a diagnostic.
 
 Examples:
 
-- `cite`
-- `abstract`
-- `table`
-- `figure`
-- `equation`
-
-If no enabled plugin owns a syntax token used in the document, the system must emit a diagnostic.
-
-### Citation Syntax
-
-Single citation:
-
-```md
-[cite:knuth1984]
-```
-
-Multiple citations:
-
-```md
-[cite:knuth1984, cite:brown2022]
-```
-
-### Directive Syntax
-
-General form:
-
-```md
-:::name
-payload
-:::
-```
-
-Variant form:
-
-```md
-:::name[variant]
-payload
-:::
-```
-
-Examples:
-
-```md
-:::abstract
-This paper presents...
-:::
-```
-
-```md
-:::table[tabularx]
-...table payload...
-:::
-```
-
----
-
-## Conflict Resolution
-
-Conflicts must be resolved deterministically.
-
-### Syntax ownership conflict
-
-If two enabled plugins claim the same syntax:
-- the lower `order` wins
-- if `order` is equal, the lower lexical `id` wins
-- the losing plugin must be skipped for that syntax
-- a warning diagnostic must be emitted
-
-### Render ownership conflict
-
-If two render plugins attempt to own the same normalized block type:
-- the same ordering rule applies
-- the losing plugin must be skipped for that block type
-- a warning diagnostic must be emitted
+- `[cite:knuth1984]`
+- `[cite:knuth1984, cite:goker]`
+- `[ref:plotty:plot_1]`
+- `:::plotty[plot_1.json]`
+- `:::datatable[datatable_1.json]`
 
 ---
 
 ## Diagnostics
 
-Plugins may emit diagnostics for:
+Plugins can emit diagnostics for:
 
 - invalid syntax
-- unsupported directive variant
-- invalid configuration
-- missing reference ids
-- unresolved cross-references
-- invalid payload structure
-- ownership conflicts
+- invalid config
+- unresolved references
+- unsupported payloads
 
-### Severity Guidance
+Severity guidance:
 
-Use:
-- `error` when output correctness cannot be guaranteed
-- `warning` when behavior is recoverable but incomplete
-- `info` for non-blocking notices
+- `error`: correctness is not guaranteed
+- `warning`: recoverable issue
+- `info`: non-blocking notice
 
-### Failure Rules
+Failure isolation:
 
-- one plugin failure must not crash unrelated plugin execution
-- a plugin with invalid configuration must be skipped
-- diagnostics should remain attached to source ranges where possible
-
----
-
-## Built-in Default Plugin Set
-
-The initial version should ship with these built-in plugins:
-
-- citation
-- references
-- figures
-- tables
-- equations
-- abstract
-- sections
-
-Expected files may include:
-
-- `citation.core.plugin.tsx`
-- `citation.parser.plugin.tsx`
-- `citation.render.plugin.tsx`
-- `citation.editor.plugin.tsx`
-- `references.core.plugin.tsx`
-- `references.render.plugin.tsx`
-- `table.parser.plugin.tsx`
-- `table.render.plugin.tsx`
-- `figure.parser.plugin.tsx`
-- `figure.render.plugin.tsx`
-- `equation.parser.plugin.tsx`
-- `equation.render.plugin.tsx`
-- `abstract.parser.plugin.tsx`
-- `abstract.render.plugin.tsx`
-- `section.core.plugin.tsx`
-- `section.render.plugin.tsx`
-
-A feature is not required to implement all four categories.
+- one plugin failure must not crash unrelated plugins
 
 ---
 
 ## Acceptance Criteria
 
-The plugin system is correctly defined when:
-
-- built-in plugins use the required naming convention
-- plugin discovery is local and deterministic
-- parser, core, render, and editor plugins execute in stable order
-- syntax ownership is explicit
-- invalid configuration produces diagnostics
-- render plugins produce normalized render tree nodes
-- editor plugins extend UX without bypassing canonical source behavior
+- plugins use `category` (no `kind`)
+- plugin definitions do not include `targets`
+- plugin definitions do not include `enabledByDefault`
+- registry order is driven by `template.json.plugins`
+- enable/disable is resolved by registry load
+- render plugins handle `web` and `print` via render context target

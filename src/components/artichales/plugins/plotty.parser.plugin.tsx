@@ -1,6 +1,7 @@
 import type { Root } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
+import type { PluginDefinition } from "./plugin.contract";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -54,10 +55,12 @@ function extractDirectiveBody(node: UnknownRecord): string {
 	return bodyParts.join("\n").trim();
 }
 
-export const plottyParserPlugin = {
+export const plottyParserPlugin: PluginDefinition = {
 	id: "plotty-parser",
-	kind: "parser",
+	category: "parser",
 	name: "Plotty Parser",
+	ownsSyntax: ["plotty"],
+	hooks: {},
 };
 
 export const remarkPlotty: Plugin<[], Root> = () => {

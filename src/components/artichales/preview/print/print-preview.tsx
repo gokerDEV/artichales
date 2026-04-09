@@ -1,4 +1,5 @@
 import * as React from "react";
+import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
 import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
 import { buildPaginatedPageTree } from "@/components/artichales/preview/print/pagination.service";
@@ -19,6 +20,15 @@ export function PrintPreview({
 	scale = 100,
 }: PrintPreviewProps) {
 	const { template, frontmatter } = document;
+	const enabledPluginIds = React.useMemo(
+		() =>
+			new Set(
+				loadPluginRegistry(document.template.plugins).map(
+					(plugin) => plugin.id,
+				),
+			),
+		[document.template.plugins],
+	);
 	const paginatedTree = React.useMemo(
 		() =>
 			buildPaginatedPageTree({
@@ -161,6 +171,7 @@ export function PrintPreview({
 											);
 
 											if (node.kind === "title") {
+												if (!enabledPluginIds.has("title-core")) return null;
 												return (
 													<div key={node.id} className={flowClass}>
 														<TitleCorePlugin
@@ -171,6 +182,8 @@ export function PrintPreview({
 												);
 											}
 											if (node.kind === "references") {
+												if (!enabledPluginIds.has("references-core"))
+													return null;
 												return (
 													<div key={node.id} className={flowClass}>
 														<ReferencesCorePlugin
@@ -190,6 +203,8 @@ export function PrintPreview({
 														templateDefaults={{
 															components: document.template.componentDefaults,
 														}}
+														utilityClasses={document.template.utilities}
+														pluginRegistry={document.template.plugins}
 													/>
 												</div>
 											);

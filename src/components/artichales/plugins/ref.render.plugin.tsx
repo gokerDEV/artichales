@@ -1,5 +1,6 @@
 import type React from "react";
 import type { Components } from "react-markdown";
+import type { PluginDefinition } from "./plugin.contract";
 
 type RefKind = "plot" | "datatable";
 
@@ -31,6 +32,13 @@ const REF_KIND_CONFIG: Record<RefKind, RefKindConfig> = {
 		label: "Table",
 		anchorPrefix: "datatable",
 	},
+};
+
+export const refRenderPlugin: PluginDefinition = {
+	id: "ref-render",
+	category: "render",
+	name: "Ref Render",
+	hooks: {},
 };
 
 function normalizeRefId(raw: string): string {

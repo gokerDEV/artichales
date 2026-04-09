@@ -96,6 +96,10 @@ export type DocumentTemplate = {
 		link?: string;
 	};
 	citationStyle?: string;
+	plugins?: Array<{
+		id: string;
+		enabled: boolean;
+	}>;
 };
 
 export interface DocumentSource {
@@ -145,6 +149,7 @@ function resolveTemplateForTarget(
 		utilities: defaults.utilities,
 		colors: defaults.colors,
 		citationStyle: defaults.citationStyle,
+		plugins: templateFile.plugins,
 	};
 
 	return {

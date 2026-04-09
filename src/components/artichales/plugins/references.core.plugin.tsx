@@ -1,5 +1,13 @@
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
+import type { PluginDefinition } from "./plugin.contract";
+
+export const referencesCorePlugin: PluginDefinition = {
+	id: "references-core",
+	category: "core",
+	name: "References Core",
+	hooks: {},
+};
 
 export function ReferencesCorePlugin({
 	document,

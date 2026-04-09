@@ -127,6 +127,11 @@ const WebTemplateSchema = z.object({
 		.optional(),
 });
 
+const PluginRegistrySchema = z.object({
+	id: z.string().min(1),
+	enabled: z.boolean().optional(),
+});
+
 export const TemplateFileSchema = z.object({
 	version: z.number().int().optional(),
 	journal: z
@@ -138,6 +143,7 @@ export const TemplateFileSchema = z.object({
 	default: DefaultTemplateSchema.optional(),
 	print: PrintTemplateSchema.optional(),
 	web: WebTemplateSchema.optional(),
+	plugins: z.array(PluginRegistrySchema).optional(),
 });
 
 export type TemplateFile = z.infer<typeof TemplateFileSchema>;
@@ -218,6 +224,10 @@ export type TemplateFileResolved = {
 			contentClass: string;
 		};
 	};
+	plugins: Array<{
+		id: string;
+		enabled: boolean;
+	}>;
 };
 
 export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
@@ -307,6 +317,22 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			contentClass: "max-w-none",
 		},
 	},
+	plugins: [
+		{ id: "citation-parser", enabled: true },
+		{ id: "abstract-parser", enabled: true },
+		{ id: "plotty-parser", enabled: true },
+		{ id: "datatable-parser", enabled: true },
+		{ id: "math-parser", enabled: true },
+		{ id: "citation-core", enabled: true },
+		{ id: "references-core", enabled: true },
+		{ id: "title-core", enabled: true },
+		{ id: "abstract-render", enabled: true },
+		{ id: "citation-render", enabled: true },
+		{ id: "ref-render", enabled: true },
+		{ id: "code-render", enabled: true },
+		{ id: "plotty-render", enabled: true },
+		{ id: "citation-editor", enabled: true },
+	],
 };
 
 const TEMPLATE_FALLBACK_MESSAGE = "Using internal fallback template defaults.";
@@ -531,6 +557,13 @@ function mergeTemplateWithDefaults(
 					DEFAULT_TEMPLATE_FILE.web.layout.contentClass,
 			},
 		},
+		plugins:
+			Array.isArray(overrides.plugins) && overrides.plugins.length > 0
+				? overrides.plugins.map((plugin) => ({
+						id: plugin.id,
+						enabled: plugin.enabled !== false,
+					}))
+				: DEFAULT_TEMPLATE_FILE.plugins,
 	};
 }
 

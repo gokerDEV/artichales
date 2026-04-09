@@ -1,11 +1,14 @@
 import type { Root } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
+import type { PluginDefinition } from "./plugin.contract";
 
-export const abstractParserPlugin = {
+export const abstractParserPlugin: PluginDefinition = {
 	id: "abstract-parser",
-	kind: "parser",
+	category: "parser",
 	name: "Abstract Parser",
+	ownsSyntax: ["abstract"],
+	hooks: {},
 };
 
 export const remarkAbstract: Plugin<[], Root> = () => {
