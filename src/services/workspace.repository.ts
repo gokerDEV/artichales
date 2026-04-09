@@ -96,10 +96,6 @@ function readWorkspaceFromFallbackStorage(): WorkspaceFiles | null {
 	}
 }
 
-function writeWorkspaceToFallbackStorage(files: WorkspaceFiles): void {
-	localStorage.setItem(WORKSPACE_STORAGE_FALLBACK_KEY, JSON.stringify(files));
-}
-
 function readLegacyWorkspace(): WorkspaceFiles | null {
 	try {
 		const stored = localStorage.getItem(LEGACY_WORKSPACE_AUTOSAVE_KEY);
@@ -133,6 +129,15 @@ function normalizeWorkspaceFiles(
 	return normalized;
 }
 
+function clearLegacyWorkspaceStorage(): void {
+	try {
+		localStorage.removeItem(WORKSPACE_STORAGE_FALLBACK_KEY);
+		localStorage.removeItem(LEGACY_WORKSPACE_AUTOSAVE_KEY);
+	} catch {
+		// Best-effort cleanup only.
+	}
+}
+
 class WorkspaceRepository {
 	async loadWorkspace(defaultFiles: WorkspaceFiles): Promise<WorkspaceFiles> {
 		const opfsFiles = await readWorkspaceFromOpfs();
@@ -143,7 +148,11 @@ class WorkspaceRepository {
 			fallbackFiles ??
 			legacyFiles ?? { ...defaultFiles };
 		const normalized = normalizeWorkspaceFiles(candidate, defaultFiles);
-		await this.saveWorkspace(normalized);
+		try {
+			await this.saveWorkspace(normalized);
+		} catch {
+			// Workspace can still be opened in-memory; save errors are surfaced by caller.
+		}
 		return normalized;
 	}
 
@@ -151,8 +160,9 @@ class WorkspaceRepository {
 		const normalized = normalizeWorkspaceFiles(files, files);
 		const savedToOpfs = await writeWorkspaceToOpfs(normalized);
 		if (!savedToOpfs) {
-			writeWorkspaceToFallbackStorage(normalized);
+			throw new Error("OPFS is unavailable. Workspace save failed.");
 		}
+		clearLegacyWorkspaceStorage();
 	}
 }
 

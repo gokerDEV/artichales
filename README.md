@@ -58,7 +58,8 @@ Supported behavior:
 ## Features
 
 - Citation tokens: `[cite:knuth1984, goker]` (click each citation separately)
-- Reference tokens: `[ref:plot_1]` and `[ref: plot_1]`
+- Reference tokens: `[ref:plotty:plot_1]`, `[ref:datatable:datatable_1]`, and singleton short form `[ref:abstract]`
+- Caption anchors: `[caption:type:key]` and `[caption:type:key](Title)`
 - Citation style is resolved from `template.json` (`default.citationStyle`)
 - Plot directive: `:::plotty[file.json]`
 - Datatable directive: `:::datatable[file.json]` (sortable; filter hidden in print)

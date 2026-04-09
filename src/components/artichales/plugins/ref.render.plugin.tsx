@@ -1,5 +1,6 @@
 import type React from "react";
 import type { Components } from "react-markdown";
+import type { ResolvedReference } from "@/lib/article-analysis";
 import type { PluginDefinition } from "./plugin.contract";
 
 type RefKind = "plot" | "datatable";
@@ -46,25 +47,71 @@ function normalizeRefId(raw: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
+function normalizeCaptionId(type: string, key: string): string {
+	const normalizedType = type.trim().toLowerCase();
+	const normalizedKey = normalizeRefId(key).toLowerCase();
+	return `caption-${normalizedType}-${normalizedKey}`;
+}
+
 export function createRefRender(
 	refIndexById: RefIndexMap,
+	resolvedReferences: Record<string, ResolvedReference>,
 	refClassName: string,
 ): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
+		const rawCaptionType =
+			node?.properties?.dataCaptionType ||
+			node?.properties?.["data-caption-type"];
+		const rawCaptionKey =
+			node?.properties?.dataCaptionKey ||
+			node?.properties?.["data-caption-key"];
+		const rawCaptionTitle =
+			node?.properties?.dataCaptionTitle ||
+			node?.properties?.["data-caption-title"];
+		const captionType =
+			typeof rawCaptionType === "string" ? rawCaptionType.trim() : "";
+		const captionKey =
+			typeof rawCaptionKey === "string" ? rawCaptionKey.trim() : "";
+		const captionTitle =
+			typeof rawCaptionTitle === "string" ? rawCaptionTitle.trim() : "";
+
+		if (captionType && captionKey) {
+			const captionId = normalizeCaptionId(captionType, captionKey);
+			if (captionTitle) {
+				return (
+					<span
+						{...rest}
+						id={captionId}
+						className="caption-anchor my-2 block text-center text-xs italic"
+					>
+						{captionTitle}
+					</span>
+				);
+			}
+			return (
+				<span
+					{...rest}
+					id={captionId}
+					aria-hidden="true"
+					className="caption-anchor sr-only"
+				/>
+			);
+		}
+
 		const rawRefId =
 			node?.properties?.dataRefId || node?.properties?.["data-ref-id"] || "";
 		const refId = typeof rawRefId === "string" ? rawRefId.trim() : "";
 		const normalizedRefId = normalizeRefId(refId);
 		const hasRefId = normalizedRefId !== "";
 
+		const resolved = resolvedReferences[normalizedRefId];
 		const target = refIndexById[normalizedRefId];
 		const config = target ? REF_KIND_CONFIG[target.kind] : null;
-		const label = config
-			? `${config.label} ${target.index}`
-			: `ref:${normalizedRefId}`;
-		const href = config
-			? `#${config.anchorPrefix}-${normalizedRefId}`
-			: `#${normalizedRefId}`;
+		const label =
+			resolved?.label || (config ? `${config.label} ${target.index}` : "?");
+		const href =
+			resolved?.href ||
+			(config ? `#${config.anchorPrefix}-${normalizedRefId}` : "#");
 
 		return (
 			<span {...rest}>
@@ -74,7 +121,7 @@ export function createRefRender(
 						className={refClassName}
 						title={`Go to ${normalizedRefId}`}
 					>
-						{label || children}
+						{label || children || "?"}
 					</a>
 				) : (
 					children

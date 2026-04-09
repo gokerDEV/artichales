@@ -170,9 +170,12 @@ export function EditorPreviewSurface() {
 		null,
 	);
 
-	const handleFileChange = (content: string) => {
-		setFiles((prev) => ({ ...prev, [activeFile]: content }));
-	};
+	const handleFileChange = React.useCallback(
+		(content: string) => {
+			setFiles((prev) => ({ ...prev, [activeFile]: content }));
+		},
+		[activeFile],
+	);
 
 	const maxAssetFileSize = React.useMemo(
 		() => getAssetSizeLimitFromTemplate(files),
@@ -246,6 +249,16 @@ export function EditorPreviewSurface() {
 			}
 			const existingContent = files[fileName];
 			if (typeof existingContent !== "string") return;
+			const sizeInBytes = new Blob([existingContent]).size;
+			const validationError = validateWorkspaceAsset(
+				proposed,
+				sizeInBytes,
+				maxAssetFileSize,
+			);
+			if (validationError) {
+				toast.error(`${proposed}: ${validationError}`);
+				return;
+			}
 
 			setFiles((prev) => {
 				const updated = { ...prev, [proposed]: existingContent };
@@ -256,7 +269,7 @@ export function EditorPreviewSurface() {
 				setActiveFile(proposed);
 			}
 		},
-		[activeFile, files],
+		[activeFile, files, maxAssetFileSize],
 	);
 
 	const handleDeleteAsset = React.useCallback(
@@ -313,10 +326,17 @@ export function EditorPreviewSurface() {
 				message: diag.message,
 			});
 		}
+		for (const diag of docSource.assetDiagnostics) {
+			entries.push({
+				severity: diag.severity,
+				source: `asset:${diag.fileName}`,
+				message: diag.message,
+			});
+		}
 		for (const diag of docSource.articleDiagnostics) {
 			entries.push({
 				severity: diag.severity,
-				source: "article",
+				source: `article:${diag.source}`,
 				message: diag.message,
 			});
 		}
@@ -335,6 +355,7 @@ export function EditorPreviewSurface() {
 	}, [
 		docSource.templateDiagnostics,
 		docSource.bibDiagnostics,
+		docSource.assetDiagnostics,
 		docSource.articleDiagnostics,
 		saveError,
 	]);
@@ -348,6 +369,13 @@ export function EditorPreviewSurface() {
 			: diagnostics.warnings.length > 0
 				? "warnings"
 				: "info";
+	const editorCompletions = React.useMemo(
+		() => ({
+			bibKeys: Object.keys(docSource.citations),
+			referenceSelectors: Object.keys(docSource.resolvedReferences),
+		}),
+		[docSource.citations, docSource.resolvedReferences],
+	);
 
 	const handleSelectFile = React.useCallback(
 		(fileName: string) => {
@@ -520,9 +548,11 @@ export function EditorPreviewSurface() {
 					onResize={(size) => handleResize(1, size)}
 				>
 					<MdxEditor
+						fileName={activeFile}
 						value={files[activeFile] || ""}
 						onChange={handleFileChange}
 						label={activeFile}
+						completions={editorCompletions}
 					/>
 				</ResizablePanel>
 				<ResizableHandle withHandle />

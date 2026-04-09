@@ -30,11 +30,13 @@ import { mathParserPlugin } from "@/components/artichales/plugins/math.parser.pl
 import { plottyParserPlugin } from "@/components/artichales/plugins/plotty.parser.plugin";
 import { plottyRenderPlugin } from "@/components/artichales/plugins/plotty.render.plugin";
 import { refRenderPlugin } from "@/components/artichales/plugins/ref.render.plugin";
+import type { ResolvedReference } from "@/lib/article-analysis";
 
 type MarkdownContentProps = {
 	content: string;
 	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
+	resolvedReferences: Record<string, ResolvedReference>;
 	indexContent?: string;
 	templateDefaults?: {
 		components?: {
@@ -60,6 +62,7 @@ export function MarkdownContent({
 	content,
 	plotFiles,
 	target,
+	resolvedReferences,
 	indexContent,
 	templateDefaults,
 	utilityClasses,
@@ -141,8 +144,13 @@ export function MarkdownContent({
 		[plotFiles, plotIndexById, datatableIndexById, target, templateDefaults],
 	);
 	const refRenderer = React.useMemo(
-		() => createRefRender(refIndexById, utilityClasses?.ref || "ref"),
-		[refIndexById, utilityClasses],
+		() =>
+			createRefRender(
+				refIndexById,
+				resolvedReferences,
+				utilityClasses?.ref || "ref",
+			),
+		[refIndexById, resolvedReferences, utilityClasses],
 	);
 	const markdownComponents = React.useMemo(() => {
 		const components: React.ComponentProps<typeof ReactMarkdown>["components"] =

@@ -31,6 +31,18 @@ export interface CrossRefNode extends Parent {
 	};
 }
 
+export interface CaptionNode extends Parent {
+	type: "caption-anchor";
+	data: {
+		hName: "span";
+		hProperties: {
+			"data-caption-type": string;
+			"data-caption-key": string;
+			"data-caption-title"?: string;
+		};
+	};
+}
+
 type UnknownParentNode = {
 	children: unknown[];
 };
@@ -53,6 +65,25 @@ function parseIds(raw: string): string[] {
 	return raw.split(",").map(normalizeId).filter(Boolean);
 }
 
+function parseRefSelectors(raw: string): string[] {
+	return raw
+		.split(",")
+		.map((segment) => segment.trim())
+		.map((segment) =>
+			segment.toLowerCase().startsWith("ref:")
+				? segment.slice("ref:".length).trim()
+				: segment,
+		)
+		.map((segment) =>
+			segment
+				.split(":")
+				.map((part) => part.trim())
+				.filter(Boolean)
+				.join(":"),
+		)
+		.filter(Boolean);
+}
+
 function parseTokenLabel(
 	label: string,
 ): { kind: "cite" | "ref"; value: string } | null {
@@ -62,6 +93,20 @@ function parseTokenLabel(
 	const value = match[2].trim();
 	if (!value) return null;
 	return { kind, value };
+}
+
+function parseCaptionSelector(
+	raw: string,
+): { type: string; key: string } | null {
+	const normalized = raw
+		.split(":")
+		.map((part) => part.trim())
+		.filter(Boolean);
+	if (normalized.length < 2) return null;
+	const type = normalized[0];
+	const key = normalized.slice(1).join(":");
+	if (!type || !key) return null;
+	return { type, key };
 }
 
 export const remarkCitation: Plugin<[], Root> = () => {
@@ -185,21 +230,51 @@ export const remarkCitation: Plugin<[], Root> = () => {
 					},
 					children: [{ type: "text", value: `[ref:${parsedLabel.value}]` }],
 				};
-				parent.children.splice(index, 1, refNode as unknown as PhrasingContent);
-				return index + 1;
+				const selectors = parseRefSelectors(parsedLabel.value);
+				if (selectors.length <= 1) {
+					parent.children.splice(
+						index,
+						1,
+						refNode as unknown as PhrasingContent,
+					);
+					return index + 1;
+				}
+				const replacementNodes: PhrasingContent[] = [];
+				selectors.forEach((selector, idx) => {
+					replacementNodes.push({
+						type: "xref",
+						data: {
+							hName: "span",
+							hProperties: {
+								"data-ref-id": selector,
+							},
+						},
+						children: [{ type: "text", value: `[ref:${selector}]` }],
+					} as unknown as PhrasingContent);
+					if (idx < selectors.length - 1) {
+						replacementNodes.push({
+							type: "text",
+							value: ", ",
+						} as PhrasingContent);
+					}
+				});
+				parent.children.splice(index, 1, ...replacementNodes);
+				return index + replacementNodes.length;
 			},
 		);
 
 		visit(tree, "text", (node: Text, index?: number, parent?: Parent) => {
 			if (!node.value) return;
 
-			const tokenRegex = /\[(cite|ref)\s*:\s*([^\]]+)\]/g;
+			const tokenRegex =
+				/\[(cite|ref|caption)\s*:\s*([^\]]+)\](?:\(([^)]+)\))?/g;
 			if (!tokenRegex.test(node.value)) return;
 
 			tokenRegex.lastIndex = 0;
 			let match: RegExpExecArray | null = null;
 			let lastIndex = 0;
-			const newNodes: Array<Text | CitationNode | CrossRefNode> = [];
+			const newNodes: Array<Text | CitationNode | CrossRefNode | CaptionNode> =
+				[];
 
 			while (true) {
 				match = tokenRegex.exec(node.value);
@@ -214,6 +289,7 @@ export const remarkCitation: Plugin<[], Root> = () => {
 
 				const tokenKind = match[1];
 				const rawValue = match[2];
+				const captionTitle = (match[3] || "").trim();
 				if (tokenKind === "cite") {
 					const ids = parseIds(rawValue);
 					ids.forEach((id, idx) => {
@@ -235,18 +311,50 @@ export const remarkCitation: Plugin<[], Root> = () => {
 						}
 					});
 				} else if (tokenKind === "ref") {
-					const refId = rawValue.trim();
-					if (refId) {
+					const selectors = parseRefSelectors(rawValue);
+					selectors.forEach((selector, idx) => {
 						newNodes.push({
 							type: "xref",
 							data: {
 								hName: "span",
 								hProperties: {
-									"data-ref-id": refId,
+									"data-ref-id": selector,
 								},
 							},
-							children: [{ type: "text", value: `[ref:${refId}]` }],
+							children: [{ type: "text", value: `[ref:${selector}]` }],
 						});
+						if (idx < selectors.length - 1) {
+							newNodes.push({
+								type: "text",
+								value: ", ",
+							});
+						}
+					});
+				} else if (tokenKind === "caption") {
+					const parsedCaption = parseCaptionSelector(rawValue);
+					if (!parsedCaption) {
+						newNodes.push({
+							type: "text",
+							value: match[0],
+						});
+					} else {
+						const captionNode: CaptionNode = {
+							type: "caption-anchor",
+							data: {
+								hName: "span",
+								hProperties: {
+									"data-caption-type": parsedCaption.type,
+									"data-caption-key": parsedCaption.key,
+									...(captionTitle
+										? { "data-caption-title": captionTitle }
+										: {}),
+								},
+							},
+							children: captionTitle
+								? [{ type: "text", value: captionTitle }]
+								: [],
+						};
+						newNodes.push(captionNode);
 					}
 				}
 

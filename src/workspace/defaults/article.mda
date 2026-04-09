@@ -24,7 +24,9 @@ Link examples: [Artichales](https://github.com/goker/artichales) and [local ref]
 
 ### Heading Level 3
 Citation tokens: [cite:knuth1984, goker] and [cite: knuth1984, goker].
-Cross refs: [ref:plot_1], [ref: plot_1], [ref:datatable_1].
+Cross refs: [ref:plotty:plot_1], [ref: plotty:plot_1], [ref:datatable:datatable_1], [ref:abstract].
+[caption:section:intro_section](Introduction Section)
+Caption refs: [ref:section:intro_section].
 
 #### Heading Level 4
 - Unordered item
@@ -101,12 +103,6 @@ breakAfter: page
 caption: "Column-flow datatable after full-width figure"
 span: column
 :::
-
-## Footnotes
-
-Footnote example [^note1].
-
-[^note1]: This is a sample footnote rendered by GFM.
 
 ## Long Flow Demo
 

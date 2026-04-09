@@ -379,6 +379,7 @@ export function PrintPreview({
 																content={node.markdown || ""}
 																plotFiles={document.plots}
 																target="print"
+																resolvedReferences={document.resolvedReferences}
 																indexContent={document.content}
 																templateDefaults={{
 																	components:

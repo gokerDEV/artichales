@@ -67,6 +67,7 @@ export function DocumentRenderContent({
 					content={document.content}
 					plotFiles={document.plots}
 					target={target}
+					resolvedReferences={document.resolvedReferences}
 					templateDefaults={{ components: document.template.componentDefaults }}
 					utilityClasses={document.template.utilities}
 					pluginRegistry={document.template.plugins}

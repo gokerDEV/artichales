@@ -2,6 +2,11 @@ import type { JSX } from "react";
 import * as React from "react";
 import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
+import {
+	type ArticleAnalysisDiagnostic,
+	analyzeArticleSource,
+	type ResolvedReference,
+} from "@/lib/article-analysis";
 import type {
 	BibtexDiagnostic,
 	CitationEntry,
@@ -121,11 +126,23 @@ export interface DocumentSource {
 	citationStyle: string;
 	templateDiagnostics: TemplateDiagnostic[];
 	bibDiagnostics: BibtexDiagnostic[];
-	articleDiagnostics: Array<{
-		code: "article-frontmatter-invalid";
+	assetDiagnostics: Array<{
+		code: "asset-json-invalid";
 		severity: "error";
+		source: "parser";
+		fileName: string;
 		message: string;
 	}>;
+	articleDiagnostics: Array<
+		| {
+				code: "article-frontmatter-invalid";
+				severity: "error";
+				message: string;
+				source: "parser";
+		  }
+		| ArticleAnalysisDiagnostic
+	>;
+	resolvedReferences: Record<string, ResolvedReference>;
 	blockingByFile: Partial<Record<string, string>>;
 	isBlockingActiveFile: (fileName: string) => boolean;
 	hasTemplateError: boolean;
@@ -212,6 +229,7 @@ export function useDocument(
 					{
 						code: "article-frontmatter-invalid",
 						severity: "error",
+						source: "parser",
 						message:
 							"`article.mda` frontmatter YAML is invalid. Preview is blocked until fixed.",
 					},
@@ -220,6 +238,11 @@ export function useDocument(
 		}
 	}, [articleText]);
 
+	const articleAnalysis = React.useMemo(
+		() => analyzeArticleSource(parsed.content),
+		[parsed.content],
+	);
+
 	const bibData = React.useMemo(
 		() => parseBibtexDocument(files[CORE_BIB_FILE] || ""),
 		[files],
@@ -227,15 +250,33 @@ export function useDocument(
 
 	const plots = React.useMemo(() => {
 		const parsedPlots: Record<string, unknown> = {};
+		const diagnostics: DocumentSource["assetDiagnostics"] = [];
 		for (const [fileName, fileContent] of Object.entries(files)) {
-			if (!fileName.endsWith(".json")) continue;
+			if (
+				!fileName.endsWith(".json") ||
+				fileName === CORE_TEMPLATE_FILE ||
+				fileName === CORE_ARTICLE_FILE ||
+				fileName === CORE_BIB_FILE
+			) {
+				continue;
+			}
 			try {
 				parsedPlots[fileName] = JSON.parse(fileContent);
 			} catch {
 				parsedPlots[fileName] = null;
+				diagnostics.push({
+					code: "asset-json-invalid",
+					severity: "error",
+					source: "parser",
+					fileName,
+					message: `Asset JSON is invalid: ${fileName}`,
+				});
 			}
 		}
-		return parsedPlots;
+		return {
+			files: parsedPlots,
+			diagnostics,
+		};
 	}, [files]);
 
 	const activeTemplate = React.useMemo(
@@ -267,26 +308,44 @@ export function useDocument(
 			result[CORE_ARTICLE_FILE] =
 				"Fix article parsing errors before switching away from `article.mda`.";
 		}
+		if (articleAnalysis.diagnostics.some((diag) => diag.severity === "error")) {
+			result[CORE_ARTICLE_FILE] =
+				"Fix article parsing errors before switching away from `article.mda`.";
+		}
+		for (const diagnostic of plots.diagnostics) {
+			result[diagnostic.fileName] =
+				"Fix JSON asset syntax errors before switching away from this file.";
+		}
 		return result;
-	}, [activeTemplate.hasError, bibData.hasError, parsed.diagnostics]);
+	}, [
+		activeTemplate.hasError,
+		bibData.hasError,
+		parsed.diagnostics,
+		articleAnalysis.diagnostics,
+		plots.diagnostics,
+	]);
 
 	return {
 		content: parsed.content,
 		frontmatter: parsed.data,
 		citations: bibData.citations,
 		validatedBibEntries: bibData.validatedEntries,
-		plots,
+		plots: plots.files,
 		template: resolvedTemplateForTarget,
 		citationStyle,
 		templateDiagnostics: activeTemplate.diagnostics,
 		bibDiagnostics: bibData.diagnostics,
-		articleDiagnostics: parsed.diagnostics,
+		assetDiagnostics: plots.diagnostics,
+		articleDiagnostics: [...parsed.diagnostics, ...articleAnalysis.diagnostics],
+		resolvedReferences: articleAnalysis.resolvedReferences,
 		blockingByFile,
 		isBlockingActiveFile: (fileName) => Boolean(blockingByFile[fileName]),
 		hasTemplateError: activeTemplate.hasError,
 		hasBlockingError:
 			activeTemplate.hasError ||
 			bibData.hasError ||
-			parsed.diagnostics.some((diag) => diag.severity === "error"),
+			plots.diagnostics.some((diag) => diag.severity === "error") ||
+			parsed.diagnostics.some((diag) => diag.severity === "error") ||
+			articleAnalysis.diagnostics.some((diag) => diag.severity === "error"),
 	};
 }

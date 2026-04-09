@@ -9,3 +9,4 @@ This file serves as a strict persistent rulebook for coding behavior in this Nex
 4. **Resilient Fallbacks**: Every map or option resolution must confidently declare a fallback/default route, ensuring the application cannot crash on unmapped states.
 5. **No sloppy strings**: Normalize string options via strongly typed Unions rather than evaluating scattered lowercase checks on the fly.
 6. **Strictly Read-Only UI Components**: The `src/components/ui/` directory is **STRICTLY READ-ONLY**. It is a direct mirror of the Shadcn registry. **NEVER modify or add properties to these components.** If you need extended functionality, ALWAYS build a wrapper component or use hooks outside of the `ui` folder.
+7. Use `bun` for all development tasks. Do not use `npm` commands. Stick to `bun install`, `bun dev`, `bun build`, etc.
