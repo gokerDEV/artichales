@@ -3,14 +3,6 @@ import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import type { PluginDefinition } from "./plugin.contract";
 
-export const citationParserPlugin: PluginDefinition = {
-	id: "citation-parser",
-	category: "parser",
-	name: "Citation Parser",
-	ownsSyntax: ["cite", "ref"],
-	hooks: {},
-};
-
 export interface CitationNode extends Parent {
 	type: "cite";
 	data: {
@@ -380,4 +372,14 @@ export const remarkCitation: Plugin<[], Root> = () => {
 			return undefined;
 		});
 	};
+};
+
+export const citationParserPlugin: PluginDefinition = {
+	id: "citation-parser",
+	category: "parser",
+	name: "Citation Parser",
+	ownsSyntax: ["cite", "ref"],
+	hooks: {
+		parse: remarkCitation,
+	},
 };

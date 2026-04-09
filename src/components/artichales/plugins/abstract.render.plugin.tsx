@@ -1,11 +1,15 @@
 import type { Components } from "react-markdown";
 import type { PluginDefinition } from "./plugin.contract";
 
+function registerAbstractRenderRuntime(): void {}
+
 export const abstractRenderPlugin: PluginDefinition = {
 	id: "abstract-render",
 	category: "render",
 	name: "Abstract Render",
-	hooks: {},
+	hooks: {
+		render: registerAbstractRenderRuntime,
+	},
 };
 
 export const AbstractRender: Components["div"] = ({

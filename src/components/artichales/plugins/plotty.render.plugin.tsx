@@ -267,11 +267,15 @@ type PlottyDivProps = {
 	children?: React.ReactNode;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, "children">;
 
+function registerPlottyRenderRuntime(): void {}
+
 export const plottyRenderPlugin: PluginDefinition = {
 	id: "plotty-render",
 	category: "render",
 	name: "Plotty Render",
-	hooks: {},
+	hooks: {
+		render: registerPlottyRenderRuntime,
+	},
 };
 
 export function createDirectiveDivRender(

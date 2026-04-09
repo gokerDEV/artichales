@@ -4,11 +4,15 @@ import { cn } from "@/lib/utils";
 import { useCitations } from "./citation.context";
 import type { PluginDefinition } from "./plugin.contract";
 
+function registerCitationRenderRuntime(): void {}
+
 export const citationRenderPlugin: PluginDefinition = {
 	id: "citation-render",
 	category: "render",
 	name: "Citation Render",
-	hooks: {},
+	hooks: {
+		render: registerCitationRenderRuntime,
+	},
 };
 
 type CitationFormatter = (

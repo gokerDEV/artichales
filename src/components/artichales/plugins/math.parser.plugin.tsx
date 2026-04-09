@@ -12,3 +12,5 @@ export const mathParserPlugin: PluginDefinition = {
 };
 
 export const remarkMathEquation = remarkMath as unknown as Plugin<[], Root>;
+
+mathParserPlugin.hooks.parse = remarkMathEquation;

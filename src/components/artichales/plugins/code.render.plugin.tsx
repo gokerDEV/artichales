@@ -2,11 +2,15 @@ import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import type { PluginDefinition } from "./plugin.contract";
 
+function registerCodeRenderRuntime(): void {}
+
 export const codeRenderPlugin: PluginDefinition = {
 	id: "code-render",
 	category: "render",
 	name: "Code Render",
-	hooks: {},
+	hooks: {
+		render: registerCodeRenderRuntime,
+	},
 };
 
 export const CodeRender: Components["code"] = ({

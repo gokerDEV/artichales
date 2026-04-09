@@ -99,3 +99,5 @@ export const remarkDatatable: Plugin<[], Root> = () => {
 		});
 	};
 };
+
+datatableParserPlugin.hooks.parse = remarkDatatable;

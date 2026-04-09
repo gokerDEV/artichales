@@ -550,3 +550,30 @@ The following gaps were identified by reviewing the current codebase against `SP
 
 2. Legacy localStorage read path remains:
 - OPFS is primary for write, but fallback read path still exists as migration debt.
+
+## 9. Progress Update (2026-04-10, Session 2)
+
+Completed in this session:
+- Frontmatter requirement is now enforced as a blocking parser diagnostic (`article-frontmatter-missing`).
+- Footnote syntax is now blocked as unsupported (`article-footnote-unsupported`).
+- Template plugin merge semantics were aligned to append behavior.
+- Plugin registry dedupe uses last-write-wins, enabling later plugin overrides/disable entries.
+- Parser runtime resolution no longer depends on a hardcoded id->runtime map; parser hooks are read from plugin definitions.
+- Parser plugins now expose `hooks.parse` for:
+  - `abstract-parser`
+  - `citation-parser`
+  - `plotty-parser`
+  - `datatable-parser`
+  - `math-parser`
+- Render plugins now expose `hooks.render` for:
+  - `abstract-render`
+  - `citation-render`
+  - `ref-render`
+  - `code-render`
+  - `plotty-render`
+
+Still open:
+- Pipeline execution is not yet fully plugin-hook-driven end-to-end (runtime/preview wiring remains partially direct in ReactMarkdown component assembly).
+- Template-driven reference label mapping is still pending (labels remain hardcoded Figure/Table with fallback logic).
+- Save failure UI still needs explicit shadcn alert treatment.
+- Legacy localStorage read fallback path still exists as migration debt.

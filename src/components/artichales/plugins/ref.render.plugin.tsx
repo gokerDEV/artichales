@@ -35,11 +35,15 @@ const REF_KIND_CONFIG: Record<RefKind, RefKindConfig> = {
 	},
 };
 
+function registerRefRenderRuntime(): void {}
+
 export const refRenderPlugin: PluginDefinition = {
 	id: "ref-render",
 	category: "render",
 	name: "Ref Render",
-	hooks: {},
+	hooks: {
+		render: registerRefRenderRuntime,
+	},
 };
 
 function normalizeRefId(raw: string): string {

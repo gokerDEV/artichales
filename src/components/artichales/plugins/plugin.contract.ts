@@ -1,13 +1,14 @@
+import type { Pluggable } from "unified";
 import type { ZodType } from "zod";
 
 export type PluginCategory = "core" | "parser" | "render" | "editor";
 
 export type PluginHooks = {
 	setup?: () => void;
-	parse?: unknown;
-	process?: unknown;
-	render?: unknown;
-	editor?: unknown;
+	parse?: Pluggable;
+	process?: () => void;
+	render?: () => void;
+	editor?: () => void;
 };
 
 export type PluginDefinition = {

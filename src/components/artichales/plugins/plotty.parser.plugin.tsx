@@ -99,3 +99,5 @@ export const remarkPlotty: Plugin<[], Root> = () => {
 		});
 	};
 };
+
+plottyParserPlugin.hooks.parse = remarkPlotty;

@@ -3,14 +3,6 @@ import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import type { PluginDefinition } from "./plugin.contract";
 
-export const abstractParserPlugin: PluginDefinition = {
-	id: "abstract-parser",
-	category: "parser",
-	name: "Abstract Parser",
-	ownsSyntax: ["abstract"],
-	hooks: {},
-};
-
 export const remarkAbstract: Plugin<[], Root> = () => {
 	return (tree: Root) => {
 		visit(tree, (node: unknown) => {
@@ -32,4 +24,14 @@ export const remarkAbstract: Plugin<[], Root> = () => {
 			}
 		});
 	};
+};
+
+export const abstractParserPlugin: PluginDefinition = {
+	id: "abstract-parser",
+	category: "parser",
+	name: "Abstract Parser",
+	ownsSyntax: ["abstract"],
+	hooks: {
+		parse: remarkAbstract,
+	},
 };
