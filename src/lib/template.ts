@@ -48,6 +48,11 @@ const TypographySchema = z.object({
 const DefaultTemplateSchema = z.object({
 	typography: TypographySchema.optional(),
 	colors: ColorsSchema.optional(),
+	assets: z
+		.object({
+			maxFileSize: z.number().int().positive().optional(),
+		})
+		.optional(),
 	components: z
 		.object({
 			figure: z
@@ -168,6 +173,9 @@ export type TemplateFileResolved = {
 			textAlign: "left" | "right" | "center" | "justify";
 		};
 		colors: { text: string; muted: string; border: string; link: string };
+		assets: {
+			maxFileSize?: number;
+		};
 		components: {
 			figure: {
 				captionPosition: "top" | "bottom";
@@ -255,6 +263,7 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			border: "#d1d5db",
 			link: "#0f766e",
 		},
+		assets: {},
 		components: {
 			figure: {
 				captionPosition: "bottom",
@@ -393,6 +402,11 @@ function mergeTemplateWithDefaults(
 				link:
 					overrides.default?.colors?.link ??
 					DEFAULT_TEMPLATE_FILE.default.colors.link,
+			},
+			assets: {
+				maxFileSize:
+					overrides.default?.assets?.maxFileSize ??
+					DEFAULT_TEMPLATE_FILE.default.assets.maxFileSize,
 			},
 			components: {
 				figure: {

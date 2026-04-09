@@ -20,7 +20,6 @@ import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
 import {
 	CORE_ARTICLE_FILE,
-	CORE_TEMPLATE_FILE,
 	isCoreWorkspaceFile,
 	WORKSPACE_UI_STATE_KEY,
 } from "@/lib/workspace";
@@ -43,22 +42,6 @@ type UiDiagnostic = {
 	message: string;
 	details?: string;
 };
-
-function getAssetSizeLimitFromTemplate(
-	files: Record<string, string>,
-): number | undefined {
-	try {
-		const parsed = JSON.parse(files[CORE_TEMPLATE_FILE] || "{}") as {
-			default?: { assets?: { maxFileSize?: number } };
-		};
-		const maxFileSize = parsed.default?.assets?.maxFileSize;
-		return typeof maxFileSize === "number" && Number.isFinite(maxFileSize)
-			? maxFileSize
-			: undefined;
-	} catch {
-		return undefined;
-	}
-}
 
 async function readAssetContent(file: File): Promise<string> {
 	const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
@@ -166,6 +149,7 @@ export function EditorPreviewSurface() {
 	}, [activeFile, target, scale]);
 
 	const { settings, updateSettings, loading } = useSettings();
+	const docSource = useDocument(files, target);
 	const layoutTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
 		null,
 	);
@@ -177,10 +161,7 @@ export function EditorPreviewSurface() {
 		[activeFile],
 	);
 
-	const maxAssetFileSize = React.useMemo(
-		() => getAssetSizeLimitFromTemplate(files),
-		[files],
-	);
+	const maxAssetFileSize = docSource.template.assetMaxFileSize;
 
 	const addAssetsToWorkspace = React.useCallback(
 		async (newFiles: FileList | File[]) => {
@@ -306,7 +287,6 @@ export function EditorPreviewSurface() {
 		[settings.ux, updateSettings],
 	);
 
-	const docSource = useDocument(files, target);
 	const blockingReason = docSource.blockingByFile[activeFile];
 	const isFileSwitchLocked = typeof blockingReason === "string";
 	const diagnostics = React.useMemo(() => {
@@ -340,6 +320,13 @@ export function EditorPreviewSurface() {
 				message: diag.message,
 			});
 		}
+		for (const diag of docSource.pipelineDiagnostics) {
+			entries.push({
+				severity: diag.severity,
+				source: diag.stage ? `pipeline:${diag.stage}` : "pipeline",
+				message: diag.message,
+			});
+		}
 		if (saveError) {
 			entries.push({
 				severity: "error",
@@ -357,6 +344,7 @@ export function EditorPreviewSurface() {
 		docSource.bibDiagnostics,
 		docSource.assetDiagnostics,
 		docSource.articleDiagnostics,
+		docSource.pipelineDiagnostics,
 		saveError,
 	]);
 	const hasDiagnostics =

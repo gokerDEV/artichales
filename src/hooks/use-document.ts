@@ -1,19 +1,20 @@
 import type { JSX } from "react";
 import * as React from "react";
-import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
-import {
-	type ArticleAnalysisDiagnostic,
-	analyzeArticleSource,
-	type ResolvedReference,
+import type {
+	ArticleAnalysisDiagnostic,
+	ResolvedReference,
 } from "@/lib/article-analysis";
 import type {
 	BibtexDiagnostic,
 	CitationEntry,
 	ValidatedBibEntry,
 } from "@/lib/bibtex";
-import { parseBibtexDocument } from "@/lib/bibtex";
-import { resolveTemplateFile, type TemplateDiagnostic } from "@/lib/template";
+import {
+	type PipelineDiagnostic,
+	runDocumentPipeline,
+} from "@/lib/document-pipeline";
+import type { TemplateDiagnostic, TemplateFileResolved } from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,
 	CORE_BIB_FILE,
@@ -110,6 +111,7 @@ export type DocumentTemplate = {
 		link?: string;
 	};
 	citationStyle?: string;
+	assetMaxFileSize?: number;
 	plugins?: Array<{
 		id: string;
 		enabled: boolean;
@@ -143,6 +145,7 @@ export interface DocumentSource {
 		| ArticleAnalysisDiagnostic
 	>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	pipelineDiagnostics: PipelineDiagnostic[];
 	blockingByFile: Partial<Record<string, string>>;
 	isBlockingActiveFile: (fileName: string) => boolean;
 	hasTemplateError: boolean;
@@ -150,7 +153,7 @@ export interface DocumentSource {
 }
 
 function resolveTemplateForTarget(
-	templateFile: ReturnType<typeof resolveTemplateFile>["template"],
+	templateFile: TemplateFileResolved,
 	target: PreviewTarget,
 ): DocumentTemplate {
 	const defaults = templateFile.default;
@@ -185,6 +188,7 @@ function resolveTemplateForTarget(
 		utilities: defaults.utilities,
 		colors: defaults.colors,
 		citationStyle: defaults.citationStyle,
+		assetMaxFileSize: defaults.assets.maxFileSize,
 		plugins: templateFile.plugins,
 	};
 
@@ -198,95 +202,14 @@ export function useDocument(
 	files: Record<string, string>,
 	target: PreviewTarget,
 ): DocumentSource {
-	const articleText = files[CORE_ARTICLE_FILE] || "";
-	const parsed = React.useMemo(() => {
-		const text = articleText;
-		const match = text.match(/^---\n([\s\S]*?)\n---/);
-		if (!match)
-			return {
-				content: text,
-				data: {},
-				diagnostics: [] as DocumentSource["articleDiagnostics"],
-			};
-
-		try {
-			const data = parseYaml(match[1]);
-			const content = text.slice(match[0].length).trim();
-			return {
-				content,
-				data:
-					typeof data === "object" && data !== null
-						? (data as Record<string, unknown>)
-						: {},
-				diagnostics: [] as DocumentSource["articleDiagnostics"],
-			};
-		} catch (e) {
-			console.error("YAML Parse Error:", e);
-			return {
-				content: text,
-				data: {},
-				diagnostics: [
-					{
-						code: "article-frontmatter-invalid",
-						severity: "error",
-						source: "parser",
-						message:
-							"`article.mda` frontmatter YAML is invalid. Preview is blocked until fixed.",
-					},
-				] as DocumentSource["articleDiagnostics"],
-			};
-		}
-	}, [articleText]);
-
-	const articleAnalysis = React.useMemo(
-		() => analyzeArticleSource(parsed.content),
-		[parsed.content],
-	);
-
-	const bibData = React.useMemo(
-		() => parseBibtexDocument(files[CORE_BIB_FILE] || ""),
-		[files],
-	);
-
-	const plots = React.useMemo(() => {
-		const parsedPlots: Record<string, unknown> = {};
-		const diagnostics: DocumentSource["assetDiagnostics"] = [];
-		for (const [fileName, fileContent] of Object.entries(files)) {
-			if (
-				!fileName.endsWith(".json") ||
-				fileName === CORE_TEMPLATE_FILE ||
-				fileName === CORE_ARTICLE_FILE ||
-				fileName === CORE_BIB_FILE
-			) {
-				continue;
-			}
-			try {
-				parsedPlots[fileName] = JSON.parse(fileContent);
-			} catch {
-				parsedPlots[fileName] = null;
-				diagnostics.push({
-					code: "asset-json-invalid",
-					severity: "error",
-					source: "parser",
-					fileName,
-					message: `Asset JSON is invalid: ${fileName}`,
-				});
-			}
-		}
-		return {
-			files: parsedPlots,
-			diagnostics,
-		};
-	}, [files]);
-
-	const activeTemplate = React.useMemo(
-		() => resolveTemplateFile(files[CORE_TEMPLATE_FILE]),
-		[files],
+	const pipeline = React.useMemo(
+		() => runDocumentPipeline(files, target),
+		[files, target],
 	);
 
 	const resolvedTemplateForTarget = React.useMemo(
-		() => resolveTemplateForTarget(activeTemplate.template, target),
-		[activeTemplate.template, target],
+		() => resolveTemplateForTarget(pipeline.template, target),
+		[pipeline.template, target],
 	);
 
 	const citationStyle = React.useMemo(
@@ -296,56 +219,58 @@ export function useDocument(
 
 	const blockingByFile = React.useMemo(() => {
 		const result: Partial<Record<string, string>> = {};
-		if (activeTemplate.hasError) {
+		if (
+			pipeline.templateDiagnostics.some((diag) => diag.severity === "error")
+		) {
 			result[CORE_TEMPLATE_FILE] =
 				"Fix template errors before switching away from `template.json`.";
 		}
-		if (bibData.hasError) {
+		if (pipeline.bibDiagnostics.some((diag) => diag.severity === "error")) {
 			result[CORE_BIB_FILE] =
 				"Fix BibTeX errors before switching away from `references.bib`.";
 		}
-		if (parsed.diagnostics.some((diag) => diag.severity === "error")) {
+		if (pipeline.articleDiagnostics.some((diag) => diag.severity === "error")) {
 			result[CORE_ARTICLE_FILE] =
 				"Fix article parsing errors before switching away from `article.mda`.";
 		}
-		if (articleAnalysis.diagnostics.some((diag) => diag.severity === "error")) {
-			result[CORE_ARTICLE_FILE] =
-				"Fix article parsing errors before switching away from `article.mda`.";
-		}
-		for (const diagnostic of plots.diagnostics) {
+		for (const diagnostic of pipeline.assetDiagnostics) {
+			if (!diagnostic.fileName) continue;
 			result[diagnostic.fileName] =
 				"Fix JSON asset syntax errors before switching away from this file.";
 		}
 		return result;
 	}, [
-		activeTemplate.hasError,
-		bibData.hasError,
-		parsed.diagnostics,
-		articleAnalysis.diagnostics,
-		plots.diagnostics,
+		pipeline.articleDiagnostics,
+		pipeline.assetDiagnostics,
+		pipeline.bibDiagnostics,
+		pipeline.templateDiagnostics,
 	]);
 
 	return {
-		content: parsed.content,
-		frontmatter: parsed.data,
-		citations: bibData.citations,
-		validatedBibEntries: bibData.validatedEntries,
-		plots: plots.files,
+		content: pipeline.content,
+		frontmatter: pipeline.frontmatter,
+		citations: pipeline.citations,
+		validatedBibEntries: pipeline.validatedBibEntries,
+		plots: pipeline.plots,
 		template: resolvedTemplateForTarget,
 		citationStyle,
-		templateDiagnostics: activeTemplate.diagnostics,
-		bibDiagnostics: bibData.diagnostics,
-		assetDiagnostics: plots.diagnostics,
-		articleDiagnostics: [...parsed.diagnostics, ...articleAnalysis.diagnostics],
-		resolvedReferences: articleAnalysis.resolvedReferences,
+		templateDiagnostics: pipeline.templateDiagnostics,
+		bibDiagnostics: pipeline.bibDiagnostics,
+		assetDiagnostics:
+			pipeline.assetDiagnostics as DocumentSource["assetDiagnostics"],
+		articleDiagnostics:
+			pipeline.articleDiagnostics as DocumentSource["articleDiagnostics"],
+		resolvedReferences: pipeline.resolvedReferences,
+		pipelineDiagnostics: pipeline.pipelineDiagnostics,
 		blockingByFile,
 		isBlockingActiveFile: (fileName) => Boolean(blockingByFile[fileName]),
-		hasTemplateError: activeTemplate.hasError,
+		hasTemplateError: pipeline.templateDiagnostics.some(
+			(diag) => diag.severity === "error",
+		),
 		hasBlockingError:
-			activeTemplate.hasError ||
-			bibData.hasError ||
-			plots.diagnostics.some((diag) => diag.severity === "error") ||
-			parsed.diagnostics.some((diag) => diag.severity === "error") ||
-			articleAnalysis.diagnostics.some((diag) => diag.severity === "error"),
+			pipeline.templateDiagnostics.some((diag) => diag.severity === "error") ||
+			pipeline.bibDiagnostics.some((diag) => diag.severity === "error") ||
+			pipeline.assetDiagnostics.some((diag) => diag.severity === "error") ||
+			pipeline.articleDiagnostics.some((diag) => diag.severity === "error"),
 	};
 }
