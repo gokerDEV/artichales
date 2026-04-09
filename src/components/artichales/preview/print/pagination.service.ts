@@ -76,6 +76,8 @@ type HeaderFooterText = {
 	footer: { left: string; center: string; right: string };
 };
 
+export const PAGE_LIMIT = 40;
+
 function parseMetricMm(value: string | undefined, fallbackMm: number): number {
 	if (!value) return fallbackMm;
 	const normalized = value.trim().toLowerCase();
@@ -298,9 +300,16 @@ export function buildPaginatedPageTree({
 	const pages: Page[] = [];
 	let currentNodes: PrintFlowNode[] = [];
 	let usedHeight = 0;
+	let wasTruncated = false;
 
 	const pushPage = () => {
 		if (currentNodes.length === 0) return;
+		if (pages.length >= PAGE_LIMIT) {
+			wasTruncated = true;
+			currentNodes = [];
+			usedHeight = 0;
+			return;
+		}
 		const pageNumber = pages.length + 1;
 		const isFirstPage = pageNumber === 1;
 		const text = resolveHeaderFooterText(
@@ -337,6 +346,7 @@ export function buildPaginatedPageTree({
 	};
 
 	for (const node of flowNodes) {
+		if (wasTruncated) break;
 		const shouldBreakBefore = node.layoutHint.breakBefore === "page";
 		if (shouldBreakBefore && currentNodes.length > 0) {
 			pushPage();
@@ -360,6 +370,8 @@ export function buildPaginatedPageTree({
 
 	return {
 		target: "print",
+		pageLimit: PAGE_LIMIT,
+		wasTruncated,
 		pageBox: {
 			width: pageBox.width,
 			height: pageBox.height,

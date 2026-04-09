@@ -2,7 +2,11 @@ import type { JSX } from "react";
 import * as React from "react";
 import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
-import type { BibtexDiagnostic, CitationEntry } from "@/lib/bibtex";
+import type {
+	BibtexDiagnostic,
+	CitationEntry,
+	ValidatedBibEntry,
+} from "@/lib/bibtex";
 import { parseBibtexDocument } from "@/lib/bibtex";
 import { resolveTemplateFile, type TemplateDiagnostic } from "@/lib/template";
 import {
@@ -111,6 +115,7 @@ export interface DocumentSource {
 	content: string;
 	frontmatter: Record<string, unknown>;
 	citations: Record<string, CitationEntry>;
+	validatedBibEntries: Record<string, ValidatedBibEntry>;
 	plots: Record<string, unknown>;
 	template: DocumentTemplate;
 	citationStyle: string;
@@ -269,6 +274,7 @@ export function useDocument(
 		content: parsed.content,
 		frontmatter: parsed.data,
 		citations: bibData.citations,
+		validatedBibEntries: bibData.validatedEntries,
 		plots,
 		template: resolvedTemplateForTarget,
 		citationStyle,

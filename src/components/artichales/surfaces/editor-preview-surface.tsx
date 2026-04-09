@@ -15,6 +15,7 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
 import {
@@ -34,6 +35,13 @@ type WorkspaceUiState = {
 	activeFile?: string;
 	target?: PreviewTarget;
 	scale?: number;
+};
+
+type UiDiagnostic = {
+	severity: "error" | "warning" | "info";
+	source: string;
+	message: string;
+	details?: string;
 };
 
 function getAssetSizeLimitFromTemplate(
@@ -288,6 +296,58 @@ export function EditorPreviewSurface() {
 	const docSource = useDocument(files, target);
 	const blockingReason = docSource.blockingByFile[activeFile];
 	const isFileSwitchLocked = typeof blockingReason === "string";
+	const diagnostics = React.useMemo(() => {
+		const entries: UiDiagnostic[] = [];
+		for (const diag of docSource.templateDiagnostics) {
+			entries.push({
+				severity: diag.severity,
+				source: "template",
+				message: diag.message,
+				details: diag.details,
+			});
+		}
+		for (const diag of docSource.bibDiagnostics) {
+			entries.push({
+				severity: diag.severity,
+				source: "bibliography",
+				message: diag.message,
+			});
+		}
+		for (const diag of docSource.articleDiagnostics) {
+			entries.push({
+				severity: diag.severity,
+				source: "article",
+				message: diag.message,
+			});
+		}
+		if (saveError) {
+			entries.push({
+				severity: "error",
+				source: "storage",
+				message: saveError,
+			});
+		}
+		return {
+			errors: entries.filter((entry) => entry.severity === "error"),
+			warnings: entries.filter((entry) => entry.severity === "warning"),
+			info: entries.filter((entry) => entry.severity === "info"),
+		};
+	}, [
+		docSource.templateDiagnostics,
+		docSource.bibDiagnostics,
+		docSource.articleDiagnostics,
+		saveError,
+	]);
+	const hasDiagnostics =
+		diagnostics.errors.length > 0 ||
+		diagnostics.warnings.length > 0 ||
+		diagnostics.info.length > 0;
+	const diagnosticsInitialTab =
+		diagnostics.errors.length > 0
+			? "errors"
+			: diagnostics.warnings.length > 0
+				? "warnings"
+				: "info";
 
 	const handleSelectFile = React.useCallback(
 		(fileName: string) => {
@@ -389,6 +449,7 @@ export function EditorPreviewSurface() {
 		<CitationContext.Provider
 			value={{
 				entries: docSource.citations,
+				validatedEntries: docSource.validatedBibEntries,
 				style: docSource.citationStyle,
 				citeClassName: docSource.template.utilities?.cite || "cite",
 			}}
@@ -480,35 +541,87 @@ export function EditorPreviewSurface() {
 						onDownloadSource={handleDownloadSource}
 					/>
 					<div className="relative grow overflow-hidden">
-						{saveError ? (
-							<div className="border-red-300 border-b bg-red-50 p-3 text-red-700 text-sm">
-								{saveError}
-							</div>
-						) : null}
-						{docSource.templateDiagnostics.length > 0 ? (
-							<div
-								className={`border-b p-3 text-sm ${docSource.hasTemplateError ? "border-red-300 bg-red-50 text-red-700" : "border-amber-300 bg-amber-50 text-amber-700"}`}
-							>
-								{docSource.templateDiagnostics.map((diag) => (
-									<p key={`${diag.code}:${diag.message}`}>
-										{diag.message}
-										{diag.details ? ` ${diag.details}` : ""}
-									</p>
-								))}
-							</div>
-						) : null}
-						{docSource.bibDiagnostics.length > 0 ? (
-							<div className="border-red-300 border-b bg-red-50 p-3 text-red-700 text-sm">
-								{docSource.bibDiagnostics.map((diag) => (
-									<p key={`${diag.code}:${diag.message}`}>{diag.message}</p>
-								))}
-							</div>
-						) : null}
-						{docSource.articleDiagnostics.length > 0 ? (
-							<div className="border-red-300 border-b bg-red-50 p-3 text-red-700 text-sm">
-								{docSource.articleDiagnostics.map((diag) => (
-									<p key={`${diag.code}:${diag.message}`}>{diag.message}</p>
-								))}
+						{hasDiagnostics ? (
+							<div className="border-border border-b bg-background p-2">
+								<Tabs defaultValue={diagnosticsInitialTab}>
+									<TabsList className="h-8">
+										<TabsTrigger value="errors" className="px-2 text-xs">
+											Errors ({diagnostics.errors.length})
+										</TabsTrigger>
+										<TabsTrigger value="warnings" className="px-2 text-xs">
+											Warnings ({diagnostics.warnings.length})
+										</TabsTrigger>
+										<TabsTrigger value="info" className="px-2 text-xs">
+											Info ({diagnostics.info.length})
+										</TabsTrigger>
+									</TabsList>
+									<TabsContent
+										value="errors"
+										className="mt-2 max-h-28 overflow-auto"
+									>
+										{diagnostics.errors.length === 0 ? (
+											<p className="px-1 text-muted-foreground text-xs">
+												No errors.
+											</p>
+										) : (
+											<ul className="space-y-1">
+												{diagnostics.errors.map((diag, index) => (
+													<li
+														key={`error-${diag.source}-${diag.message}-${index}`}
+														className="rounded border border-red-300 bg-red-50 px-2 py-1 text-red-700 text-xs"
+													>
+														[{diag.source}] {diag.message}
+														{diag.details ? ` ${diag.details}` : ""}
+													</li>
+												))}
+											</ul>
+										)}
+									</TabsContent>
+									<TabsContent
+										value="warnings"
+										className="mt-2 max-h-28 overflow-auto"
+									>
+										{diagnostics.warnings.length === 0 ? (
+											<p className="px-1 text-muted-foreground text-xs">
+												No warnings.
+											</p>
+										) : (
+											<ul className="space-y-1">
+												{diagnostics.warnings.map((diag, index) => (
+													<li
+														key={`warning-${diag.source}-${diag.message}-${index}`}
+														className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-700 text-xs"
+													>
+														[{diag.source}] {diag.message}
+														{diag.details ? ` ${diag.details}` : ""}
+													</li>
+												))}
+											</ul>
+										)}
+									</TabsContent>
+									<TabsContent
+										value="info"
+										className="mt-2 max-h-28 overflow-auto"
+									>
+										{diagnostics.info.length === 0 ? (
+											<p className="px-1 text-muted-foreground text-xs">
+												No info diagnostics.
+											</p>
+										) : (
+											<ul className="space-y-1">
+												{diagnostics.info.map((diag, index) => (
+													<li
+														key={`info-${diag.source}-${diag.message}-${index}`}
+														className="rounded border border-sky-300 bg-sky-50 px-2 py-1 text-sky-700 text-xs"
+													>
+														[{diag.source}] {diag.message}
+														{diag.details ? ` ${diag.details}` : ""}
+													</li>
+												))}
+											</ul>
+										)}
+									</TabsContent>
+								</Tabs>
 							</div>
 						) : null}
 						{docSource.hasBlockingError ? (

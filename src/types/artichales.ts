@@ -195,6 +195,8 @@ export interface Page {
 
 export interface PaginatedPageTree {
 	target: "print";
+	pageLimit: number;
+	wasTruncated: boolean;
 	pageBox: {
 		width: string;
 		height: string;

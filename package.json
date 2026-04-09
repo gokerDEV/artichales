@@ -25,6 +25,7 @@
 		"gray-matter": "^4.0.3",
 		"katex": "^0.16.44",
 		"lucide-react": "^0.563.0",
+		"pagedjs": "^0.4.3",
 		"plotly.js-dist-min": "^3.4.0",
 		"radix-ui": "^1.4.3",
 		"react": "^19.2.0",
