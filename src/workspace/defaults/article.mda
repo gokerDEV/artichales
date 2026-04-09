@@ -1,0 +1,136 @@
+---
+title: "Artichales Markdown Showcase"
+authors:
+  - name: "Goker Cebeci"
+    affiliation: "KODKAFA"
+    orcid: "0000-0002-1825-0097"
+keywords:
+  - markdown
+  - scientific-writing
+  - reproducibility
+references:
+  - source: "./refs.bib"
+---
+
+:::abstract
+This document demonstrates core Markdown features, citation and reference tokens, code blocks, math equations, and custom Artichales directives.
+:::
+
+# Heading Level 1
+Regular paragraph with **bold**, *italic*, ~~strikethrough~~, and `inline code`.
+
+## Heading Level 2
+Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3).
+
+### Heading Level 3
+Citation tokens: [cite:knuth1984, goker] and [cite: knuth1984, goker].
+Cross refs: [ref:plot_1], [ref: plot_1], [ref:datatable_1].
+
+#### Heading Level 4
+- Unordered item
+- Another item
+  - Nested item
+
+##### Heading Level 5
+1. Ordered item one
+2. Ordered item two
+3. Ordered item three
+
+###### Heading Level 6
+- [x] Task item checked
+- [ ] Task item unchecked
+
+> Blockquote line one.
+> Blockquote line two with `inline` code.
+>
+> - Quote list item A
+> - Quote list item B
+
+---
+
+## Table Sample
+
+| Metric | Control | Treatment |
+| ------ | ------- | --------- |
+| Mean   | 0.24    | 0.39      |
+| Std    | 0.03    | 0.04      |
+
+## Code Sample
+
+~~~ts
+type Result = {
+  sample: string;
+  od: number;
+};
+
+const computeMean = (rows: Result[]): number => {
+  const total = rows.reduce((acc, row) => acc + row.od, 0);
+  return Number((total / rows.length).toFixed(3));
+};
+~~~
+
+~~~bash
+npm run lint
+npm run build
+~~~
+
+## Math Sample
+
+Inline math: $E = mc^2$ and $alpha + \beta = gamma$.
+
+Block equation:
+
+$$
+\nabla \cdot \vec{E} = \frac{\rho}{\varepsilon_0}
+$$
+
+$$
+\int_0^1 x^2\,dx = \frac{1}{3}
+$$
+
+## Custom Directives
+
+:::plotty[plot_1.json]
+caption: "Full-width ribbon plot in two-column print layout"
+span: page
+breakBefore: page
+breakAfter: page
+:::
+
+:::datatable[datatable_1.json]
+caption: "Column-flow datatable after full-width figure"
+span: column
+:::
+
+## Footnotes
+
+Footnote example [^note1].
+
+[^note1]: This is a sample footnote rendered by GFM.
+
+## Long Flow Demo
+
+This section intentionally extends content length to force a multi-page print preview.
+In two-column mode, text should continue in columns, break into the next page, and keep
+header/footer repeated with page numbering.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
+euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.

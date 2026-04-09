@@ -1,4 +1,4 @@
-import { Download, Monitor, Printer } from "lucide-react";
+import { Download, FileArchive, Monitor, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -17,6 +17,7 @@ export type PreviewHeaderProps = {
 	scale: number;
 	onScaleChange: (scale: number) => void;
 	onExportPdf: () => void;
+	onDownloadSource: () => void;
 };
 
 export function PreviewHeader({
@@ -25,6 +26,7 @@ export function PreviewHeader({
 	scale,
 	onScaleChange,
 	onExportPdf,
+	onDownloadSource,
 }: PreviewHeaderProps) {
 	return (
 		<div className="flex h-12 w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
@@ -69,6 +71,16 @@ export function PreviewHeader({
 				</Select>
 
 				<div className="mx-1 h-4 w-px bg-border" />
+
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-8 w-8 text-muted-foreground hover:text-foreground"
+					onClick={onDownloadSource}
+				>
+					<FileArchive className="h-4 w-4" />
+					<span className="sr-only">Download Source ZIP</span>
+				</Button>
 
 				<Button
 					variant="ghost"

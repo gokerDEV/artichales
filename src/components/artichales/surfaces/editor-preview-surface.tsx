@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 import { MdxEditor } from "@/components/artichales/editor/mdx-editor";
 import { FileTree } from "@/components/artichales/panels/file-tree";
 import {
@@ -8,6 +9,7 @@ import {
 import { CitationContext } from "@/components/artichales/plugins/citation.context";
 import { PrintPreview } from "@/components/artichales/preview/print/print-preview";
 import { WebPreview } from "@/components/artichales/preview/web/web-preview";
+import { Button } from "@/components/ui/button";
 import {
 	ResizableHandle,
 	ResizablePanel,
@@ -15,331 +17,18 @@ import {
 } from "@/components/ui/resizable";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
-import { CORE_ARTICLE_FILE, WORKSPACE_UI_STATE_KEY } from "@/lib/workspace";
-import { workspaceRepository } from "@/services/workspace.repository";
-
-const SAMPLE_MARKDOWN = `---
-title: "Artichales Markdown Showcase"
-authors:
-  - name: "Goker Cebeci"
-    affiliation: "KODKAFA"
-    orcid: "0000-0002-1825-0097"
-keywords:
-  - markdown
-  - scientific-writing
-  - reproducibility
-references:
-  - source: "./refs.bib"
----
-
-:::abstract
-This document demonstrates core Markdown features, citation and reference tokens, code blocks, math equations, and custom Artichales directives.
-:::
-
-# Heading Level 1
-Regular paragraph with **bold**, *italic*, ~~strikethrough~~, and \`inline code\`.
-
-## Heading Level 2
-Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3).
-
-### Heading Level 3
-Citation tokens: [cite:knuth1984, goker] and [cite: knuth1984, goker].
-Cross refs: [ref:plot_1], [ref: plot_1], [ref:datatable_1].
-
-#### Heading Level 4
-- Unordered item
-- Another item
-  - Nested item
-
-##### Heading Level 5
-1. Ordered item one
-2. Ordered item two
-3. Ordered item three
-
-###### Heading Level 6
-- [x] Task item checked
-- [ ] Task item unchecked
-
-> Blockquote line one.
-> Blockquote line two with \`inline\` code.
->
-> - Quote list item A
-> - Quote list item B
-
----
-
-## Table Sample
-
-| Metric | Control | Treatment |
-| ------ | ------- | --------- |
-| Mean   | 0.24    | 0.39      |
-| Std    | 0.03    | 0.04      |
-
-## Code Sample
-
-~~~ts
-type Result = {
-  sample: string;
-  od: number;
-};
-
-const computeMean = (rows: Result[]): number => {
-  const total = rows.reduce((acc, row) => acc + row.od, 0);
-  return Number((total / rows.length).toFixed(3));
-};
-~~~
-
-~~~bash
-npm run lint
-npm run build
-~~~
-
-## Math Sample
-
-Inline math: $E = mc^2$ and $alpha + \beta = gamma$.
-
-Block equation:
-
-$$
-\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}
-$$
-
-$$
-\\int_0^1 x^2\\,dx = \\frac{1}{3}
-$$
-
-## Custom Directives
-
-:::plotty[plot_1.json]
-caption: "Full-width ribbon plot in two-column print layout"
-span: page
-breakBefore: page
-breakAfter: page
-:::
-
-:::datatable[datatable_1.json]
-caption: "Column-flow datatable after full-width figure"
-span: column
-:::
-
-## Footnotes
-
-Footnote example [^note1].
-
-[^note1]: This is a sample footnote rendered by GFM.
-
-## Long Flow Demo
-
-This section intentionally extends content length to force a multi-page print preview.
-In two-column mode, text should continue in columns, break into the next page, and keep
-header/footer repeated with page numbering.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vehicula, dolor id
-euismod tincidunt, sem lorem volutpat velit, in faucibus massa arcu sit amet nibh.
-`;
-
-const SAMPLE_BIB = `@article{knuth1984,
-  author = {Donald E. Knuth},
-  title = {Literate Programming},
-  journal = {The Computer Journal},
-  year = {1984},
-  volume = {27},
-  number = {2},
-  pages = {97--111}
-}
-
-@inproceedings{goker,
-  author = {Goker Cebeci},
-  title = {Composable Markdown Pipelines for Academic Publishing},
-  booktitle = {Proceedings of the Open Writing Systems Workshop},
-  year = {2025},
-  pages = {12--21}
-}
-`;
-
-const SAMPLE_PLOT = `{
-  "data": [
-    {
-      "type": "surface",
-      "x": [1, 2, 3, 4, 5, 6],
-      "y": [400, 450, 500, 550, 600, 650],
-      "z": [
-        [0.2, 0.25, 0.21, 0.18, 0.14, 0.1],
-        [0.28, 0.34, 0.3, 0.24, 0.2, 0.16],
-        [0.35, 0.42, 0.37, 0.3, 0.24, 0.2],
-        [0.31, 0.39, 0.34, 0.28, 0.23, 0.19],
-        [0.26, 0.33, 0.29, 0.23, 0.19, 0.15],
-        [0.2, 0.27, 0.23, 0.19, 0.15, 0.12]
-      ],
-      "colorscale": "Viridis",
-      "showscale": true
-    }
-  ],
-  "layout": {
-    "showlegend": false,
-    "autosize": true,
-    "width": 600,
-    "height": 600,
-    "scene": {
-      "xaxis": { "title": { "text": "Sample #" } },
-      "yaxis": { "title": { "text": "Wavelength" } },
-      "zaxis": { "title": { "text": "OD" } }
-    }
-  },
-  "config": {
-    "displayModeBar": true
-  }
-}
-`;
-
-const SAMPLE_DATATABLE = `{
-  "columns": [
-    { "key": "sample", "label": "Sample" },
-    { "key": "condition", "label": "Condition" },
-    { "key": "mean_od", "label": "Mean OD" },
-    { "key": "std_od", "label": "Std Dev" }
-  ],
-  "rows": [
-    { "sample": "A1", "condition": "Control", "mean_od": 0.21, "std_od": 0.02 },
-    { "sample": "A2", "condition": "Control", "mean_od": 0.24, "std_od": 0.03 },
-    { "sample": "B1", "condition": "Treatment", "mean_od": 0.39, "std_od": 0.04 },
-    { "sample": "B2", "condition": "Treatment", "mean_od": 0.42, "std_od": 0.04 },
-    { "sample": "C1", "condition": "Recovery", "mean_od": 0.33, "std_od": 0.03 },
-    { "sample": "C2", "condition": "Recovery", "mean_od": 0.30, "std_od": 0.03 }
-  ]
-}
-`;
-
-const SAMPLE_TEMPLATE = `{
-  "version": 1,
-  "journal": {
-    "id": "demo-journal",
-    "name": "Demo Journal"
-  },
-  "default": {
-    "typography": {
-      "fontFamily": {
-        "body": "Source Serif 4",
-        "heading": "Inter",
-        "mono": "JetBrains Mono"
-      },
-      "fontSize": {
-        "body": "11pt",
-        "h1": "20pt",
-        "h2": "15pt",
-        "h3": "12pt"
-      },
-      "lineHeight": 1.55,
-      "textAlign": "justify"
-    },
-    "colors": {
-      "text": "#111111",
-      "muted": "#666666",
-      "border": "#d1d5db",
-      "link": "#0f766e"
-    },
-    "components": {
-      "figure": {
-        "captionPosition": "bottom",
-        "defaultSpan": "column",
-        "spacingBefore": "0",
-        "spacingAfter": "0"
-      },
-      "table": {
-        "captionPosition": "bottom",
-        "defaultSpan": "column",
-        "spacingBefore": "0",
-        "spacingAfter": "0"
-      }
-    },
-    "utilities": {
-      "cite": "cite",
-      "ref": "ref",
-      "plot": "plotty",
-      "table": "datatable"
-    },
-    "citationStyle": "numeric"
-  },
-  "web": {
-    "layout": {
-      "containerWidth": "800px",
-      "containerClass": "shrink-0 rounded-xl border border-border bg-card shadow-sm",
-      "containerPaddingClass": "p-12 md:p-16",
-      "contentClass": "max-w-none"
-    }
-  },
-  "print": {
-    "page": {
-      "size": "A4",
-      "orientation": "portrait",
-      "margin": {
-        "top": "24mm",
-        "right": "20mm",
-        "bottom": "24mm",
-        "left": "20mm"
-      }
-    },
-    "layout": {
-      "firstPageColumns": 1,
-      "defaultPageColumns": 2,
-      "columnGap": "7mm"
-    },
-    "titleBlock": {
-      "enabled": true,
-      "align": "center",
-      "showAuthors": true,
-      "showAffiliations": true,
-      "showKeywords": true,
-      "spacingAfter": "12mm"
-    },
-    "headerFooter": {
-      "enabled": true,
-      "firstPage": {
-        "header": {
-          "left": "",
-          "center": "",
-          "right": "{title}"
-        },
-        "footer": {
-          "left": "",
-          "center": "{pageNumber}",
-          "right": ""
-        }
-      },
-      "defaultPage": {
-        "header": {
-          "left": "",
-          "center": "",
-          "right": "{title}"
-        },
-        "footer": {
-          "left": "",
-          "center": "{pageNumber}",
-          "right": ""
-        }
-      }
-    }
-  }
-}
-`;
+import {
+	CORE_ARTICLE_FILE,
+	CORE_TEMPLATE_FILE,
+	isCoreWorkspaceFile,
+	WORKSPACE_UI_STATE_KEY,
+} from "@/lib/workspace";
+import { DEFAULT_WORKSPACE_FILES } from "@/lib/workspace-default-files";
+import { createZipFromWorkspaceFiles } from "@/lib/zip";
+import {
+	validateWorkspaceAsset,
+	workspaceRepository,
+} from "@/services/workspace.repository";
 
 type WorkspaceUiState = {
 	activeFile?: string;
@@ -347,13 +36,35 @@ type WorkspaceUiState = {
 	scale?: number;
 };
 
-const DEFAULT_FILES: Record<string, string> = {
-	"article.mda": SAMPLE_MARKDOWN,
-	"references.bib": SAMPLE_BIB,
-	"template.json": SAMPLE_TEMPLATE,
-	"plot_1.json": SAMPLE_PLOT,
-	"datatable_1.json": SAMPLE_DATATABLE,
-};
+function getAssetSizeLimitFromTemplate(
+	files: Record<string, string>,
+): number | undefined {
+	try {
+		const parsed = JSON.parse(files[CORE_TEMPLATE_FILE] || "{}") as {
+			default?: { assets?: { maxFileSize?: number } };
+		};
+		const maxFileSize = parsed.default?.assets?.maxFileSize;
+		return typeof maxFileSize === "number" && Number.isFinite(maxFileSize)
+			? maxFileSize
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+async function readAssetContent(file: File): Promise<string> {
+	const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+	if (extension === ".json" || extension === ".svg") {
+		return file.text();
+	}
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onerror = () =>
+			reject(new Error(`Unable to read file: ${file.name}`));
+		reader.onload = () => resolve(String(reader.result || ""));
+		reader.readAsDataURL(file);
+	});
+}
 
 const TypedResizableGroup = ResizablePanelGroup as unknown as React.FC<
 	React.ComponentProps<typeof ResizablePanelGroup> & {
@@ -363,14 +74,17 @@ const TypedResizableGroup = ResizablePanelGroup as unknown as React.FC<
 >;
 
 export function EditorPreviewSurface() {
-	const [files, setFiles] =
-		React.useState<Record<string, string>>(DEFAULT_FILES);
+	const [files, setFiles] = React.useState<Record<string, string>>(
+		DEFAULT_WORKSPACE_FILES,
+	);
 	const [activeFile, setActiveFile] = React.useState(CORE_ARTICLE_FILE);
 	const [target, setTarget] = React.useState<PreviewTarget>("print");
 	const [scale, setScale] = React.useState(100);
 	const [workspaceLoading, setWorkspaceLoading] = React.useState(true);
 	const [saveError, setSaveError] = React.useState<string | null>(null);
+	const [isDraggingAssets, setIsDraggingAssets] = React.useState(false);
 	const pendingPdfExportRef = React.useRef(false);
+	const assetInputRef = React.useRef<HTMLInputElement | null>(null);
 	const hasLoadedWorkspaceRef = React.useRef(false);
 	const isHydratingRef = React.useRef(true);
 
@@ -378,7 +92,9 @@ export function EditorPreviewSurface() {
 		let cancelled = false;
 		const loadWorkspace = async () => {
 			try {
-				const loaded = await workspaceRepository.loadWorkspace(DEFAULT_FILES);
+				const loaded = await workspaceRepository.loadWorkspace(
+					DEFAULT_WORKSPACE_FILES,
+				);
 				if (cancelled) return;
 				setFiles(loaded);
 
@@ -450,6 +166,108 @@ export function EditorPreviewSurface() {
 		setFiles((prev) => ({ ...prev, [activeFile]: content }));
 	};
 
+	const maxAssetFileSize = React.useMemo(
+		() => getAssetSizeLimitFromTemplate(files),
+		[files],
+	);
+
+	const addAssetsToWorkspace = React.useCallback(
+		async (newFiles: FileList | File[]) => {
+			const incoming = Array.from(newFiles);
+			if (incoming.length === 0) return;
+
+			let nextFiles = files;
+			for (const file of incoming) {
+				const validationError = validateWorkspaceAsset(
+					file.name,
+					file.size,
+					maxAssetFileSize,
+				);
+				if (validationError) {
+					toast.error(`${file.name}: ${validationError}`);
+					continue;
+				}
+				if (isCoreWorkspaceFile(file.name)) {
+					toast.error(
+						`Cannot add or replace protected core file: ${file.name}`,
+					);
+					continue;
+				}
+				const content = await readAssetContent(file);
+				nextFiles = { ...nextFiles, [file.name]: content };
+			}
+
+			if (nextFiles !== files) {
+				setFiles(nextFiles);
+				toast.success("Asset files were added to the workspace.");
+			}
+		},
+		[files, maxAssetFileSize],
+	);
+
+	const handleAddAssetsClick = React.useCallback(() => {
+		assetInputRef.current?.click();
+	}, []);
+
+	const handleAssetInputChange = React.useCallback(
+		(event: React.ChangeEvent<HTMLInputElement>) => {
+			const selectedFiles = event.target.files;
+			if (selectedFiles) {
+				addAssetsToWorkspace(selectedFiles).catch((error) => {
+					console.error(error);
+					toast.error("Failed to add one or more assets.");
+				});
+			}
+			event.target.value = "";
+		},
+		[addAssetsToWorkspace],
+	);
+
+	const handleRenameAsset = React.useCallback(
+		(fileName: string) => {
+			if (isCoreWorkspaceFile(fileName)) return;
+			const proposed = window.prompt("Rename asset file", fileName);
+			if (!proposed || proposed === fileName) return;
+			if (isCoreWorkspaceFile(proposed)) {
+				toast.error("Cannot rename an asset to a protected core filename.");
+				return;
+			}
+			if (files[proposed]) {
+				toast.error("A file with this name already exists.");
+				return;
+			}
+			const existingContent = files[fileName];
+			if (typeof existingContent !== "string") return;
+
+			setFiles((prev) => {
+				const updated = { ...prev, [proposed]: existingContent };
+				delete updated[fileName];
+				return updated;
+			});
+			if (activeFile === fileName) {
+				setActiveFile(proposed);
+			}
+		},
+		[activeFile, files],
+	);
+
+	const handleDeleteAsset = React.useCallback(
+		(fileName: string) => {
+			if (isCoreWorkspaceFile(fileName)) return;
+			const confirmed = window.confirm(`Delete asset "${fileName}"?`);
+			if (!confirmed) return;
+			setFiles((prev) => {
+				const updated = { ...prev };
+				delete updated[fileName];
+				return updated;
+			});
+			if (activeFile === fileName) {
+				setActiveFile(CORE_ARTICLE_FILE);
+			}
+		},
+		[activeFile],
+	);
+
 	const savedSizes = settings.ux?.editorPanelSizes || [15, 40, 45];
 	const sizesRef = React.useRef<number[]>([...savedSizes]);
 
@@ -459,10 +277,6 @@ export function EditorPreviewSurface() {
 			sizesRef.current[index] = size;
 			if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
 			layoutTimerRef.current = setTimeout(() => {
-				console.log(
-					"🟢 [Artichales] Valid Resize Captured! Saving =>",
-					sizesRef.current,
-				);
 				updateSettings({
 					ux: { ...settings.ux, editorPanelSizes: [...sizesRef.current] },
 				});
@@ -498,6 +312,48 @@ export function EditorPreviewSurface() {
 		pendingPdfExportRef.current = true;
 		setTarget("print");
 	}, [target, runPdfExport]);
+
+	const handleDownloadSource = React.useCallback(() => {
+		try {
+			const zipBlob = createZipFromWorkspaceFiles(files);
+			const url = URL.createObjectURL(zipBlob);
+			const anchor = globalThis.document.createElement("a");
+			anchor.href = url;
+			anchor.download = "source.zip";
+			globalThis.document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+			URL.revokeObjectURL(url);
+		} catch (error) {
+			console.error(error);
+			toast.error("Failed to create source.zip");
+		}
+	}, [files]);
+
+	const handleTreeDragOver = React.useCallback((event: React.DragEvent) => {
+		event.preventDefault();
+		setIsDraggingAssets(true);
+	}, []);
+
+	const handleTreeDragLeave = React.useCallback((event: React.DragEvent) => {
+		if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+			setIsDraggingAssets(false);
+		}
+	}, []);
+
+	const handleTreeDrop = React.useCallback(
+		(event: React.DragEvent) => {
+			event.preventDefault();
+			setIsDraggingAssets(false);
+			const droppedFiles = event.dataTransfer.files;
+			if (!droppedFiles || droppedFiles.length === 0) return;
+			addAssetsToWorkspace(droppedFiles).catch((error) => {
+				console.error(error);
+				toast.error("Failed to import dropped asset files.");
+			});
+		},
+		[addAssetsToWorkspace],
+	);
 
 	React.useEffect(() => {
 		const resetPrintState = () => {
@@ -547,17 +403,53 @@ export function EditorPreviewSurface() {
 					className="flex flex-col p-2"
 					onResize={(size) => handleResize(0, size)}
 				>
+					<input
+						ref={assetInputRef}
+						type="file"
+						multiple
+						accept=".json,.svg,.png,.jpg,.jpeg,.gif"
+						className="hidden"
+						onChange={handleAssetInputChange}
+					/>
 					{isFileSwitchLocked ? (
 						<div className="mb-2 rounded-md border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
 							{blockingReason}
 						</div>
 					) : null}
-					<FileTree
-						activeFile={activeFile}
-						files={Object.keys(files)}
-						onSelectFile={handleSelectFile}
-						disableFileSwitch={isFileSwitchLocked}
-					/>
+					<div className="mb-2 flex items-center gap-2">
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							className="h-7 px-2 text-xs"
+							onClick={handleAddAssetsClick}
+						>
+							Add Asset
+						</Button>
+						<span className="text-[11px] text-muted-foreground">
+							Drop files here
+						</span>
+					</div>
+					<section
+						aria-label="Workspace assets drop zone"
+						className={
+							isDraggingAssets
+								? "rounded-md border border-primary/50 border-dashed bg-primary/5"
+								: "rounded-md border border-transparent"
+						}
+						onDragOver={handleTreeDragOver}
+						onDragLeave={handleTreeDragLeave}
+						onDrop={handleTreeDrop}
+					>
+						<FileTree
+							activeFile={activeFile}
+							files={Object.keys(files)}
+							onSelectFile={handleSelectFile}
+							disableFileSwitch={isFileSwitchLocked}
+							onRenameAsset={handleRenameAsset}
+							onDeleteAsset={handleDeleteAsset}
+						/>
+					</section>
 				</ResizablePanel>
 				<ResizableHandle withHandle />
 				<ResizablePanel
@@ -585,6 +477,7 @@ export function EditorPreviewSurface() {
 						scale={scale}
 						onScaleChange={setScale}
 						onExportPdf={handleExportPdf}
+						onDownloadSource={handleDownloadSource}
 					/>
 					<div className="relative grow overflow-hidden">
 						{saveError ? (
