@@ -18,20 +18,18 @@ export function ReferencesCorePlugin({
 
 	return (
 		<div
-			className={cn(
-				"mt-8 border-border border-t",
-				isPrint ? "border-neutral-200 pt-6" : "pt-8",
-				className,
-			)}
+			className={cn("mt-8 border-t pt-8", isPrint ? "pt-6" : "", className)}
+			style={{ borderColor: "var(--ac-border-color)" }}
 		>
 			<h2
 				className={cn(
 					"font-semibold",
-					isPrint ? "mb-4 text-sm" : "mb-6 text-foreground text-xl",
+					isPrint ? "mb-4 text-sm" : "mb-6 text-xl",
 				)}
-				style={
-					isPrint ? { fontFamily: docStyle.fontFamily?.heading } : undefined
-				}
+				style={{
+					color: "var(--ac-text-color)",
+					fontFamily: docStyle.fontFamily?.heading,
+				}}
 			>
 				{"References"}
 			</h2>
@@ -44,14 +42,13 @@ export function ReferencesCorePlugin({
 							"flex gap-4",
 							isPrint
 								? "text-[10px] leading-relaxed"
-								: "text-muted-foreground text-sm leading-relaxed",
+								: "text-sm leading-relaxed",
 						)}
+						style={{ color: "var(--ac-muted-color)" }}
 					>
 						<span
-							className={cn(
-								"shrink-0 font-medium",
-								isPrint ? "text-neutral-500" : "text-foreground",
-							)}
+							className="shrink-0 font-medium"
+							style={{ color: "var(--ac-text-color)" }}
 						>
 							[{idx + 1}]
 						</span>

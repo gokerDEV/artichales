@@ -240,7 +240,7 @@ export interface RenderPluginContext extends PluginContextBase {
   document: unknown;
   target: RenderTarget;
   tree: RenderTreeNode[];
-  templateName: string;
+  template: unknown;
 }
 ```
 

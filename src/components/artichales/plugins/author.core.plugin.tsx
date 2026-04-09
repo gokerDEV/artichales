@@ -8,6 +8,12 @@ export interface Author {
 	url?: string;
 }
 
+type AuthorDocumentStyle = {
+	fontFamily?: {
+		body?: string;
+	};
+};
+
 export function AuthorCorePlugin({
 	author,
 	target,
@@ -18,8 +24,7 @@ export function AuthorCorePlugin({
 	author: Author;
 	target: "web" | "print";
 	className?: string;
-	// biome-ignore lint/suspicious/noExplicitAny: dynamic template schema
-	docStyle?: Record<string, any>;
+	docStyle?: AuthorDocumentStyle;
 	showAffiliations?: boolean;
 }) {
 	const isPrint = target === "print";
@@ -27,8 +32,11 @@ export function AuthorCorePlugin({
 	return (
 		<div className={cn("flex flex-col", className)}>
 			<span
-				className={cn("font-medium", isPrint ? "" : "text-foreground")}
-				style={isPrint ? { fontFamily: docStyle?.fontFamily?.body } : undefined}
+				className="font-medium"
+				style={{
+					color: "var(--ac-text-color)",
+					fontFamily: docStyle?.fontFamily?.body,
+				}}
 			>
 				{author.name}
 				{author.orcid && (
@@ -36,10 +44,8 @@ export function AuthorCorePlugin({
 						href={`https://orcid.org/${author.orcid}`}
 						target="_blank"
 						rel="noreferrer"
-						className={cn(
-							"ml-1 hover:underline",
-							isPrint ? "text-emerald-600" : "text-emerald-500",
-						)}
+						className={cn("ml-1 hover:underline", isPrint ? "opacity-80" : "")}
+						style={{ color: "var(--ac-link-color)" }}
 					>
 						<span className="sr-only">ORCID</span>
 						<svg
@@ -57,10 +63,11 @@ export function AuthorCorePlugin({
 			</span>
 			{showAffiliations !== false && author.affiliation && (
 				<span
-					className={cn(
-						"whitespace-nowrap text-sm",
-						isPrint ? "opacity-80" : "text-muted-foreground",
-					)}
+					className="whitespace-nowrap text-sm"
+					style={{
+						color: isPrint ? "var(--ac-text-color)" : "var(--ac-muted-color)",
+						opacity: isPrint ? 0.8 : 1,
+					}}
 				>
 					{author.affiliation}
 				</span>
@@ -68,10 +75,8 @@ export function AuthorCorePlugin({
 			{author.email && (
 				<a
 					href={`mailto:${author.email}`}
-					className={cn(
-						"text-xs hover:underline",
-						isPrint ? "text-neutral-500" : "text-muted-foreground",
-					)}
+					className="text-xs hover:underline"
+					style={{ color: "var(--ac-muted-color)" }}
 				>
 					{author.email}
 				</a>

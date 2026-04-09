@@ -206,7 +206,7 @@ export function DatatableRenderBlock({
 			}}
 		>
 			{caption && captionPosition === "top" ? (
-				<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+				<p className="title mt-2 text-center text-xs italic">
 					{tableNo ? (
 						<span className="label">{`Table ${tableNo}. `}</span>
 					) : null}
@@ -239,7 +239,7 @@ export function DatatableRenderBlock({
 				/>
 			</div>
 			{caption && captionPosition === "bottom" ? (
-				<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+				<p className="title mt-2 text-center text-xs italic">
 					{tableNo ? (
 						<span className="label">{`Table ${tableNo}. `}</span>
 					) : null}

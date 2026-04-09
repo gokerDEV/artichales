@@ -1,3 +1,4 @@
+import type React from "react";
 import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
 import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
 import type { DocumentSource } from "@/hooks/use-document";
@@ -13,6 +14,32 @@ type DocumentRenderContentProps = {
 	articleClassName?: string;
 };
 
+type CssVarStyle = React.CSSProperties & Record<string, string>;
+
+function buildTemplateCssVars(document: DocumentSource): CssVarStyle {
+	const fontFamily = document.template.document?.fontFamily;
+	const fontSize = document.template.document?.fontSize;
+	const colors = document.template.colors;
+	const utilities = document.template.utilities || {};
+
+	return {
+		"--ac-font-body": fontFamily?.body || "serif",
+		"--ac-font-heading": fontFamily?.heading || "sans-serif",
+		"--ac-font-mono": fontFamily?.mono || "monospace",
+		"--ac-font-size-body": fontSize?.body || "1rem",
+		"--ac-font-size-h1": fontSize?.h1 || "2rem",
+		"--ac-font-size-h2": fontSize?.h2 || "1.5rem",
+		"--ac-font-size-h3": fontSize?.h3 || "1.25rem",
+		"--ac-line-height": String(document.template.document?.lineHeight || 1.6),
+		"--ac-text-color": colors?.text || "#111111",
+		"--ac-muted-color": colors?.muted || "#666666",
+		"--ac-border-color": colors?.border || "#d1d5db",
+		"--ac-link-color": colors?.link || "#0f766e",
+		"--ac-cite-class": utilities.cite || "cite",
+		"--ac-ref-class": utilities.ref || "ref",
+	};
+}
+
 export function DocumentRenderContent({
 	document,
 	target,
@@ -20,7 +47,11 @@ export function DocumentRenderContent({
 	articleClassName,
 }: DocumentRenderContentProps) {
 	return (
-		<div id="artichales" className={cn(`artichales artichales--${target}`)}>
+		<div
+			id="artichales"
+			className={cn(`artichales artichales--${target}`)}
+			style={buildTemplateCssVars(document)}
+		>
 			<TitleCorePlugin document={document} target={target} />
 			<article className={cn(contentClassName, articleClassName)}>
 				<MarkdownContent
@@ -28,6 +59,7 @@ export function DocumentRenderContent({
 					plotFiles={document.plots}
 					target={target}
 					templateDefaults={{ components: document.template.componentDefaults }}
+					utilityClasses={document.template.utilities}
 				/>
 			</article>
 			<ReferencesCorePlugin document={document} target={target} />

@@ -27,7 +27,6 @@ keywords:
   - scientific-writing
   - reproducibility
 references:
-  - style: "ieee"
   - source: "./refs.bib"
 ---
 
@@ -459,7 +458,11 @@ export function EditorPreviewSurface() {
 
 	return (
 		<CitationContext.Provider
-			value={{ entries: docSource.citations, style: docSource.citationStyle }}
+			value={{
+				entries: docSource.citations,
+				style: docSource.citationStyle,
+				citeClassName: docSource.template.utilities?.cite || "cite",
+			}}
 		>
 			<TypedResizableGroup
 				direction="horizontal"
@@ -505,7 +508,24 @@ export function EditorPreviewSurface() {
 						onExportPdf={handleExportPdf}
 					/>
 					<div className="relative grow overflow-hidden">
-						{target === "web" ? (
+						{docSource.templateDiagnostics.length > 0 ? (
+							<div
+								className={`border-b p-3 text-sm ${docSource.hasTemplateError ? "border-red-300 bg-red-50 text-red-700" : "border-amber-300 bg-amber-50 text-amber-700"}`}
+							>
+								{docSource.templateDiagnostics.map((diag) => (
+									<p key={`${diag.code}:${diag.message}`}>
+										{diag.message}
+										{diag.details ? ` ${diag.details}` : ""}
+									</p>
+								))}
+							</div>
+						) : null}
+						{docSource.hasTemplateError ? (
+							<div className="flex h-full items-center justify-center p-6 text-center text-muted-foreground text-sm">
+								Invalid `template.json` blocks preview rendering until the
+								template is fixed.
+							</div>
+						) : target === "web" ? (
 							<WebPreview document={docSource} scale={scale} />
 						) : (
 							<PrintPreview document={docSource} scale={scale} />

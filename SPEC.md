@@ -36,6 +36,7 @@ Outputs:
 - web preview
 - paginated print preview
 - PDF export from the same paginated print structure
+- explicit template diagnostics in preview UI when `template.json` is invalid
 
 ## 4. Template Architecture
 
@@ -83,12 +84,14 @@ Web preview overrides:
 
 1. Parse markdown + frontmatter.
 2. Parse bibliography.
-3. Parse and validate `template.json`.
+3. Parse and validate `template.json`, returning diagnostics on failure.
 4. Resolve template by merging shared defaults with target-specific config.
 5. Run parser/render plugins from semantic nodes + resolved template values.
 6. Render target:
    - web: standard preview flow
    - print: paginated page model
+
+If `template.json` is invalid, preview is blocked with visible diagnostics.
 
 ## 6. Print Pagination Model
 
@@ -121,6 +124,7 @@ Rules:
 - Markdown remains canonical source of content.
 - Template-driven defaults are preferred over author-authored layout commands.
 - Node-level overrides are supported as optional hints, not required for baseline layout.
+- Citation style is resolved from `template.json`; frontmatter does not override template style.
 
 ## 9. Non-goals
 

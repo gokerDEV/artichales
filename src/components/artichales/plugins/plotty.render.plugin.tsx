@@ -355,7 +355,7 @@ export function createDirectiveDivRender(
 				}}
 			>
 				{captionText && captionPosition === "top" ? (
-					<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+					<p className="title mt-2 text-center text-xs italic">
 						{figureNo ? (
 							<span className="label">{`Figure ${figureNo}. `}</span>
 						) : null}
@@ -364,7 +364,7 @@ export function createDirectiveDivRender(
 				) : null}
 				<PlottyChart plot={resolvedPlot} width={width} height={height} />
 				{captionText && captionPosition === "bottom" ? (
-					<p className="title mt-2 text-center text-neutral-600 text-xs italic">
+					<p className="title mt-2 text-center text-xs italic">
 						{figureNo ? (
 							<span className="label">{`Figure ${figureNo}. `}</span>
 						) : null}

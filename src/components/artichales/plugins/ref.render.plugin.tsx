@@ -38,7 +38,10 @@ function normalizeRefId(raw: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
-export function createRefRender(refIndexById: RefIndexMap): Components["span"] {
+export function createRefRender(
+	refIndexById: RefIndexMap,
+	refClassName: string,
+): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
 		const rawRefId =
 			node?.properties?.dataRefId || node?.properties?.["data-ref-id"] || "";
@@ -58,7 +61,11 @@ export function createRefRender(refIndexById: RefIndexMap): Components["span"] {
 		return (
 			<span {...rest}>
 				{hasRefId ? (
-					<a href={href} className="ref" title={`Go to ${normalizedRefId}`}>
+					<a
+						href={href}
+						className={refClassName}
+						title={`Go to ${normalizedRefId}`}
+					>
 						{label || children}
 					</a>
 				) : (

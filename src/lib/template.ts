@@ -141,6 +141,16 @@ export const TemplateFileSchema = z.object({
 });
 
 export type TemplateFile = z.infer<typeof TemplateFileSchema>;
+export type TemplateDiagnostic = {
+	code:
+		| "template-missing"
+		| "template-json-invalid"
+		| "template-schema-invalid";
+	severity: "error" | "warning";
+	message: string;
+	details?: string;
+};
+
 export type TemplateFileResolved = {
 	version: number;
 	journal: { id: string; name: string };
@@ -298,6 +308,8 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 		},
 	},
 };
+
+const TEMPLATE_FALLBACK_MESSAGE = "Using internal fallback template defaults.";
 
 function mergeTemplateWithDefaults(
 	overrides: TemplateFile,
@@ -522,14 +534,66 @@ function mergeTemplateWithDefaults(
 	};
 }
 
-export function parseTemplateFile(
-	raw: string | undefined,
-): TemplateFileResolved {
-	if (!raw) return DEFAULT_TEMPLATE_FILE;
-	try {
-		const parsed = JSON.parse(raw) as unknown;
-		return mergeTemplateWithDefaults(TemplateFileSchema.parse(parsed));
-	} catch {
-		return DEFAULT_TEMPLATE_FILE;
+export function resolveTemplateFile(raw: string | undefined): {
+	template: TemplateFileResolved;
+	diagnostics: TemplateDiagnostic[];
+	hasError: boolean;
+} {
+	if (!raw || raw.trim() === "") {
+		return {
+			template: DEFAULT_TEMPLATE_FILE,
+			diagnostics: [
+				{
+					code: "template-missing",
+					severity: "error",
+					message: "`template.json` is missing or empty.",
+					details: TEMPLATE_FALLBACK_MESSAGE,
+				},
+			],
+			hasError: true,
+		};
 	}
+
+	let parsedJson: unknown;
+	try {
+		parsedJson = JSON.parse(raw);
+	} catch (error) {
+		const details = error instanceof Error ? error.message : undefined;
+		return {
+			template: DEFAULT_TEMPLATE_FILE,
+			diagnostics: [
+				{
+					code: "template-json-invalid",
+					severity: "error",
+					message: "`template.json` is not valid JSON.",
+					details: details
+						? `${details}. ${TEMPLATE_FALLBACK_MESSAGE}`
+						: undefined,
+				},
+			],
+			hasError: true,
+		};
+	}
+
+	const parsed = TemplateFileSchema.safeParse(parsedJson);
+	if (!parsed.success) {
+		return {
+			template: DEFAULT_TEMPLATE_FILE,
+			diagnostics: [
+				{
+					code: "template-schema-invalid",
+					severity: "error",
+					message: "`template.json` does not match the expected schema.",
+					details: `${parsed.error.issues[0]?.message || "Unknown schema error"}. ${TEMPLATE_FALLBACK_MESSAGE}`,
+				},
+			],
+			hasError: true,
+		};
+	}
+
+	return {
+		template: mergeTemplateWithDefaults(parsed.data),
+		diagnostics: [],
+		hasError: false,
+	};
 }

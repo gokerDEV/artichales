@@ -49,7 +49,7 @@ export const CitationRender: Components["cite"] = ({
 	className,
 	...rest
 }) => {
-	const { entries, style } = useCitations();
+	const { entries, style, citeClassName } = useCitations();
 
 	// Safely retrieve IDs passed from the parser
 	const idsString =
@@ -83,7 +83,7 @@ export const CitationRender: Components["cite"] = ({
 	return (
 		<a
 			href={href}
-			className={cn("cite", className)}
+			className={cn(citeClassName, className)}
 			title={ids.length > 0 ? `Citation: ${ids.join(", ")}` : "Citation"}
 		>
 			<cite {...rest}>[{labels ? labels : children}]</cite>

@@ -126,20 +126,61 @@
 }
 
 @layer components {
+  .artichales {
+    color: var(--ac-text-color);
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-font-size-body);
+    line-height: var(--ac-line-height);
+  }
+
+  .artichales h1,
+  .artichales h2,
+  .artichales h3,
+  .artichales h4,
+  .artichales h5,
+  .artichales h6 {
+    color: var(--ac-text-color);
+    font-family: var(--ac-font-heading);
+  }
+
+  .artichales code,
+  .artichales pre,
+  .artichales pre code {
+    font-family: var(--ac-font-mono);
+  }
+
   .artichales--web {
-    @apply prose prose-slate dark:prose-invert max-w-none;
+    @apply prose max-w-none;
+    color: var(--ac-text-color);
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-font-size-body);
+    line-height: var(--ac-line-height);
+    --tw-prose-body: var(--ac-text-color);
+    --tw-prose-headings: var(--ac-text-color);
+    --tw-prose-links: var(--ac-link-color);
+    --tw-prose-bold: var(--ac-text-color);
+    --tw-prose-counters: var(--ac-muted-color);
+    --tw-prose-bullets: var(--ac-muted-color);
+    --tw-prose-quotes: var(--ac-text-color);
+    --tw-prose-quote-borders: var(--ac-border-color);
+    --tw-prose-hr: var(--ac-border-color);
+    --tw-prose-th-borders: var(--ac-border-color);
+    --tw-prose-td-borders: var(--ac-border-color);
   }
 
   .artichales--web h1 {
     @apply mt-8 mb-4 font-bold text-3xl tracking-tight;
+    font-size: var(--ac-font-size-h1);
   }
 
   .artichales--web h2 {
     @apply mt-7 mb-3 font-semibold text-2xl tracking-tight;
+    font-size: var(--ac-font-size-h2);
   }
 
   .artichales--web h3 {
     @apply mt-6 mb-2.5 font-semibold text-xl tracking-tight;
+    font-size: var(--ac-font-size-h3);
   }
 
   .artichales--web h4,
@@ -153,7 +194,8 @@
   }
 
   .artichales--web p > strong {
-    @apply font-semibold text-foreground;
+    @apply font-semibold;
+    color: var(--ac-text-color);
   }
 
   .artichales--web ul {
@@ -169,27 +211,36 @@
   }
 
   .artichales--web blockquote {
-    @apply border-l-4 border-emerald-500 bg-emerald-50/40 py-1 pr-4 pl-4 italic dark:bg-emerald-950/20;
+    @apply border-l-4 py-1 pr-4 pl-4 italic;
+    border-color: var(--ac-link-color);
+    background: color-mix(in oklab, var(--ac-link-color) 8%, white);
+    color: var(--ac-muted-color);
   }
 
   .artichales--web hr {
-    @apply my-8 border-border;
+    @apply my-8;
+    border-color: var(--ac-border-color);
   }
 
   .artichales--web a {
-    @apply text-emerald-700 underline-offset-4 hover:text-emerald-600 hover:underline dark:text-emerald-400;
+    @apply underline-offset-4 hover:underline;
+    color: var(--ac-link-color);
   }
 
   .artichales--web a.cite {
-    @apply rounded-sm border-b border-emerald-500 px-0.5 no-underline;
+    @apply rounded-sm border-b px-0.5 no-underline;
+    border-color: var(--ac-link-color);
   }
 
   .artichales--web a.ref {
-    @apply rounded-sm border-b border-sky-500 px-0.5 no-underline;
+    @apply rounded-sm border-b px-0.5 no-underline;
+    border-color: var(--ac-link-color);
   }
 
   .artichales--web pre {
-    @apply overflow-x-auto rounded-lg border border-border bg-muted/30 p-4;
+    @apply overflow-x-auto rounded-lg border p-4;
+    border-color: var(--ac-border-color);
+    background: color-mix(in oklab, var(--ac-border-color) 18%, white);
   }
 
   .artichales--web pre > code {
@@ -197,7 +248,8 @@
   }
 
   .artichales--web code {
-    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em];
+    @apply rounded px-1.5 py-0.5 font-mono text-[0.85em];
+    background: color-mix(in oklab, var(--ac-border-color) 20%, white);
   }
 
   .artichales--web table {
@@ -205,11 +257,14 @@
   }
 
   .artichales--web th {
-    @apply border-b border-border bg-muted/60 px-3 py-2 text-left font-semibold;
+    @apply border-b px-3 py-2 text-left font-semibold;
+    border-color: var(--ac-border-color);
+    background: color-mix(in oklab, var(--ac-border-color) 20%, white);
   }
 
   .artichales--web td {
-    @apply border-b border-border px-3 py-2 align-top;
+    @apply border-b px-3 py-2 align-top;
+    border-color: var(--ac-border-color);
   }
 
   .artichales--web .katex-display {
@@ -229,6 +284,10 @@
   .artichales--web .plotty > .title > .label,
   .artichales--web .datatable > .title > .label {
     @apply font-semibold;
+  }
+
+  .artichales--web .title {
+    color: var(--ac-muted-color);
   }
 
   .artichales--print {

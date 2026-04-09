@@ -62,21 +62,20 @@ export function TitleCorePlugin({
 				titleAlignClass,
 				className,
 			)}
-			style={isPrint ? { marginBottom: titleBlock.spacingAfter } : undefined}
+			style={{
+				marginBottom: isPrint ? titleBlock.spacingAfter : undefined,
+			}}
 		>
 			<h1
 				className={cn(
 					"font-bold leading-tight",
-					isPrint ? "text-2xl" : "text-3xl text-foreground",
+					isPrint ? "text-2xl" : "text-3xl",
 				)}
-				style={
-					isPrint
-						? {
-								fontFamily: docStyle.fontFamily?.heading,
-								fontSize: docStyle.fontSize?.h1,
-							}
-						: undefined
-				}
+				style={{
+					color: "var(--ac-text-color)",
+					fontFamily: docStyle.fontFamily?.heading,
+					fontSize: docStyle.fontSize?.h1,
+				}}
 			>
 				{title}
 			</h1>
@@ -98,22 +97,16 @@ export function TitleCorePlugin({
 			{titleBlock.showKeywords !== false && keywords.length > 0 && (
 				<div className={cn("mt-2 flex flex-wrap gap-2", authorAlignClass)}>
 					<span
-						className={cn(
-							"font-semibold text-xs uppercase tracking-wider",
-							isPrint ? "text-neutral-500" : "text-muted-foreground",
-						)}
+						className="font-semibold text-xs uppercase tracking-wider"
+						style={{ color: "var(--ac-muted-color)" }}
 					>
 						Keywords:
 					</span>
 					{keywords.map((k) => (
 						<span
 							key={k}
-							className={cn(
-								"text-xs",
-								isPrint
-									? "font-medium text-neutral-700 italic"
-									: "font-medium text-foreground italic",
-							)}
+							className="font-medium text-xs italic"
+							style={{ color: "var(--ac-text-color)" }}
 						>
 							{String(k)}
 						</span>

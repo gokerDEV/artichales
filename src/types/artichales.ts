@@ -17,7 +17,6 @@ export interface DocumentFrontmatter {
 	title?: string;
 	authors?: Author[];
 	keywords?: string[];
-	template?: string;
 	bibliography?: BibliographySource;
 	plugins?: PluginConfigMap;
 }
@@ -141,7 +140,6 @@ export interface RenderRequest {
 	target: RenderTarget;
 	mode: "full" | "partial";
 	fragmentId?: string;
-	templateName: string;
 	pluginOverrides?: Record<string, unknown>;
 }
 

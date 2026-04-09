@@ -4,7 +4,7 @@ import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
 import type { CitationEntry } from "@/lib/bibtex";
 import { parseBibtex } from "@/lib/bibtex";
-import { parseTemplateFile } from "@/lib/template";
+import { resolveTemplateFile, type TemplateDiagnostic } from "@/lib/template";
 
 type RenderTarget = "web" | "print";
 
@@ -105,13 +105,14 @@ export interface DocumentSource {
 	plots: Record<string, unknown>;
 	template: DocumentTemplate;
 	citationStyle: string;
+	templateDiagnostics: TemplateDiagnostic[];
+	hasTemplateError: boolean;
 }
 
 function resolveTemplateForTarget(
-	rawTemplateText: string | undefined,
+	templateFile: ReturnType<typeof resolveTemplateFile>["template"],
 	target: PreviewTarget,
 ): DocumentTemplate {
-	const templateFile = parseTemplateFile(rawTemplateText);
 	const defaults = templateFile.default;
 	const print = templateFile.print;
 	const web = templateFile.web;
@@ -196,32 +197,28 @@ export function useDocument(
 	}, [files]);
 
 	const activeTemplate = React.useMemo(
-		() => resolveTemplateForTarget(files["template.json"], target),
-		[files, target],
+		() => resolveTemplateFile(files["template.json"]),
+		[files],
 	);
 
-	const citationStyle = React.useMemo(() => {
-		const refs = parsed.data.references;
-		let overrideStyle: string | undefined;
+	const resolvedTemplateForTarget = React.useMemo(
+		() => resolveTemplateForTarget(activeTemplate.template, target),
+		[activeTemplate.template, target],
+	);
 
-		if (Array.isArray(refs)) {
-			const styleObj = refs.find(
-				(r) => r && typeof r === "object" && "style" in r,
-			);
-			overrideStyle = styleObj ? String(styleObj.style) : undefined;
-		} else if (refs && typeof refs === "object" && "style" in refs) {
-			overrideStyle = String((refs as { style: unknown }).style);
-		}
-
-		return overrideStyle || activeTemplate.citationStyle || "author-year";
-	}, [parsed.data.references, activeTemplate.citationStyle]);
+	const citationStyle = React.useMemo(
+		() => resolvedTemplateForTarget.citationStyle || "author-year",
+		[resolvedTemplateForTarget.citationStyle],
+	);
 
 	return {
 		content: parsed.content,
 		frontmatter: parsed.data,
 		citations,
 		plots,
-		template: activeTemplate,
+		template: resolvedTemplateForTarget,
 		citationStyle,
+		templateDiagnostics: activeTemplate.diagnostics,
+		hasTemplateError: activeTemplate.hasError,
 	};
 }

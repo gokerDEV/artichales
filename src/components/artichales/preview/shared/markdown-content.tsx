@@ -35,6 +35,7 @@ type MarkdownContentProps = {
 			};
 		};
 	};
+	utilityClasses?: Record<string, string>;
 };
 
 export function MarkdownContent({
@@ -43,6 +44,7 @@ export function MarkdownContent({
 	target,
 	indexContent,
 	templateDefaults,
+	utilityClasses,
 }: MarkdownContentProps) {
 	const indexingSource = indexContent || content;
 	const { plotIndexById, datatableIndexById, refIndexById } =
@@ -101,8 +103,8 @@ export function MarkdownContent({
 		[plotFiles, plotIndexById, datatableIndexById, target, templateDefaults],
 	);
 	const refRenderer = React.useMemo(
-		() => createRefRender(refIndexById),
-		[refIndexById],
+		() => createRefRender(refIndexById, utilityClasses?.ref || "ref"),
+		[refIndexById, utilityClasses],
 	);
 
 	return (
