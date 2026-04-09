@@ -1,5 +1,4 @@
 import * as React from "react";
-import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
 import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
 import {
@@ -55,12 +54,11 @@ export function PrintPreview({
 	const { template, frontmatter } = document;
 	const enabledPluginIds = React.useMemo(
 		() =>
-			new Set(
-				loadPluginRegistry(document.template.plugins).map(
-					(plugin) => plugin.id,
-				),
-			),
-		[document.template.plugins],
+			new Set([
+				...document.activePluginIds.core,
+				...document.activePluginIds.render,
+			]),
+		[document.activePluginIds.core, document.activePluginIds.render],
 	);
 	const paginatedTree = React.useMemo(
 		() =>
@@ -399,13 +397,18 @@ export function PrintPreview({
 																plotFiles={document.plots}
 																target="print"
 																resolvedReferences={document.resolvedReferences}
+																activeParserPluginIds={
+																	document.activePluginIds.parser
+																}
+																activeRenderPluginIds={
+																	document.activePluginIds.render
+																}
 																indexContent={document.content}
 																templateDefaults={{
 																	components:
 																		document.template.componentDefaults,
 																}}
 																utilityClasses={document.template.utilities}
-																pluginRegistry={document.template.plugins}
 															/>
 														</div>
 													);

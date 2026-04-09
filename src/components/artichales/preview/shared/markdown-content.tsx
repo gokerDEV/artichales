@@ -3,31 +3,17 @@ import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
-import type { Pluggable } from "unified";
-import {
-	abstractParserPlugin,
-	remarkAbstract,
-} from "@/components/artichales/plugins/abstract.parser.plugin";
-import { remarkCitation } from "@/components/artichales/plugins/citation.parser.plugin";
 import { CitationRender } from "@/components/artichales/plugins/citation.render.plugin";
 import { CodeRender } from "@/components/artichales/plugins/code.render.plugin";
-import { remarkDatatable } from "@/components/artichales/plugins/datatable.parser.plugin";
-import { remarkMathEquation } from "@/components/artichales/plugins/math.parser.plugin";
-import { remarkPlotty } from "@/components/artichales/plugins/plotty.parser.plugin";
 import { createDirectiveDivRender } from "@/components/artichales/plugins/plotty.render.plugin";
-import type { PluginRegistryEntry } from "@/components/artichales/plugins/plugin.registry";
 import {
-	getPluginsByCategory,
-	loadPluginRegistry,
-} from "@/components/artichales/plugins/plugin.registry";
+	getParserRemarkPluginsFromExecutionState,
+	resolvePluginExecutionState,
+} from "@/components/artichales/plugins/plugin.runtime";
 import { createRefRender } from "@/components/artichales/plugins/ref.render.plugin";
 import "katex/dist/katex.min.css";
-import { citationParserPlugin } from "@/components/artichales/plugins/citation.parser.plugin";
 import { citationRenderPlugin } from "@/components/artichales/plugins/citation.render.plugin";
 import { codeRenderPlugin } from "@/components/artichales/plugins/code.render.plugin";
-import { datatableParserPlugin } from "@/components/artichales/plugins/datatable.parser.plugin";
-import { mathParserPlugin } from "@/components/artichales/plugins/math.parser.plugin";
-import { plottyParserPlugin } from "@/components/artichales/plugins/plotty.parser.plugin";
 import { plottyRenderPlugin } from "@/components/artichales/plugins/plotty.render.plugin";
 import { refRenderPlugin } from "@/components/artichales/plugins/ref.render.plugin";
 import type { ResolvedReference } from "@/lib/article-analysis";
@@ -37,6 +23,8 @@ type MarkdownContentProps = {
 	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
 	resolvedReferences: Record<string, ResolvedReference>;
+	activeParserPluginIds: string[];
+	activeRenderPluginIds: string[];
 	indexContent?: string;
 	templateDefaults?: {
 		components?: {
@@ -55,7 +43,6 @@ type MarkdownContentProps = {
 		};
 	};
 	utilityClasses?: Record<string, string>;
-	pluginRegistry?: PluginRegistryEntry[];
 };
 
 export function MarkdownContent({
@@ -63,28 +50,21 @@ export function MarkdownContent({
 	plotFiles,
 	target,
 	resolvedReferences,
+	activeParserPluginIds,
+	activeRenderPluginIds,
 	indexContent,
 	templateDefaults,
 	utilityClasses,
-	pluginRegistry,
 }: MarkdownContentProps) {
 	const parserPlugins = React.useMemo(() => {
-		const parserPluginMap: Record<string, Pluggable> = {
-			[citationParserPlugin.id]: remarkCitation,
-			[abstractParserPlugin.id]: remarkAbstract,
-			[plottyParserPlugin.id]: remarkPlotty,
-			[datatableParserPlugin.id]: remarkDatatable,
-			[mathParserPlugin.id]: remarkMathEquation,
-		};
-
-		return getPluginsByCategory("parser", pluginRegistry)
-			.map((plugin) => parserPluginMap[plugin.id])
-			.filter((plugin): plugin is Pluggable => Boolean(plugin));
-	}, [pluginRegistry]);
-	const enabledPluginIds = React.useMemo(
-		() =>
-			new Set(loadPluginRegistry(pluginRegistry).map((plugin) => plugin.id)),
-		[pluginRegistry],
+		const executionState = resolvePluginExecutionState(
+			activeParserPluginIds.map((id) => ({ id, enabled: true })),
+		);
+		return getParserRemarkPluginsFromExecutionState(executionState);
+	}, [activeParserPluginIds]);
+	const enabledRenderPluginIds = React.useMemo(
+		() => new Set(activeRenderPluginIds),
+		[activeRenderPluginIds],
 	);
 
 	const indexingSource = indexContent || content;
@@ -155,20 +135,20 @@ export function MarkdownContent({
 	const markdownComponents = React.useMemo(() => {
 		const components: React.ComponentProps<typeof ReactMarkdown>["components"] =
 			{};
-		if (enabledPluginIds.has(citationRenderPlugin.id)) {
+		if (enabledRenderPluginIds.has(citationRenderPlugin.id)) {
 			components.cite = CitationRender;
 		}
-		if (enabledPluginIds.has(codeRenderPlugin.id)) {
+		if (enabledRenderPluginIds.has(codeRenderPlugin.id)) {
 			components.code = CodeRender;
 		}
-		if (enabledPluginIds.has(plottyRenderPlugin.id)) {
+		if (enabledRenderPluginIds.has(plottyRenderPlugin.id)) {
 			components.div = divRenderer;
 		}
-		if (enabledPluginIds.has(refRenderPlugin.id)) {
+		if (enabledRenderPluginIds.has(refRenderPlugin.id)) {
 			components.span = refRenderer;
 		}
 		return components;
-	}, [divRenderer, enabledPluginIds, refRenderer]);
+	}, [divRenderer, enabledRenderPluginIds, refRenderer]);
 
 	return (
 		<ReactMarkdown

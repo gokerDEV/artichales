@@ -1,5 +1,4 @@
 import type React from "react";
-import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
 import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
 import type { DocumentSource } from "@/hooks/use-document";
@@ -47,9 +46,10 @@ export function DocumentRenderContent({
 	contentClassName,
 	articleClassName,
 }: DocumentRenderContentProps) {
-	const enabledPluginIds = new Set(
-		loadPluginRegistry(document.template.plugins).map((plugin) => plugin.id),
-	);
+	const enabledPluginIds = new Set([
+		...document.activePluginIds.core,
+		...document.activePluginIds.render,
+	]);
 	const showTitle = enabledPluginIds.has("title-core");
 	const showReferences = enabledPluginIds.has("references-core");
 
@@ -68,9 +68,10 @@ export function DocumentRenderContent({
 					plotFiles={document.plots}
 					target={target}
 					resolvedReferences={document.resolvedReferences}
+					activeParserPluginIds={document.activePluginIds.parser}
+					activeRenderPluginIds={document.activePluginIds.render}
 					templateDefaults={{ components: document.template.componentDefaults }}
 					utilityClasses={document.template.utilities}
-					pluginRegistry={document.template.plugins}
 				/>
 			</article>
 			{showReferences ? (

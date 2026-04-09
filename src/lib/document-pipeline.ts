@@ -1,5 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
+import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import {
 	type ArticleAnalysisDiagnostic,
 	analyzeArticleSource,
@@ -39,7 +40,8 @@ export type PipelineDiagnostic = {
 		| "article-footnote-unsupported"
 		| "asset-json-invalid"
 		| "plugin-config-invalid"
-		| "plugin-config-map-invalid";
+		| "plugin-config-map-invalid"
+		| "plugin-runtime-missing";
 	severity: "error" | "warning" | "info";
 	source: "pipeline" | "parser" | "plugin";
 	message: string;
@@ -60,6 +62,12 @@ export type PipelineResult = {
 	assetDiagnostics: PipelineDiagnostic[];
 	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	activePluginIds: {
+		parser: string[];
+		core: string[];
+		render: string[];
+		editor: string[];
+	};
 	pipelineDiagnostics: PipelineDiagnostic[];
 };
 
@@ -243,6 +251,47 @@ function validatePluginConfigs(
 	return diagnostics;
 }
 
+function validatePluginRuntimeAvailability(
+	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+): {
+	diagnostics: PipelineDiagnostic[];
+	activePluginIds: PipelineResult["activePluginIds"];
+} {
+	const executionState = resolvePluginExecutionState(templatePlugins);
+	const diagnostics: PipelineDiagnostic[] = [];
+
+	for (const parserPluginId of executionState.missingParserRuntimeIds) {
+		diagnostics.push({
+			code: "plugin-runtime-missing",
+			severity: "error",
+			source: "plugin",
+			pluginId: parserPluginId,
+			stage: "plugin-processing",
+			message: `Parser runtime hook is missing for plugin "${parserPluginId}".`,
+		});
+	}
+	for (const renderPluginId of executionState.missingRenderRuntimeIds) {
+		diagnostics.push({
+			code: "plugin-runtime-missing",
+			severity: "error",
+			source: "plugin",
+			pluginId: renderPluginId,
+			stage: "plugin-processing",
+			message: `Render runtime hook is missing for plugin "${renderPluginId}".`,
+		});
+	}
+
+	return {
+		diagnostics,
+		activePluginIds: {
+			parser: executionState.parser.map((plugin) => plugin.id),
+			core: executionState.core.map((plugin) => plugin.id),
+			render: executionState.render.map((plugin) => plugin.id),
+			editor: executionState.editor.map((plugin) => plugin.id),
+		},
+	};
+}
+
 function emitPluginTrace(
 	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
 	pluginConfigDiagnostics: PipelineDiagnostic[],
@@ -302,7 +351,13 @@ export function runDocumentPipeline(
 		pluginMapResult.configMap,
 		templateResult.template.plugins,
 	);
-	emitPluginTrace(templateResult.template.plugins, pluginConfigDiagnostics);
+	const pluginRuntimeResult = validatePluginRuntimeAvailability(
+		templateResult.template.plugins,
+	);
+	emitPluginTrace(templateResult.template.plugins, [
+		...pluginConfigDiagnostics,
+		...pluginRuntimeResult.diagnostics,
+	]);
 	pushStage("plugin-processing");
 	pushStage("render-active-target");
 
@@ -322,8 +377,10 @@ export function runDocumentPipeline(
 			...articleAnalysis.diagnostics,
 			...pluginMapResult.diagnostics,
 			...pluginConfigDiagnostics,
+			...pluginRuntimeResult.diagnostics,
 		],
 		resolvedReferences: articleAnalysis.resolvedReferences,
+		activePluginIds: pluginRuntimeResult.activePluginIds,
 		pipelineDiagnostics: stageDiagnostics,
 	};
 }

@@ -148,6 +148,12 @@ export interface DocumentSource {
 		| ArticleAnalysisDiagnostic
 	>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	activePluginIds: {
+		parser: string[];
+		core: string[];
+		render: string[];
+		editor: string[];
+	};
 	pipelineDiagnostics: PipelineDiagnostic[];
 	blockingByFile: Partial<Record<string, string>>;
 	isBlockingActiveFile: (fileName: string) => boolean;
@@ -264,6 +270,7 @@ export function useDocument(
 		articleDiagnostics:
 			pipeline.articleDiagnostics as DocumentSource["articleDiagnostics"],
 		resolvedReferences: pipeline.resolvedReferences,
+		activePluginIds: pipeline.activePluginIds,
 		pipelineDiagnostics: pipeline.pipelineDiagnostics,
 		blockingByFile,
 		isBlockingActiveFile: (fileName) => Boolean(blockingByFile[fileName]),
