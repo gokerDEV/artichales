@@ -1,11 +1,11 @@
 # Artichales
 
 Artichales is an offline-first, Markdown-first academic publishing editor.
-Each workspace is driven by one canonical content file (`article.mdx`) and one canonical template file (`template.json`), with references in `references.bib`.
+Each workspace is driven by one canonical content file (`article.mda`) and one canonical template file (`template.json`), with references in `references.bib`.
 
 ## Core Model
 
-- Single content source: `article.mdx`
+- Single content source: `article.mda`
 - Single template source: `template.json`
 - Single bibliography source: `references.bib`
 - One render pipeline for both `web` and `print`
@@ -16,7 +16,7 @@ Each workspace is driven by one canonical content file (`article.mdx`) and one c
 Pinned in file tree (always first):
 
 1. `template.json`
-2. `article.mdx`
+2. `article.mda`
 3. `references.bib`
 
 All remaining assets (plots, tables, data/media files) are listed alphabetically after pinned files.

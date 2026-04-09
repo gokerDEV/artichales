@@ -1,24 +1,21 @@
 import { Database, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { orderWorkspaceFiles } from "@/lib/workspace";
 
 export interface FileTreeProps {
 	activeFile: string;
 	onSelectFile: (fileName: string) => void;
 	files: string[];
+	disableFileSwitch?: boolean;
 }
 
-export function FileTree({ activeFile, onSelectFile, files }: FileTreeProps) {
-	const pinnedOrder = ["template.json", "article.mdx", "references.bib"];
-	const orderedFiles = [...files].sort((a, b) => {
-		const aPin = pinnedOrder.indexOf(a);
-		const bPin = pinnedOrder.indexOf(b);
-		if (aPin !== -1 || bPin !== -1) {
-			if (aPin === -1) return 1;
-			if (bPin === -1) return -1;
-			return aPin - bPin;
-		}
-		return a.localeCompare(b);
-	});
+export function FileTree({
+	activeFile,
+	onSelectFile,
+	files,
+	disableFileSwitch = false,
+}: FileTreeProps) {
+	const orderedFiles = orderWorkspaceFiles(files);
 
 	return (
 		<div className="flex h-full flex-col gap-2">
@@ -31,12 +28,16 @@ export function FileTree({ activeFile, onSelectFile, files }: FileTreeProps) {
 					<button
 						type="button"
 						key={file}
+						disabled={disableFileSwitch && file !== activeFile}
 						onClick={() => onSelectFile(file)}
 						className={cn(
 							"flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
 							activeFile === file
 								? "bg-primary/10 font-medium text-primary"
 								: "text-muted-foreground hover:bg-muted hover:text-foreground",
+							disableFileSwitch && file !== activeFile
+								? "cursor-not-allowed opacity-50"
+								: "",
 						)}
 					>
 						{isBib ? (

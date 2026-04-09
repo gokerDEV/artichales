@@ -5,7 +5,7 @@
   "description": "Single-file journal template for IEEE Access style print and web rendering.",
   "workspace": {
     "pinnedFiles": [
-      "article.mdx",
+      "article.mda",
       "template.json",
       "references.bib"
     ],

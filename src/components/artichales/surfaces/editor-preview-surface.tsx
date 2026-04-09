@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/resizable";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
+import { CORE_ARTICLE_FILE, WORKSPACE_UI_STATE_KEY } from "@/lib/workspace";
+import { workspaceRepository } from "@/services/workspace.repository";
 
 const SAMPLE_MARKDOWN = `---
 title: "Artichales Markdown Showcase"
@@ -339,9 +341,14 @@ const SAMPLE_TEMPLATE = `{
 }
 `;
 
-const STORAGE_KEY = "artichales-editor-autosave";
+type WorkspaceUiState = {
+	activeFile?: string;
+	target?: PreviewTarget;
+	scale?: number;
+};
+
 const DEFAULT_FILES: Record<string, string> = {
-	"article.mdx": SAMPLE_MARKDOWN,
+	"article.mda": SAMPLE_MARKDOWN,
 	"references.bib": SAMPLE_BIB,
 	"template.json": SAMPLE_TEMPLATE,
 	"plot_1.json": SAMPLE_PLOT,
@@ -356,27 +363,83 @@ const TypedResizableGroup = ResizablePanelGroup as unknown as React.FC<
 >;
 
 export function EditorPreviewSurface() {
-	const [files, setFiles] = React.useState<Record<string, string>>(() => {
-		try {
-			const saved = localStorage.getItem(STORAGE_KEY);
-			if (saved) {
-				const parsed = JSON.parse(saved) as Record<string, string>;
-				return { ...DEFAULT_FILES, ...parsed };
-			}
-		} catch {}
-		return DEFAULT_FILES;
-	});
-	const [activeFile, setActiveFile] = React.useState("article.mdx");
+	const [files, setFiles] =
+		React.useState<Record<string, string>>(DEFAULT_FILES);
+	const [activeFile, setActiveFile] = React.useState(CORE_ARTICLE_FILE);
 	const [target, setTarget] = React.useState<PreviewTarget>("print");
 	const [scale, setScale] = React.useState(100);
+	const [workspaceLoading, setWorkspaceLoading] = React.useState(true);
+	const [saveError, setSaveError] = React.useState<string | null>(null);
 	const pendingPdfExportRef = React.useRef(false);
+	const hasLoadedWorkspaceRef = React.useRef(false);
+	const isHydratingRef = React.useRef(true);
 
 	React.useEffect(() => {
-		const timeout = setTimeout(() => {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
-		}, 800);
-		return () => clearTimeout(timeout);
+		let cancelled = false;
+		const loadWorkspace = async () => {
+			try {
+				const loaded = await workspaceRepository.loadWorkspace(DEFAULT_FILES);
+				if (cancelled) return;
+				setFiles(loaded);
+
+				try {
+					const rawState = localStorage.getItem(WORKSPACE_UI_STATE_KEY);
+					if (!rawState) return;
+					const state = JSON.parse(rawState) as WorkspaceUiState;
+					if (state.target === "web" || state.target === "print") {
+						setTarget(state.target);
+					}
+					if (typeof state.scale === "number" && Number.isFinite(state.scale)) {
+						setScale(Math.max(50, Math.min(200, Math.round(state.scale))));
+					}
+					if (
+						typeof state.activeFile === "string" &&
+						Object.hasOwn(loaded, state.activeFile)
+					) {
+						setActiveFile(state.activeFile);
+					}
+				} catch {
+					// Ignore malformed UI state and continue with defaults.
+				}
+			} finally {
+				if (!cancelled) {
+					hasLoadedWorkspaceRef.current = true;
+					isHydratingRef.current = false;
+					setWorkspaceLoading(false);
+				}
+			}
+		};
+
+		loadWorkspace();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	React.useEffect(() => {
+		if (!hasLoadedWorkspaceRef.current || isHydratingRef.current) return;
+		const timeout = window.setTimeout(() => {
+			workspaceRepository
+				.saveWorkspace(files)
+				.then(() => setSaveError(null))
+				.catch((error) => {
+					console.error("Failed to save workspace:", error);
+					setSaveError(
+						"Failed to save workspace files. Your latest changes may not persist.",
+					);
+				});
+		}, 500);
+		return () => window.clearTimeout(timeout);
 	}, [files]);
+
+	React.useEffect(() => {
+		try {
+			const state: WorkspaceUiState = { activeFile, target, scale };
+			localStorage.setItem(WORKSPACE_UI_STATE_KEY, JSON.stringify(state));
+		} catch {
+			// Best-effort UI continuity state.
+		}
+	}, [activeFile, target, scale]);
 
 	const { settings, updateSettings, loading } = useSettings();
 	const layoutTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
@@ -408,7 +471,17 @@ export function EditorPreviewSurface() {
 		[settings.ux, updateSettings],
 	);
 
-	const docSource = useDocument(files, activeFile, target);
+	const docSource = useDocument(files, target);
+	const blockingReason = docSource.blockingByFile[activeFile];
+	const isFileSwitchLocked = typeof blockingReason === "string";
+
+	const handleSelectFile = React.useCallback(
+		(fileName: string) => {
+			if (isFileSwitchLocked && fileName !== activeFile) return;
+			setActiveFile(fileName);
+		},
+		[activeFile, isFileSwitchLocked],
+	);
 
 	const runPdfExport = React.useCallback(() => {
 		globalThis.document.body.setAttribute("data-artichales-printing", "true");
@@ -448,7 +521,7 @@ export function EditorPreviewSurface() {
 		return () => window.clearTimeout(timeout);
 	}, [target, runPdfExport]);
 
-	if (loading) {
+	if (loading || workspaceLoading) {
 		return (
 			<div className="flex h-[calc(100vh-4rem)] items-center justify-center text-muted-foreground text-sm">
 				Loading workspace...
@@ -474,10 +547,16 @@ export function EditorPreviewSurface() {
 					className="flex flex-col p-2"
 					onResize={(size) => handleResize(0, size)}
 				>
+					{isFileSwitchLocked ? (
+						<div className="mb-2 rounded-md border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
+							{blockingReason}
+						</div>
+					) : null}
 					<FileTree
 						activeFile={activeFile}
 						files={Object.keys(files)}
-						onSelectFile={setActiveFile}
+						onSelectFile={handleSelectFile}
+						disableFileSwitch={isFileSwitchLocked}
 					/>
 				</ResizablePanel>
 				<ResizableHandle withHandle />
@@ -488,7 +567,7 @@ export function EditorPreviewSurface() {
 					onResize={(size) => handleResize(1, size)}
 				>
 					<MdxEditor
-						value={files[activeFile]}
+						value={files[activeFile] || ""}
 						onChange={handleFileChange}
 						label={activeFile}
 					/>
@@ -508,6 +587,11 @@ export function EditorPreviewSurface() {
 						onExportPdf={handleExportPdf}
 					/>
 					<div className="relative grow overflow-hidden">
+						{saveError ? (
+							<div className="border-red-300 border-b bg-red-50 p-3 text-red-700 text-sm">
+								{saveError}
+							</div>
+						) : null}
 						{docSource.templateDiagnostics.length > 0 ? (
 							<div
 								className={`border-b p-3 text-sm ${docSource.hasTemplateError ? "border-red-300 bg-red-50 text-red-700" : "border-amber-300 bg-amber-50 text-amber-700"}`}
@@ -520,10 +604,24 @@ export function EditorPreviewSurface() {
 								))}
 							</div>
 						) : null}
-						{docSource.hasTemplateError ? (
+						{docSource.bibDiagnostics.length > 0 ? (
+							<div className="border-red-300 border-b bg-red-50 p-3 text-red-700 text-sm">
+								{docSource.bibDiagnostics.map((diag) => (
+									<p key={`${diag.code}:${diag.message}`}>{diag.message}</p>
+								))}
+							</div>
+						) : null}
+						{docSource.articleDiagnostics.length > 0 ? (
+							<div className="border-red-300 border-b bg-red-50 p-3 text-red-700 text-sm">
+								{docSource.articleDiagnostics.map((diag) => (
+									<p key={`${diag.code}:${diag.message}`}>{diag.message}</p>
+								))}
+							</div>
+						) : null}
+						{docSource.hasBlockingError ? (
 							<div className="flex h-full items-center justify-center p-6 text-center text-muted-foreground text-sm">
-								Invalid `template.json` blocks preview rendering until the
-								template is fixed.
+								Blocking diagnostics must be fixed before preview rendering can
+								continue.
 							</div>
 						) : target === "web" ? (
 							<WebPreview document={docSource} scale={scale} />

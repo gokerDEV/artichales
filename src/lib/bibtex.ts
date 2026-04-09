@@ -6,15 +6,43 @@ export type CitationEntry = {
 	journal?: string;
 };
 
-export function parseBibtex(bibtex: string): Record<string, CitationEntry> {
+export type BibtexDiagnostic = {
+	code: "bibtex-syntax-invalid" | "bibtex-duplicate-key";
+	severity: "error" | "warning";
+	message: string;
+};
+
+export type BibtexParseResult = {
+	citations: Record<string, CitationEntry>;
+	diagnostics: BibtexDiagnostic[];
+	hasError: boolean;
+};
+
+export function parseBibtexDocument(bibtex: string): BibtexParseResult {
 	const entries = bibtex.split("@").slice(1);
 	const citations: Record<string, CitationEntry> = {};
+	const diagnostics: BibtexDiagnostic[] = [];
 
 	for (const entry of entries) {
 		const headerMatch = entry.match(/^(\w+)\{([^,]+),/);
-		if (!headerMatch) continue;
+		if (!headerMatch) {
+			diagnostics.push({
+				code: "bibtex-syntax-invalid",
+				severity: "error",
+				message: "Invalid BibTeX entry header detected in `references.bib`.",
+			});
+			continue;
+		}
 
 		const id = headerMatch[2].trim();
+		if (citations[id]) {
+			diagnostics.push({
+				code: "bibtex-duplicate-key",
+				severity: "error",
+				message: `Duplicate BibTeX key detected: "${id}".`,
+			});
+			continue;
+		}
 
 		// Match properties (very basic parser)
 		const authorMatch = entry.match(/author\s*=\s*[{"]([^}"]+)["}]/i);
@@ -37,5 +65,13 @@ export function parseBibtex(bibtex: string): Record<string, CitationEntry> {
 		};
 	}
 
-	return citations;
+	return {
+		citations,
+		diagnostics,
+		hasError: diagnostics.some((diag) => diag.severity === "error"),
+	};
+}
+
+export function parseBibtex(bibtex: string): Record<string, CitationEntry> {
+	return parseBibtexDocument(bibtex).citations;
 }

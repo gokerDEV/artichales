@@ -2,9 +2,14 @@ import type { JSX } from "react";
 import * as React from "react";
 import { parse as parseYaml } from "yaml";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
-import type { CitationEntry } from "@/lib/bibtex";
-import { parseBibtex } from "@/lib/bibtex";
+import type { BibtexDiagnostic, CitationEntry } from "@/lib/bibtex";
+import { parseBibtexDocument } from "@/lib/bibtex";
 import { resolveTemplateFile, type TemplateDiagnostic } from "@/lib/template";
+import {
+	CORE_ARTICLE_FILE,
+	CORE_BIB_FILE,
+	CORE_TEMPLATE_FILE,
+} from "@/lib/workspace";
 
 type RenderTarget = "web" | "print";
 
@@ -110,7 +115,16 @@ export interface DocumentSource {
 	template: DocumentTemplate;
 	citationStyle: string;
 	templateDiagnostics: TemplateDiagnostic[];
+	bibDiagnostics: BibtexDiagnostic[];
+	articleDiagnostics: Array<{
+		code: "article-frontmatter-invalid";
+		severity: "error";
+		message: string;
+	}>;
+	blockingByFile: Partial<Record<string, string>>;
+	isBlockingActiveFile: (fileName: string) => boolean;
 	hasTemplateError: boolean;
+	hasBlockingError: boolean;
 }
 
 function resolveTemplateForTarget(
@@ -160,13 +174,18 @@ function resolveTemplateForTarget(
 
 export function useDocument(
 	files: Record<string, string>,
-	activeFile: string,
 	target: PreviewTarget,
 ): DocumentSource {
+	const articleText = files[CORE_ARTICLE_FILE] || "";
 	const parsed = React.useMemo(() => {
-		const text = files[activeFile] || "";
+		const text = articleText;
 		const match = text.match(/^---\n([\s\S]*?)\n---/);
-		if (!match) return { content: text, data: {} };
+		if (!match)
+			return {
+				content: text,
+				data: {},
+				diagnostics: [] as DocumentSource["articleDiagnostics"],
+			};
 
 		try {
 			const data = parseYaml(match[1]);
@@ -177,16 +196,29 @@ export function useDocument(
 					typeof data === "object" && data !== null
 						? (data as Record<string, unknown>)
 						: {},
+				diagnostics: [] as DocumentSource["articleDiagnostics"],
 			};
 		} catch (e) {
 			console.error("YAML Parse Error:", e);
-			return { content: text, data: {} };
+			return {
+				content: text,
+				data: {},
+				diagnostics: [
+					{
+						code: "article-frontmatter-invalid",
+						severity: "error",
+						message:
+							"`article.mda` frontmatter YAML is invalid. Preview is blocked until fixed.",
+					},
+				] as DocumentSource["articleDiagnostics"],
+			};
 		}
-	}, [files, activeFile]);
+	}, [articleText]);
 
-	const citations = React.useMemo(() => {
-		return parseBibtex(files["references.bib"] || "");
-	}, [files]);
+	const bibData = React.useMemo(
+		() => parseBibtexDocument(files[CORE_BIB_FILE] || ""),
+		[files],
+	);
 
 	const plots = React.useMemo(() => {
 		const parsedPlots: Record<string, unknown> = {};
@@ -202,7 +234,7 @@ export function useDocument(
 	}, [files]);
 
 	const activeTemplate = React.useMemo(
-		() => resolveTemplateFile(files["template.json"]),
+		() => resolveTemplateFile(files[CORE_TEMPLATE_FILE]),
 		[files],
 	);
 
@@ -216,14 +248,39 @@ export function useDocument(
 		[resolvedTemplateForTarget.citationStyle],
 	);
 
+	const blockingByFile = React.useMemo(() => {
+		const result: Partial<Record<string, string>> = {};
+		if (activeTemplate.hasError) {
+			result[CORE_TEMPLATE_FILE] =
+				"Fix template errors before switching away from `template.json`.";
+		}
+		if (bibData.hasError) {
+			result[CORE_BIB_FILE] =
+				"Fix BibTeX errors before switching away from `references.bib`.";
+		}
+		if (parsed.diagnostics.some((diag) => diag.severity === "error")) {
+			result[CORE_ARTICLE_FILE] =
+				"Fix article parsing errors before switching away from `article.mda`.";
+		}
+		return result;
+	}, [activeTemplate.hasError, bibData.hasError, parsed.diagnostics]);
+
 	return {
 		content: parsed.content,
 		frontmatter: parsed.data,
-		citations,
+		citations: bibData.citations,
 		plots,
 		template: resolvedTemplateForTarget,
 		citationStyle,
 		templateDiagnostics: activeTemplate.diagnostics,
+		bibDiagnostics: bibData.diagnostics,
+		articleDiagnostics: parsed.diagnostics,
+		blockingByFile,
+		isBlockingActiveFile: (fileName) => Boolean(blockingByFile[fileName]),
 		hasTemplateError: activeTemplate.hasError,
+		hasBlockingError:
+			activeTemplate.hasError ||
+			bibData.hasError ||
+			parsed.diagnostics.some((diag) => diag.severity === "error"),
 	};
 }
