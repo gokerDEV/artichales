@@ -120,9 +120,9 @@ function parseDirectiveTargets(content: string): {
 					? `Duplicate directive identity "${pluginId} + ${normalizedDataFile}" is not allowed.`
 					: `Duplicate directive identity "${pluginId}" is not allowed.`,
 			});
-			continue;
+		} else {
+			identityBySignature.add(identitySignature);
 		}
-		identityBySignature.add(identitySignature);
 
 		const currentCount = typeCounters.get(pluginId) || 0;
 		const nextCount = currentCount + 1;

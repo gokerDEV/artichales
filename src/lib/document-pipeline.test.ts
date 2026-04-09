@@ -1,0 +1,139 @@
+import { describe, expect, test } from "bun:test";
+import { runDocumentPipeline } from "./document-pipeline";
+
+const VALID_BIB = `@article{knuth1984,
+  author = {Donald E. Knuth},
+  title = {Literate Programming},
+  journal = {Comput. J.},
+  year = {1984}
+}`;
+
+function createWorkspace(
+	article: string,
+	references = VALID_BIB,
+	template = "{}",
+) {
+	return {
+		"template.json": template,
+		"article.mda": article,
+		"references.bib": references,
+	};
+}
+
+describe("document pipeline migration conformance", () => {
+	test("accepts valid singleton short reference [ref:abstract]", () => {
+		const files = createWorkspace(`:::abstract
+Abstract body
+:::
+
+See [ref:abstract].`);
+		const result = runDocumentPipeline(files, "print");
+		const hasError = result.articleDiagnostics.some(
+			(diag) => diag.severity === "error",
+		);
+
+		expect(hasError).toBe(false);
+		expect(result.resolvedReferences.abstract?.label).toBe("Abstract");
+	});
+
+	test("rejects ambiguous short reference [ref:abstract]", () => {
+		const files = createWorkspace(`:::abstract
+A
+:::
+
+:::abstract[data.json]
+B
+:::
+
+:::abstract
+C
+:::
+
+See [ref:abstract].`);
+		const result = runDocumentPipeline(files, "print");
+		const ambiguousDiag = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-ref-short-ambiguous-unkeyed-target" &&
+				diag.severity === "error",
+		);
+
+		expect(ambiguousDiag).toBeDefined();
+	});
+
+	test("rejects duplicate directive identity", () => {
+		const files = createWorkspace(`:::plotty[data.json]
+One
+:::
+
+:::plotty[data.json]
+Two
+:::
+`);
+		const result = runDocumentPipeline(files, "print");
+		const duplicateDirective = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-directive-identity-duplicate" &&
+				diag.severity === "error",
+		);
+
+		expect(duplicateDirective).toBeDefined();
+	});
+
+	test("rejects duplicate BibTeX keys", () => {
+		const duplicateBib = `@article{dupkey,
+  author = {A},
+  title = {T1},
+  journal = {J},
+  year = {2024}
+}
+
+@article{dupkey,
+  author = {B},
+  title = {T2},
+  journal = {J},
+  year = {2025}
+}`;
+		const files = createWorkspace("Simple text.", duplicateBib);
+		const result = runDocumentPipeline(files, "print");
+		const duplicateBibDiag = result.bibDiagnostics.find(
+			(diag) =>
+				diag.code === "bibtex-duplicate-key" && diag.severity === "error",
+		);
+
+		expect(duplicateBibDiag).toBeDefined();
+	});
+
+	test("marks invalid template schema as blocking", () => {
+		const invalidTemplate = JSON.stringify({
+			default: {
+				assets: {
+					maxFileSize: "not-a-number",
+				},
+			},
+		});
+		const files = createWorkspace("Simple text.", VALID_BIB, invalidTemplate);
+		const result = runDocumentPipeline(files, "print");
+		const templateSchemaError = result.templateDiagnostics.find(
+			(diag) =>
+				diag.code === "template-schema-invalid" && diag.severity === "error",
+		);
+
+		expect(templateSchemaError).toBeDefined();
+	});
+
+	test("raises plugin config map validation error when frontmatter plugins is not an object", () => {
+		const files = createWorkspace(`---
+title: "Invalid plugins map"
+plugins:
+  - bad
+---
+Body.`);
+		const result = runDocumentPipeline(files, "print");
+		const pluginMapError = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "plugin-config-map-invalid" && diag.severity === "error",
+		);
+
+		expect(pluginMapError).toBeDefined();
+	});
+});

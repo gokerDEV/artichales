@@ -15,7 +15,9 @@
 		"build": "tsc -b && vite build",
 		"lint": "biome check --fix src",
 		"format": "biome format --write src",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"test": "bun test",
+		"test:migration": "bun test src/lib/document-pipeline.test.ts"
 	},
 	"dependencies": {
 		"@codemirror/autocomplete": "^6.20.1",
