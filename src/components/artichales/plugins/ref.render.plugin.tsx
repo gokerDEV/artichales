@@ -20,17 +20,14 @@ type RefRenderProps = {
 } & React.HTMLAttributes<HTMLSpanElement>;
 
 type RefKindConfig = {
-	label: string;
 	anchorPrefix: string;
 };
 
 const REF_KIND_CONFIG: Record<RefKind, RefKindConfig> = {
 	plot: {
-		label: "Figure",
 		anchorPrefix: "plot",
 	},
 	datatable: {
-		label: "Table",
 		anchorPrefix: "datatable",
 	},
 };
@@ -61,6 +58,7 @@ export function createRefRender(
 	refIndexById: RefIndexMap,
 	resolvedReferences: Record<string, ResolvedReference>,
 	refClassName: string,
+	referenceLabels?: Record<string, string>,
 ): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
 		const rawCaptionType =
@@ -111,8 +109,19 @@ export function createRefRender(
 		const resolved = resolvedReferences[normalizedRefId];
 		const target = refIndexById[normalizedRefId];
 		const config = target ? REF_KIND_CONFIG[target.kind] : null;
+		const mappedLabel =
+			target && referenceLabels
+				? referenceLabels[target.kind === "plot" ? "plotty" : "datatable"]
+				: undefined;
+		const runtimeFallbackLabel =
+			typeof mappedLabel === "string" && mappedLabel.trim() !== ""
+				? mappedLabel.trim()
+				: "?";
 		const label =
-			resolved?.label || (config ? `${config.label} ${target.index}` : "?");
+			resolved?.label ||
+			(config && target
+				? `${runtimeFallbackLabel} ${target.index}`.trim()
+				: "?");
 		const href =
 			resolved?.href ||
 			(config ? `#${config.anchorPrefix}-${normalizedRefId}` : "#");

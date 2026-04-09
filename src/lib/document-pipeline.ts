@@ -1,3 +1,7 @@
+import remarkDirective from "remark-directive";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 import { parse as parseYaml } from "yaml";
 import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
@@ -41,7 +45,8 @@ export type PipelineDiagnostic = {
 		| "asset-json-invalid"
 		| "plugin-config-invalid"
 		| "plugin-config-map-invalid"
-		| "plugin-runtime-missing";
+		| "plugin-runtime-missing"
+		| "plugin-hook-failed";
 	severity: "error" | "warning" | "info";
 	source: "pipeline" | "parser" | "plugin";
 	message: string;
@@ -292,6 +297,89 @@ function validatePluginRuntimeAvailability(
 	};
 }
 
+function executeParserHooks(
+	articleContent: string,
+	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+): PipelineDiagnostic[] {
+	const diagnostics: PipelineDiagnostic[] = [];
+	const executionState = resolvePluginExecutionState(templatePlugins);
+
+	for (const plugin of executionState.parser) {
+		const parseHook = plugin.hooks.parse;
+		if (!parseHook) continue;
+
+		try {
+			const processor = unified()
+				.use(remarkParse)
+				.use(remarkGfm)
+				.use(remarkDirective)
+				.use(parseHook);
+			const tree = processor.parse(articleContent);
+			processor.runSync(tree);
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			diagnostics.push({
+				code: "plugin-hook-failed",
+				severity: "error",
+				source: "plugin",
+				pluginId: plugin.id,
+				stage: "plugin-processing",
+				message: `Parser hook failed for "${plugin.id}": ${detail}`,
+			});
+		}
+	}
+
+	return diagnostics;
+}
+
+function executeVoidHooks(
+	plugins: Array<{
+		id: string;
+		hooks: { process?: () => void; render?: () => void };
+	}>,
+	stage: PipelineStage,
+	hook: "process" | "render",
+): PipelineDiagnostic[] {
+	const diagnostics: PipelineDiagnostic[] = [];
+
+	for (const plugin of plugins) {
+		const hookFn = plugin.hooks[hook];
+		if (!hookFn) continue;
+
+		try {
+			hookFn();
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			diagnostics.push({
+				code: "plugin-hook-failed",
+				severity: "error",
+				source: "plugin",
+				pluginId: plugin.id,
+				stage,
+				message: `${hook === "process" ? "Process" : "Render"} hook failed for "${plugin.id}": ${detail}`,
+			});
+		}
+	}
+
+	return diagnostics;
+}
+
+function executePluginHooks(
+	articleContent: string,
+	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+): PipelineDiagnostic[] {
+	const executionState = resolvePluginExecutionState(templatePlugins);
+	return [
+		...executeParserHooks(articleContent, templatePlugins),
+		...executeVoidHooks(executionState.core, "plugin-processing", "process"),
+		...executeVoidHooks(
+			executionState.render,
+			"render-active-target",
+			"render",
+		),
+	];
+}
+
 function emitPluginTrace(
 	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
 	pluginConfigDiagnostics: PipelineDiagnostic[],
@@ -340,7 +428,10 @@ export function runDocumentPipeline(
 	const assetResult = parseAssetJsonFiles(files);
 	pushStage("normalize-document");
 
-	const articleAnalysis = analyzeArticleSource(articleResult.content);
+	const articleAnalysis = analyzeArticleSource(
+		articleResult.content,
+		templateResult.template.default.referenceLabels,
+	);
 	pushStage("build-registry-and-numbering");
 	const unsupportedConceptDiagnostics = detectUnsupportedSourceConcepts(
 		articleResult.content,
@@ -354,9 +445,14 @@ export function runDocumentPipeline(
 	const pluginRuntimeResult = validatePluginRuntimeAvailability(
 		templateResult.template.plugins,
 	);
+	const pluginHookDiagnostics = executePluginHooks(
+		articleResult.content,
+		templateResult.template.plugins,
+	);
 	emitPluginTrace(templateResult.template.plugins, [
 		...pluginConfigDiagnostics,
 		...pluginRuntimeResult.diagnostics,
+		...pluginHookDiagnostics,
 	]);
 	pushStage("plugin-processing");
 	pushStage("render-active-target");
@@ -378,6 +474,7 @@ export function runDocumentPipeline(
 			...pluginMapResult.diagnostics,
 			...pluginConfigDiagnostics,
 			...pluginRuntimeResult.diagnostics,
+			...pluginHookDiagnostics,
 		],
 		resolvedReferences: articleAnalysis.resolvedReferences,
 		activePluginIds: pluginRuntimeResult.activePluginIds,

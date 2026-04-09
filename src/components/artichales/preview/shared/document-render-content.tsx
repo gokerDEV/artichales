@@ -71,6 +71,7 @@ export function DocumentRenderContent({
 					activeParserPluginIds={document.activePluginIds.parser}
 					activeRenderPluginIds={document.activePluginIds.render}
 					templateDefaults={{ components: document.template.componentDefaults }}
+					referenceLabels={document.template.referenceLabels}
 					utilityClasses={document.template.utilities}
 				/>
 			</article>

@@ -74,6 +74,7 @@ const DefaultTemplateSchema = z.object({
 		})
 		.optional(),
 	utilities: z.record(z.string(), z.string()).optional(),
+	referenceLabels: z.record(z.string(), z.string()).optional(),
 	citationStyle: z.string().optional(),
 });
 
@@ -191,6 +192,7 @@ export type TemplateFileResolved = {
 			};
 		};
 		utilities: Record<string, string>;
+		referenceLabels: Record<string, string>;
 		citationStyle: string;
 	};
 	print: {
@@ -279,6 +281,11 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			},
 		},
 		utilities: {},
+		referenceLabels: {
+			abstract: "Abstract",
+			plotty: "Figure",
+			datatable: "Table",
+		},
 		citationStyle: "author-year",
 	},
 	print: {
@@ -441,6 +448,10 @@ function mergeTemplateWithDefaults(
 			utilities: {
 				...DEFAULT_TEMPLATE_FILE.default.utilities,
 				...(overrides.default?.utilities ?? {}),
+			},
+			referenceLabels: {
+				...DEFAULT_TEMPLATE_FILE.default.referenceLabels,
+				...(overrides.default?.referenceLabels ?? {}),
 			},
 			citationStyle:
 				overrides.default?.citationStyle ??

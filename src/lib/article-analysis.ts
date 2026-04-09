@@ -5,6 +5,7 @@ export type ArticleAnalysisDiagnostic = {
 		| "article-ref-short-missing-unkeyed-target"
 		| "article-ref-short-ambiguous-unkeyed-target"
 		| "article-ref-unresolved-keyed-target"
+		| "article-ref-label-unmapped"
 		| "article-directive-identity-duplicate"
 		| "article-caption-identity-duplicate"
 		| "plugin-required-data-file-missing";
@@ -30,19 +31,17 @@ type ReferenceTarget = {
 type ReferenceTypeConfig = {
 	label: string;
 	anchorPrefix: string;
+	isMapped: boolean;
 };
 
-const REFERENCE_TYPE_CONFIG: Record<string, ReferenceTypeConfig> = {
+const REFERENCE_TYPE_CONFIG: Record<string, { anchorPrefix: string }> = {
 	abstract: {
-		label: "Abstract",
 		anchorPrefix: "abstract",
 	},
 	plotty: {
-		label: "Figure",
 		anchorPrefix: "plot",
 	},
 	datatable: {
-		label: "Table",
 		anchorPrefix: "datatable",
 	},
 };
@@ -206,18 +205,28 @@ function parseRefSelectors(raw: string): string[] {
 		.filter(Boolean);
 }
 
-function getReferenceTypeConfig(type: string): ReferenceTypeConfig {
-	return (
-		REFERENCE_TYPE_CONFIG[type] || {
-			label: "?",
-			anchorPrefix: type,
-		}
-	);
+function getReferenceTypeConfig(
+	type: string,
+	referenceLabels: Record<string, string>,
+): ReferenceTypeConfig {
+	const preset = REFERENCE_TYPE_CONFIG[type];
+	const templateLabel = referenceLabels[type];
+	const mappedLabel =
+		typeof templateLabel === "string" && templateLabel.trim() !== ""
+			? templateLabel.trim()
+			: "";
+
+	return {
+		label: mappedLabel || "?",
+		anchorPrefix: preset?.anchorPrefix || type,
+		isMapped: mappedLabel !== "",
+	};
 }
 
 function buildReferenceResolution(
 	content: string,
 	targets: ReferenceTarget[],
+	referenceLabels: Record<string, string>,
 ): {
 	resolvedReferences: Record<string, ResolvedReference>;
 	diagnostics: ArticleAnalysisDiagnostic[];
@@ -251,11 +260,19 @@ function buildReferenceResolution(
 			const parts = selector.split(":").map((part) => part.trim());
 			if (parts.length === 0 || !parts[0]) continue;
 			const type = normalizeToken(parts[0]);
-			const config = getReferenceTypeConfig(type);
+			const config = getReferenceTypeConfig(type, referenceLabels);
 
 			if (parts.length === 1) {
 				const candidates = unkeyedTargetMap.get(type) || [];
 				if (candidates.length === 1) {
+					if (!config.isMapped) {
+						diagnostics.push({
+							code: "article-ref-label-unmapped",
+							severity: "warning",
+							source: "core",
+							message: `Reference type "${type}" is not mapped in template labels. Falling back to "?".`,
+						});
+					}
 					resolvedReferences[selector] = {
 						label: config.label,
 						href: "#",
@@ -298,6 +315,14 @@ function buildReferenceResolution(
 				continue;
 			}
 
+			if (!config.isMapped) {
+				diagnostics.push({
+					code: "article-ref-label-unmapped",
+					severity: "warning",
+					source: "core",
+					message: `Reference type "${type}" is not mapped in template labels. Falling back to "? ${resolved.number}".`,
+				});
+			}
 			resolvedReferences[selector] = {
 				label: `${config.label} ${resolved.number}`.trim(),
 				href:
@@ -311,7 +336,10 @@ function buildReferenceResolution(
 	return { resolvedReferences, diagnostics };
 }
 
-export function analyzeArticleSource(content: string): {
+export function analyzeArticleSource(
+	content: string,
+	referenceLabels: Record<string, string> = {},
+): {
 	diagnostics: ArticleAnalysisDiagnostic[];
 	resolvedReferences: Record<string, ResolvedReference>;
 } {
@@ -326,7 +354,11 @@ export function analyzeArticleSource(content: string): {
 	const captionResult = parseCaptionTargets(content, counters);
 
 	const allTargets = [...directiveResult.targets, ...captionResult.targets];
-	const resolutionResult = buildReferenceResolution(content, allTargets);
+	const resolutionResult = buildReferenceResolution(
+		content,
+		allTargets,
+		referenceLabels,
+	);
 
 	return {
 		diagnostics: [

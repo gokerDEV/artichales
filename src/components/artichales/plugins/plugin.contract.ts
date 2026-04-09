@@ -1,11 +1,12 @@
-import type { Pluggable } from "unified";
+import type { Root } from "mdast";
+import type { Plugin } from "unified";
 import type { ZodType } from "zod";
 
 export type PluginCategory = "core" | "parser" | "render" | "editor";
 
 export type PluginHooks = {
 	setup?: () => void;
-	parse?: Pluggable;
+	parse?: Plugin<[], Root>;
 	process?: () => void;
 	render?: () => void;
 	editor?: () => void;

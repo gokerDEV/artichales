@@ -577,3 +577,33 @@ Still open:
 - Template-driven reference label mapping is still pending (labels remain hardcoded Figure/Table with fallback logic).
 - Save failure UI still needs explicit shadcn alert treatment.
 - Legacy localStorage read fallback path still exists as migration debt.
+
+## 10. Progress Update (2026-04-10, Session 3)
+
+Completed in this session:
+- `runDocumentPipeline` now executes plugin hooks as stage behavior, not only runtime availability checks:
+  - parser hooks are executed via a unified parse pass per active parser plugin
+  - core `process` hooks are executed in plugin-processing stage
+  - render hooks are executed in render-active-target stage
+- Hook execution failures are now surfaced as plugin-scoped blocking diagnostics with `plugin_id` (`plugin-hook-failed`).
+- Added migration regression test proving parser hook failures are attributed to the correct plugin id.
+
+Still open:
+- Render path still uses direct React component wiring for concrete UI rendering, so end-to-end render composition is not yet fully hook-owned.
+- Template-driven reference label mapping remains pending.
+- Save failure explicit shadcn alert treatment remains pending.
+- Legacy localStorage read fallback remains pending cleanup.
+
+## 11. Progress Update (2026-04-10, Session 4)
+
+Completed in this session:
+- Added template-driven reference label mapping support via `default.referenceLabels`.
+- Reference resolution now consumes template labels in pipeline analysis (`analyzeArticleSource` input).
+- When a reference type is unmapped, label fallback now follows spec intent (`?` or `? n`) and emits warning diagnostics (`article-ref-label-unmapped`).
+- Ref render fallback path now also reads template-provided reference labels.
+- Added regression test for unmapped label fallback behavior.
+
+Still open:
+- Render path remains partially component-wired instead of fully hook-owned end-to-end.
+- Save failure explicit shadcn alert treatment remains pending.
+- Legacy localStorage read fallback remains pending cleanup.

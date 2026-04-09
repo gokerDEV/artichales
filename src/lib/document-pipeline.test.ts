@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { citationParserPlugin } from "@/components/artichales/plugins/citation.parser.plugin";
 import { runDocumentPipeline } from "./document-pipeline";
 
 const VALID_BIB = `@article{knuth1984,
@@ -175,5 +176,61 @@ Footnote ref [^n1]
 		);
 
 		expect(unsupportedFootnote).toBeDefined();
+	});
+
+	test("attributes parser hook failures to plugin id", () => {
+		const originalParseHook = citationParserPlugin.hooks.parse;
+		citationParserPlugin.hooks.parse = () => {
+			throw new Error("forced parser failure");
+		};
+
+		try {
+			const files = createWorkspace(`---
+title: "Plugin failure test"
+---
+Body with [cite:knuth1984].`);
+			const result = runDocumentPipeline(files, "print");
+			const hookFailure = result.articleDiagnostics.find(
+				(diag) =>
+					diag.code === "plugin-hook-failed" &&
+					diag.severity === "error" &&
+					diag.pluginId === citationParserPlugin.id,
+			);
+
+			expect(hookFailure).toBeDefined();
+		} finally {
+			citationParserPlugin.hooks.parse = originalParseHook;
+		}
+	});
+
+	test("falls back to '? n' when reference label mapping is missing", () => {
+		const templateWithoutPlottyLabel = JSON.stringify({
+			default: {
+				referenceLabels: {
+					plotty: "",
+				},
+			},
+		});
+		const files = createWorkspace(
+			`---
+title: "Ref label fallback"
+---
+:::plotty[data.json]
+Caption text
+:::
+
+See [ref:plotty:data].`,
+			VALID_BIB,
+			templateWithoutPlottyLabel,
+		);
+
+		const result = runDocumentPipeline(files, "print");
+		const mapped = result.resolvedReferences["plotty:data"];
+		const warning = result.articleDiagnostics.find(
+			(diag) => diag.code === "article-ref-label-unmapped",
+		);
+
+		expect(mapped?.label).toBe("? 1");
+		expect(warning).toBeDefined();
 	});
 });

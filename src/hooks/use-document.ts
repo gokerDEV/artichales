@@ -104,6 +104,7 @@ export type DocumentTemplate = {
 		contentClass?: string;
 	};
 	utilities?: Record<string, string>;
+	referenceLabels?: Record<string, string>;
 	colors?: {
 		text?: string;
 		muted?: string;
@@ -195,6 +196,7 @@ function resolveTemplateForTarget(
 		componentDefaults: defaults.components,
 		webLayout: web.layout,
 		utilities: defaults.utilities,
+		referenceLabels: defaults.referenceLabels,
 		colors: defaults.colors,
 		citationStyle: defaults.citationStyle,
 		assetMaxFileSize: defaults.assets.maxFileSize,

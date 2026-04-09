@@ -1,4 +1,5 @@
-import type { Pluggable } from "unified";
+import type { Root } from "mdast";
+import type { Plugin } from "unified";
 import {
 	getPluginsByCategory,
 	type PluginRegistryEntry,
@@ -38,8 +39,8 @@ export function resolvePluginExecutionState(
 
 export function getParserRemarkPluginsFromExecutionState(
 	state: PluginExecutionState,
-): Pluggable[] {
+): Array<Plugin<[], Root>> {
 	return state.parser
 		.map((plugin) => plugin.hooks.parse)
-		.filter((plugin): plugin is Pluggable => Boolean(plugin));
+		.filter((plugin): plugin is Plugin<[], Root> => Boolean(plugin));
 }

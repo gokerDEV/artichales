@@ -42,6 +42,7 @@ type MarkdownContentProps = {
 			};
 		};
 	};
+	referenceLabels?: Record<string, string>;
 	utilityClasses?: Record<string, string>;
 };
 
@@ -54,6 +55,7 @@ export function MarkdownContent({
 	activeRenderPluginIds,
 	indexContent,
 	templateDefaults,
+	referenceLabels,
 	utilityClasses,
 }: MarkdownContentProps) {
 	const parserPlugins = React.useMemo(() => {
@@ -129,8 +131,9 @@ export function MarkdownContent({
 				refIndexById,
 				resolvedReferences,
 				utilityClasses?.ref || "ref",
+				referenceLabels,
 			),
-		[refIndexById, resolvedReferences, utilityClasses],
+		[refIndexById, resolvedReferences, utilityClasses, referenceLabels],
 	);
 	const markdownComponents = React.useMemo(() => {
 		const components: React.ComponentProps<typeof ReactMarkdown>["components"] =

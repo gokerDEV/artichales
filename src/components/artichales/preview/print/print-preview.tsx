@@ -408,6 +408,9 @@ export function PrintPreview({
 																	components:
 																		document.template.componentDefaults,
 																}}
+																referenceLabels={
+																	document.template.referenceLabels
+																}
 																utilityClasses={document.template.utilities}
 															/>
 														</div>
