@@ -137,7 +137,10 @@ export interface DocumentSource {
 	}>;
 	articleDiagnostics: Array<
 		| {
-				code: "article-frontmatter-invalid";
+				code:
+					| "article-frontmatter-missing"
+					| "article-frontmatter-invalid"
+					| "article-footnote-unsupported";
 				severity: "error";
 				message: string;
 				source: "parser";

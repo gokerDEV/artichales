@@ -573,10 +573,13 @@ function mergeTemplateWithDefaults(
 		},
 		plugins:
 			Array.isArray(overrides.plugins) && overrides.plugins.length > 0
-				? overrides.plugins.map((plugin) => ({
-						id: plugin.id,
-						enabled: plugin.enabled !== false,
-					}))
+				? [
+						...DEFAULT_TEMPLATE_FILE.plugins,
+						...overrides.plugins.map((plugin) => ({
+							id: plugin.id,
+							enabled: plugin.enabled !== false,
+						})),
+					]
 				: DEFAULT_TEMPLATE_FILE.plugins,
 	};
 }

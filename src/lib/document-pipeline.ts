@@ -34,7 +34,9 @@ type PipelineStage =
 export type PipelineDiagnostic = {
 	code:
 		| "pipeline-stage-complete"
+		| "article-frontmatter-missing"
 		| "article-frontmatter-invalid"
+		| "article-footnote-unsupported"
 		| "asset-json-invalid"
 		| "plugin-config-invalid"
 		| "plugin-config-map-invalid";
@@ -87,7 +89,16 @@ function parseArticleContent(articleText: string): {
 		return {
 			content: articleText,
 			frontmatter: {},
-			diagnostics: [],
+			diagnostics: [
+				{
+					code: "article-frontmatter-missing",
+					severity: "error",
+					source: "parser",
+					message:
+						"`article.mda` frontmatter is required. Preview is blocked until it is added.",
+					stage: "parse-article",
+				},
+			],
 		};
 	}
 
@@ -117,6 +128,25 @@ function parseArticleContent(articleText: string): {
 			],
 		};
 	}
+}
+
+function detectUnsupportedSourceConcepts(
+	content: string,
+): PipelineDiagnostic[] {
+	const diagnostics: PipelineDiagnostic[] = [];
+	const hasFootnoteReference = /\[\^[^\]]+\]/.test(content);
+	const hasFootnoteDefinition = /^\[\^[^\]]+\]:/m.test(content);
+	if (hasFootnoteReference || hasFootnoteDefinition) {
+		diagnostics.push({
+			code: "article-footnote-unsupported",
+			severity: "error",
+			source: "parser",
+			stage: "parse-article",
+			message:
+				"Footnotes are out of scope for v1 and must be removed from `article.mda`.",
+		});
+	}
+	return diagnostics;
 }
 
 function parseAssetJsonFiles(files: Record<string, string>): {
@@ -263,6 +293,9 @@ export function runDocumentPipeline(
 
 	const articleAnalysis = analyzeArticleSource(articleResult.content);
 	pushStage("build-registry-and-numbering");
+	const unsupportedConceptDiagnostics = detectUnsupportedSourceConcepts(
+		articleResult.content,
+	);
 
 	const pluginMapResult = parsePluginConfigMap(articleResult.frontmatter);
 	const pluginConfigDiagnostics = validatePluginConfigs(
@@ -285,6 +318,7 @@ export function runDocumentPipeline(
 		assetDiagnostics: assetResult.diagnostics,
 		articleDiagnostics: [
 			...articleResult.diagnostics,
+			...unsupportedConceptDiagnostics,
 			...articleAnalysis.diagnostics,
 			...pluginMapResult.diagnostics,
 			...pluginConfigDiagnostics,

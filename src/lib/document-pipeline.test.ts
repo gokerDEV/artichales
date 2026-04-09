@@ -13,9 +13,16 @@ function createWorkspace(
 	references = VALID_BIB,
 	template = "{}",
 ) {
+	const articleWithFrontmatter = article.startsWith("---\n")
+		? article
+		: `---
+title: "Test"
+---
+${article}`;
+
 	return {
 		"template.json": template,
-		"article.mda": article,
+		"article.mda": articleWithFrontmatter,
 		"references.bib": references,
 	};
 }
@@ -135,5 +142,38 @@ Body.`);
 		);
 
 		expect(pluginMapError).toBeDefined();
+	});
+
+	test("marks missing frontmatter as blocking", () => {
+		const files = {
+			"template.json": "{}",
+			"article.mda": "No frontmatter body text.",
+			"references.bib": VALID_BIB,
+		};
+		const result = runDocumentPipeline(files, "print");
+		const missingFrontmatter = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-frontmatter-missing" &&
+				diag.severity === "error",
+		);
+
+		expect(missingFrontmatter).toBeDefined();
+	});
+
+	test("marks footnote syntax as unsupported blocking error", () => {
+		const files = createWorkspace(`---
+title: "Footnote test"
+---
+Footnote ref [^n1]
+
+[^n1]: unsupported.`);
+		const result = runDocumentPipeline(files, "print");
+		const unsupportedFootnote = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-footnote-unsupported" &&
+				diag.severity === "error",
+		);
+
+		expect(unsupportedFootnote).toBeDefined();
 	});
 });

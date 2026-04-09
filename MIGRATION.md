@@ -516,3 +516,37 @@ Migration is complete only when all are true:
 - Plugin architecture is deterministic and failure-isolated.
 - `PLUGIN_SPEC.md` and `ARTIFACT_SPEC.md` are fully synchronized to `SPEC.md`.
 - No remaining production code path depends on deprecated pre-migration behavior.
+
+---
+
+## 8. Compliance Audit Addendum (2026-04-10)
+
+The following gaps were identified by reviewing the current codebase against `SPEC.md` and this migration plan.
+
+### P0
+
+1. Plugin execution model is not fully pipeline-bound:
+- `runDocumentPipeline` does not execute parser/core/render plugin hooks as authoritative stages.
+- Runtime parsing/rendering still depends on separate ReactMarkdown plugin wiring.
+
+2. Frontmatter required rule is not enforced:
+- Missing frontmatter currently does not emit a blocking error.
+
+### P1
+
+1. Template reference label mapping is missing:
+- Reference labels are hardcoded (`Figure`, `Table`) instead of template-driven mapping + fallback behavior.
+
+2. Unsupported footnotes are not blocked:
+- GFM footnotes are currently accepted although out of scope for v1.
+
+3. Template merge rule drift for arrays:
+- `plugins` behaves as replace instead of append semantics.
+
+### P2
+
+1. Save failure UX drift:
+- Save failures are surfaced, but not via an explicit shadcn alert pattern.
+
+2. Legacy localStorage read path remains:
+- OPFS is primary for write, but fallback read path still exists as migration debt.

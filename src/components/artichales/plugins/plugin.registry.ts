@@ -47,11 +47,17 @@ export function loadPluginRegistry(
 		BUILTIN_PLUGINS.map((plugin) => [plugin.id, plugin]),
 	);
 	const resolved: PluginDefinition[] = [];
+	const dedupedReversed: PluginRegistryEntry[] = [];
 	const seen = new Set<string>();
-
-	for (const entry of registryEntries) {
+	for (let index = registryEntries.length - 1; index >= 0; index--) {
+		const entry = registryEntries[index];
 		if (seen.has(entry.id)) continue;
 		seen.add(entry.id);
+		dedupedReversed.push(entry);
+	}
+	const dedupedEntries = dedupedReversed.reverse();
+
+	for (const entry of dedupedEntries) {
 		const plugin = builtinById.get(entry.id);
 		if (!plugin) continue;
 		if (entry.enabled === false) continue;
