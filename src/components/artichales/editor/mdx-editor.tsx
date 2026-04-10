@@ -1,22 +1,21 @@
-import { autocompletion, completeFromList } from "@codemirror/autocomplete";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { autocompletion } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
-import { StreamLanguage } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
-import { basicSetup } from "codemirror";
+import { EditorView } from "@codemirror/view";
 import * as React from "react";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import type { EditorCompletions } from "@/types/editor";
+import {
+	BIBTEX_LANGUAGE,
+	buildArticleCompletions,
+	buildBibliographyCompletions,
+	buildTemplateCompletions,
+} from "./config/completions";
+import { getBaseExtensions } from "./config/extensions";
 
 type EditorFileKind = "article" | "template" | "bibliography" | "asset";
-
-type EditorCompletions = {
-	bibKeys: string[];
-	referenceSelectors: string[];
-};
 
 export type MdxEditorProps = {
 	fileName: string;
@@ -31,80 +30,11 @@ export type MdxEditorProps = {
 	completions?: EditorCompletions;
 };
 
-const BIBTEX_LANGUAGE = StreamLanguage.define({
-	startState: () => ({}),
-	token: (stream) => {
-		if (stream.eatSpace()) return null;
-		if (stream.match(/^@[a-zA-Z]+/)) return "keyword";
-		if (stream.match(/^[a-zA-Z_][\w-]*/)) return "variableName";
-		if (stream.match(/^"([^"\\]|\\.)*"/)) return "string";
-		if (stream.match(/^[{}=,]/)) return "punctuation";
-		stream.next();
-		return null;
-	},
-});
-
 function resolveEditorFileKind(fileName: string): EditorFileKind {
 	if (fileName === "template.json") return "template";
 	if (fileName === "references.bib") return "bibliography";
 	if (fileName === "article.mda") return "article";
 	return "asset";
-}
-
-function buildTemplateCompletions() {
-	return completeFromList([
-		{ label: "version", type: "property" },
-		{ label: "publisher", type: "property" },
-		{ label: "default", type: "property" },
-		{ label: "print", type: "property" },
-		{ label: "web", type: "property" },
-		{ label: "plugins", type: "property" },
-		{ label: "citationStyle", type: "property" },
-		{ label: "assets", type: "property" },
-		{ label: "maxFileSize", type: "property" },
-	]);
-}
-
-function buildBibliographyCompletions() {
-	return completeFromList([
-		{ label: "@article{", type: "keyword" },
-		{ label: "@book{", type: "keyword" },
-		{ label: "@proceedings{", type: "keyword" },
-		{ label: "@online{", type: "keyword" },
-		{ label: "author =", type: "property" },
-		{ label: "title =", type: "property" },
-		{ label: "year =", type: "property" },
-		{ label: "url =", type: "property" },
-		{ label: "accessed =", type: "property" },
-	]);
-}
-
-function buildArticleCompletions(completions: EditorCompletions) {
-	const refOptions = completions.referenceSelectors.map((selector) => ({
-		label: `[ref:${selector}]`,
-		type: "variable",
-	}));
-	const citeOptions = completions.bibKeys.map((key) => ({
-		label: `[cite:${key}]`,
-		type: "variable",
-	}));
-
-	return completeFromList([
-		{ label: "---", type: "keyword" },
-		{ label: "title:", type: "property" },
-		{ label: "authors:", type: "property" },
-		{ label: "keywords:", type: "property" },
-		{ label: "[cite:]", type: "keyword" },
-		{ label: "[ref:type:key]", type: "keyword" },
-		{ label: "[ref:type]", type: "keyword" },
-		{ label: "[caption:type:key]", type: "keyword" },
-		{ label: "[caption:type:key](Title)", type: "keyword" },
-		{ label: ":::abstract", type: "keyword" },
-		{ label: ":::plotty[data.json]", type: "keyword" },
-		{ label: ":::datatable[data.json]", type: "keyword" },
-		...refOptions,
-		...citeOptions,
-	]);
 }
 
 function createEditorState(
@@ -134,10 +64,7 @@ function createEditorState(
 	return EditorState.create({
 		doc: content,
 		extensions: [
-			basicSetup,
-			history(),
-			keymap.of([...defaultKeymap, ...historyKeymap]),
-			EditorView.lineWrapping,
+			...getBaseExtensions(),
 			languageByFileKind[fileKind],
 			autocompletion({ override: [completionByFileKind[fileKind]] }),
 			EditorView.updateListener.of((update) => {
@@ -228,19 +155,19 @@ export function MdxEditor({
 
 		viewRef.current.setState(nextState);
 		statesByFileRef.current.set(fileName, nextState);
-		onCursorOffsetChangeRef.current?.(
-			viewRef.current.state.selection.main.head,
-		);
+		onCursorOffsetChangeRef.current?.(viewRef.current.state.selection.main.head);
 	}, [completions, fileName, value]);
 
 	React.useEffect(() => {
 		const currentView = viewRef.current;
-		if (!currentView) return;
+		if (!currentView || currentView.hasFocus) return;
+
 		const currentContent = currentView.state.doc.toString();
-		if (currentContent === value) return;
-		currentView.dispatch({
-			changes: { from: 0, to: currentView.state.doc.length, insert: value },
-		});
+		if (currentContent !== value) {
+			currentView.dispatch({
+				changes: { from: 0, to: currentView.state.doc.length, insert: value },
+			});
+		}
 	}, [value]);
 
 	React.useEffect(() => {
@@ -281,13 +208,11 @@ export function MdxEditor({
 					{label}
 				</Label>
 			</div>
-			<ScrollArea className="h-full min-h-0 rounded-none bg-card">
-				<div
-					id={id}
-					ref={editorHostRef}
-					className="min-h-full border-none bg-card font-mono text-sm [&_.cm-content]:min-h-full [&_.cm-editor]:h-auto [&_.cm-editor]:min-h-full [&_.cm-editor]:outline-none [&_.cm-gutters]:border-border [&_.cm-gutters]:border-r [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:font-mono"
-				/>
-			</ScrollArea>
+			<div
+				id={id}
+				ref={editorHostRef}
+				className="min-h-full border-none bg-card font-mono text-sm [&_.cm-content]:min-h-full [&_.cm-editor]:h-auto [&_.cm-editor]:min-h-full [&_.cm-editor]:outline-none [&_.cm-gutters]:border-border [&_.cm-gutters]:border-r [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:font-mono"
+			/>
 		</div>
 	);
 }

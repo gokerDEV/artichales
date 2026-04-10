@@ -40,6 +40,7 @@ See [ref:abstract].`);
 			(diag) => diag.severity === "error",
 		);
 
+		if (hasError) console.error(result.articleDiagnostics);
 		expect(hasError).toBe(false);
 		expect(result.resolvedReferences.abstract?.label).toBe("Abstract");
 	});

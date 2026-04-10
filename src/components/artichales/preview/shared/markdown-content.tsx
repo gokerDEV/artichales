@@ -16,7 +16,7 @@ import "katex/dist/katex.min.css";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
 type MarkdownContentProps = {
-	content: string;
+	ast: Root;
 	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
 	resolvedReferences: Record<string, ResolvedReference>;
@@ -85,13 +85,12 @@ const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
 };
 
 export function MarkdownContent({
-	content,
+	ast,
 	plotFiles,
 	target,
 	resolvedReferences,
 	activeParserPluginIds,
 	activeRenderPluginIds,
-	indexContent,
 	templateDefaults,
 	referenceLabels,
 	utilityClasses,
@@ -102,10 +101,8 @@ export function MarkdownContent({
 		);
 		return getParserRemarkPluginsFromExecutionState(executionState);
 	}, [activeParserPluginIds]);
-	const indexingSource = indexContent || content;
 	const { plotIndexById, datatableIndexById, refIndexById } =
 		React.useMemo(() => {
-			const regex = /:::(plotty|datatable)\[(.+?)\]/g;
 			const plotMap: Record<string, number> = {};
 			const datatableMap: Record<string, number> = {};
 			const refMap: Record<
@@ -115,37 +112,38 @@ export function MarkdownContent({
 					index: number;
 				}
 			> = {};
-			let match: RegExpExecArray | null = null;
 			let plotIdx = 1;
 			let datatableIdx = 1;
 
-			while (true) {
-				match = regex.exec(indexingSource);
-				if (match === null) break;
-				const kind = match[1]?.trim();
-				const source = match[2]?.trim() || "";
-				const id = source.replace(/\.[^/.]+$/, "");
-				if (!id) continue;
-
-				if (kind === "plotty" && plotMap[id] === undefined) {
-					plotMap[id] = plotIdx;
-					refMap[id] = { kind: "plot", index: plotIdx };
-					plotIdx++;
-					continue;
+			visit(ast, (node) => {
+				const uNode = node as any;
+				if (uNode.type === "containerDirective" || uNode.type === "leafDirective") {
+					if (uNode.name === "plotty") {
+						const sourceStr = uNode.data?.hProperties?.["data-plot-source"] || uNode.children?.[0]?.children?.[0]?.value || "";
+						const dataPlotSource = sourceStr.replace(/\.[^/.]+$/, "");
+						if (dataPlotSource && plotMap[dataPlotSource] === undefined) {
+							plotMap[dataPlotSource] = plotIdx;
+							refMap[dataPlotSource] = { kind: "plot", index: plotIdx };
+							plotIdx++;
+						}
+					} else if (uNode.name === "datatable") {
+						const sourceStr = uNode.data?.hProperties?.["data-table-source"] || uNode.children?.[0]?.children?.[0]?.value || "";
+						const dataTableSource = sourceStr.replace(/\.[^/.]+$/, "");
+						if (dataTableSource && datatableMap[dataTableSource] === undefined) {
+							datatableMap[dataTableSource] = datatableIdx;
+							refMap[dataTableSource] = { kind: "datatable", index: datatableIdx };
+							datatableIdx++;
+						}
+					}
 				}
-				if (kind === "datatable" && datatableMap[id] === undefined) {
-					datatableMap[id] = datatableIdx;
-					refMap[id] = { kind: "datatable", index: datatableIdx };
-					datatableIdx++;
-				}
-			}
+			});
 
 			return {
 				plotIndexById: plotMap,
 				datatableIndexById: datatableMap,
 				refIndexById: refMap,
 			};
-		}, [indexingSource]);
+		}, [ast]);
 
 	const markdownComponents = React.useMemo(() => {
 		const components: React.ComponentProps<typeof ReactMarkdown>["components"] =

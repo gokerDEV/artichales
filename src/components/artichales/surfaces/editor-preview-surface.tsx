@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
+import { useWorkspaceStore } from "@/store/workspace.store";
 import {
 	collectAlignmentHeadings,
 	getHeadingIdForSourceOffset,
@@ -115,6 +116,40 @@ export function EditorPreviewSurface() {
 	const previewShellRef = React.useRef<HTMLDivElement | null>(null);
 	const hasLoadedWorkspaceRef = React.useRef(false);
 	const isHydratingRef = React.useRef(true);
+	const workerRef = React.useRef<Worker | null>(null);
+
+	const { setRawFiles, setPipelineResult } = useWorkspaceStore();
+
+	React.useEffect(() => {
+		workerRef.current = new Worker(new URL("../../workers/pipeline.worker", import.meta.url), { type: "module" });
+		
+		workerRef.current.onmessage = (event) => {
+			if (event.data.type === "PIPELINE_SUCCESS") {
+				setPipelineResult(event.data.payload);
+			} else if (event.data.type === "PIPELINE_ERROR") {
+				console.error("[pipeline-worker] error:", event.data.error);
+			}
+		};
+
+		return () => {
+			workerRef.current?.terminate();
+		};
+	}, [setPipelineResult]);
+
+	React.useEffect(() => {
+		const timeout = setTimeout(() => {
+			setRawFiles(files);
+			if (workerRef.current) {
+				useWorkspaceStore.setState({ isPipelineRunning: true });
+				workerRef.current.postMessage({
+					type: "EXECUTE_PIPELINE",
+					files,
+					target
+				});
+			}
+		}, 300);
+		return () => clearTimeout(timeout);
+	}, [files, target, setRawFiles]);
 
 	React.useEffect(() => {
 		let cancelled = false;

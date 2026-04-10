@@ -71,19 +71,21 @@ export function DocumentRenderContent({
 			style={buildTemplateCssVars(document)}
 		>
 			{coreRenderers.get("title-core") ?? null}
-			<article className={cn(contentClassName, articleClassName)}>
-				<MarkdownContent
-					content={document.content}
-					plotFiles={document.plots}
-					target={target}
-					resolvedReferences={document.resolvedReferences}
-					activeParserPluginIds={document.activePluginIds.parser}
-					activeRenderPluginIds={document.activePluginIds.render}
-					templateDefaults={{ components: document.template.componentDefaults }}
-					referenceLabels={document.template.referenceLabels}
-					utilityClasses={document.template.utilities}
-				/>
-			</article>
+				<article className={cn(contentClassName, articleClassName)}>
+				{document.ast ? (
+					<MarkdownContent
+						ast={document.ast}
+						plotFiles={document.plots}
+						target={target}
+						resolvedReferences={document.resolvedReferences}
+						activeParserPluginIds={document.activePluginIds.parser}
+						activeRenderPluginIds={document.activePluginIds.render}
+						templateDefaults={{ components: document.template.componentDefaults }}
+						referenceLabels={document.template.referenceLabels}
+						utilityClasses={document.template.utilities}
+					/>
+				) : null}
+				</article>
 			{coreRenderers.get("references-core") ?? null}
 		</div>
 	);

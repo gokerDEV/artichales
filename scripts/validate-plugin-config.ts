@@ -47,7 +47,7 @@ function validateBuildTimePluginConfiguration(): string[] {
 
 	if (templateResult.hasError) {
 		for (const diagnostic of templateResult.diagnostics) {
-			errors.push(`[template] ${diagnostic.message}`);
+			errors.push(`[template] ${diagnostic.message} (details: ${diagnostic.details || "none"})`);
 		}
 		return errors;
 	}

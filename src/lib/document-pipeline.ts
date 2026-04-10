@@ -60,6 +60,7 @@ export type PipelineDiagnostic = {
 };
 
 export type PipelineResult = {
+	ast: Root | null;
 	content: string;
 	frontmatter: Record<string, unknown>;
 	citations: Record<string, CitationEntry>;
@@ -342,39 +343,86 @@ function validatePluginRuntimeAvailability(
 	};
 }
 
+import type { Root } from "mdast";
+import { visit } from "unist-util-visit";
+
 function executeParserHooks(
 	articleContent: string,
 	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
-): PipelineDiagnostic[] {
+): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
 	const diagnostics: PipelineDiagnostic[] = [];
 	const executionState = resolvePluginExecutionState(templatePlugins);
 
+	let processor = unified()
+		.use(remarkParse)
+		.use(remarkGfm)
+		.use(remarkDirective);
+
 	for (const plugin of executionState.parser) {
-		const parseHook = plugin.hooks.parse;
+		const parseHook = plugin.hooks.parse as any;
 		if (!parseHook) continue;
 
-		try {
-			const processor = unified()
-				.use(remarkParse)
-				.use(remarkGfm)
-				.use(remarkDirective)
-				.use(parseHook);
-			const tree = processor.parse(articleContent);
-			processor.runSync(tree);
-		} catch (error) {
-			const detail = error instanceof Error ? error.message : String(error);
-			diagnostics.push({
-				code: "plugin-hook-failed",
-				severity: "error",
-				source: "plugin",
-				pluginId: plugin.id,
-				stage: "plugin-processing",
-				message: `Parser hook failed for "${plugin.id}": ${detail}`,
-			});
-		}
+		processor = processor.use(function(this: any) {
+			try {
+				const transformer = parseHook.call(this) as ((tree: Root, file: any) => void) | void;
+				if (transformer) {
+					return (tree: Root, file: any) => {
+						try {
+							transformer(tree, file);
+						} catch (error) {
+							const detail = error instanceof Error ? error.message : String(error);
+							diagnostics.push({
+								code: "plugin-hook-failed",
+								severity: "error",
+								source: "plugin",
+								pluginId: plugin.id,
+								stage: "plugin-processing",
+								message: `Parser hook failed for "${plugin.id}": ${detail}`,
+							});
+						}
+					};
+				}
+			} catch (error) {
+				const detail = error instanceof Error ? error.message : String(error);
+				diagnostics.push({
+					code: "plugin-hook-failed",
+					severity: "error",
+					source: "plugin",
+					pluginId: plugin.id,
+					stage: "plugin-processing",
+					message: `Parser hook setup failed for "${plugin.id}": ${detail}`,
+				});
+			}
+		});
 	}
 
-	return diagnostics;
+	processor = processor.use(() => (tree: Root) => {
+		visit(tree, ["heading", "paragraph", "containerDirective", "leafDirective", "textDirective", "list", "blockquote", "table"], (node) => {
+			const dataNode = node as any;
+			if (node.position?.start?.offset != null) {
+				if (!dataNode.data) dataNode.data = {};
+				if (!dataNode.data.hProperties) dataNode.data.hProperties = {};
+				dataNode.data.hProperties["data-source-offset"] = node.position.start.offset;
+			}
+		});
+	});
+
+	let ast: Root | null = null;
+	try {
+		ast = processor.parse(articleContent);
+		ast = processor.runSync(ast) as Root;
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : String(error);
+		diagnostics.push({
+			code: "plugin-hook-failed",
+			severity: "error",
+			source: "pipeline",
+			stage: "plugin-processing",
+			message: `Pipeline parsing failed: ${detail}`,
+		});
+	}
+
+	return { ast, diagnostics };
 }
 
 function executeVoidHooks(
@@ -454,13 +502,17 @@ function executePluginHooks(
 	articleContent: string,
 	target: "web" | "print",
 	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
-): PipelineDiagnostic[] {
+): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
 	const executionState = resolvePluginExecutionState(templatePlugins);
-	return [
-		...executeParserHooks(articleContent, templatePlugins),
-		...executeVoidHooks(executionState.core, "plugin-processing"),
-		...executeRenderHooks(executionState.render, target),
-	];
+	const parserResult = executeParserHooks(articleContent, templatePlugins);
+	return {
+		ast: parserResult.ast,
+		diagnostics: [
+			...parserResult.diagnostics,
+			...executeVoidHooks(executionState.core, "plugin-processing"),
+			...executeRenderHooks(executionState.render, target),
+		],
+	};
 }
 
 function emitPluginTrace(
@@ -528,7 +580,7 @@ export function runDocumentPipeline(
 	const pluginRuntimeResult = validatePluginRuntimeAvailability(
 		templateResult.template.plugins,
 	);
-	const pluginHookDiagnostics = executePluginHooks(
+	const pluginHooksResult = executePluginHooks(
 		articleResult.content,
 		target,
 		templateResult.template.plugins,
@@ -536,12 +588,13 @@ export function runDocumentPipeline(
 	emitPluginTrace(templateResult.template.plugins, [
 		...pluginConfigDiagnostics,
 		...pluginRuntimeResult.diagnostics,
-		...pluginHookDiagnostics,
+		...pluginHooksResult.diagnostics,
 	]);
 	pushStage("plugin-processing");
 	pushStage("render-active-target");
 
 	return {
+		ast: pluginHooksResult.ast,
 		content: articleResult.content,
 		frontmatter: articleResult.frontmatter,
 		citations: bibResult.citations,
@@ -558,7 +611,7 @@ export function runDocumentPipeline(
 			...pluginMapResult.diagnostics,
 			...pluginConfigDiagnostics,
 			...pluginRuntimeResult.diagnostics,
-			...pluginHookDiagnostics,
+			...pluginHooksResult.diagnostics,
 		],
 		resolvedReferences: articleAnalysis.resolvedReferences,
 		referenceTargets: articleAnalysis.referenceTargets,

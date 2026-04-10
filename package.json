@@ -44,6 +44,7 @@
 		"react-resizable-panels": "^4",
 		"react-router-dom": "^7.13.0",
 		"rehype-katex": "^7.0.1",
+		"rehype-react": "^8.0.0",
 		"remark-directive": "^4.0.0",
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
@@ -54,7 +55,8 @@
 		"unified": "^11.0.5",
 		"unist-util-visit": "^5.1.0",
 		"yaml": "^2.8.3",
-		"zod": "^4.3.6"
+		"zod": "^4.3.6",
+		"zustand": "^5.0.12"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.14",

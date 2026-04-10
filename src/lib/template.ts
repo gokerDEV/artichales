@@ -653,14 +653,16 @@ export function resolveTemplateFile(raw: string | undefined): {
 
 	const parsed = TemplateFileSchema.safeParse(parsedJson);
 	if (!parsed.success) {
+		const issue = parsed.error.issues[0];
+		const pathMsg = issue?.path.join(".") || "Unknown path";
 		return {
-			template: DEFAULT_TEMPLATE_FILE,
+			template: DEFAULT_TEMPLATE_FILE as any,
 			diagnostics: [
 				{
 					code: "template-schema-invalid",
 					severity: "error",
 					message: "`template.json` does not match the expected schema.",
-					details: `${parsed.error.issues[0]?.message || "Unknown schema error"}. ${TEMPLATE_FALLBACK_MESSAGE}`,
+					details: `${pathMsg}: ${issue?.message || "Unknown schema error"}. ${TEMPLATE_FALLBACK_MESSAGE}`,
 				},
 			],
 			hasError: true,
