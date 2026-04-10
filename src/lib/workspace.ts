@@ -11,6 +11,12 @@ export const CORE_FILES = [
 
 export const WORKSPACE_UI_STATE_KEY = "artichales-workspace-ui-state-v1";
 
+export function formatAssetId(raw: string): string {
+	const trimmed = raw.trim();
+	// Strip a single extension (foo.json -> foo), keep nested path segments intact.
+	return trimmed.replace(/\.[^/.]+$/, "");
+}
+
 export function orderWorkspaceFiles(files: string[]): string[] {
 	return [...files].sort((a, b) => {
 		const aPin = CORE_FILES.indexOf(a as (typeof CORE_FILES)[number]);

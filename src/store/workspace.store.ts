@@ -2,7 +2,7 @@ import type { Root } from "mdast";
 import { create } from "zustand";
 import type { ReferenceSelectorTarget, ResolvedReference } from "@/lib/article-analysis";
 import type { CitationEntry, ValidatedBibEntry } from "@/lib/bibtex";
-import type { PipelineDiagnostic } from "@/lib/document-pipeline";
+import type { AppDiagnostic, PipelineResultPayload } from "@/lib/document-pipeline";
 import type { TemplateFileResolved } from "@/lib/template";
 
 interface WorkspaceState {
@@ -26,7 +26,7 @@ interface WorkspaceState {
 	referenceTargets: ReferenceSelectorTarget[];
 
 	// Slice 4: Diagnostics & UI (Read exclusively by diagnostic panels / specific UI logic)
-	diagnostics: PipelineDiagnostic[];
+	diagnostics: AppDiagnostic[];
 	activePluginIds: {
 		parser: string[];
 		core: string[];
@@ -38,26 +38,6 @@ interface WorkspaceState {
 	// Store dispatcher
 	setPipelineResult: (result: PipelineResultPayload) => void;
 }
-
-export type PipelineResultPayload = {
-	ast: Root | null;
-	content: string;
-	frontmatter: Record<string, unknown>;
-	citations: Record<string, CitationEntry>;
-	validatedBibEntries: Record<string, ValidatedBibEntry>;
-	plots: Record<string, unknown>;
-	template: TemplateFileResolved;
-	citationStyle: string;
-	referenceRegistry: Record<string, ResolvedReference>;
-	referenceTargets: ReferenceSelectorTarget[];
-	diagnostics: PipelineDiagnostic[];
-	activePluginIds: {
-		parser: string[];
-		core: string[];
-		render: string[];
-		editor: string[];
-	};
-};
 
 export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	rawFiles: {},
@@ -105,4 +85,3 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 			isPipelineRunning: false,
 		}),
 }));
-

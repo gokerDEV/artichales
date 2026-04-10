@@ -88,6 +88,29 @@ export type PipelineResult = {
 	pipelineDiagnostics: PipelineDiagnostic[];
 };
 
+// Unified diagnostic type for UI/state layers.
+export type AppDiagnostic =
+	| TemplateDiagnostic
+	| BibtexDiagnostic
+	| PipelineDiagnostic
+	| ArticleAnalysisDiagnostic;
+
+// Shape posted from the worker back to the UI/store.
+export type PipelineResultPayload = {
+	ast: PipelineResult["ast"];
+	content: PipelineResult["content"];
+	frontmatter: PipelineResult["frontmatter"];
+	citations: PipelineResult["citations"];
+	validatedBibEntries: PipelineResult["validatedBibEntries"];
+	plots: PipelineResult["plots"];
+	template: PipelineResult["template"];
+	citationStyle: string;
+	referenceRegistry: PipelineResult["resolvedReferences"];
+	referenceTargets: PipelineResult["referenceTargets"];
+	diagnostics: AppDiagnostic[];
+	activePluginIds: PipelineResult["activePluginIds"];
+};
+
 const ArticleFrontmatterSchema = z
 	.object({
 		title: z.string().trim().min(1),
@@ -142,7 +165,9 @@ function parseArticleContent(articleText: string): {
 		}
 		return { offset: safeOffset, line, column };
 	};
-	const match = articleText.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+	const match = articleText.match(
+		/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
+	);
 	if (!match) {
 		return {
 			content: articleText,
@@ -402,15 +427,18 @@ function executeParserHooks(
 		const parseHook = plugin.hooks.parse as any;
 		if (!parseHook) continue;
 
-		processor = processor.use(function(this: any) {
+		processor = processor.use(function (this: any) {
 			try {
-				const transformer = parseHook.call(this) as ((tree: Root, file: any) => void) | void;
+				const transformer = parseHook.call(this) as
+					| ((tree: Root, file: any) => void)
+					| void;
 				if (transformer) {
 					return (tree: Root, file: any) => {
 						try {
 							transformer(tree, file);
 						} catch (error) {
-							const detail = error instanceof Error ? error.message : String(error);
+							const detail =
+								error instanceof Error ? error.message : String(error);
 							diagnostics.push({
 								code: "plugin-hook-failed",
 								severity: "error",
@@ -437,14 +465,28 @@ function executeParserHooks(
 	}
 
 	processor = processor.use(() => (tree: Root) => {
-		visit(tree, ["heading", "paragraph", "containerDirective", "leafDirective", "textDirective", "list", "blockquote", "table"], (node) => {
-			const dataNode = node as any;
-			if (node.position?.start?.offset != null) {
-				if (!dataNode.data) dataNode.data = {};
-				if (!dataNode.data.hProperties) dataNode.data.hProperties = {};
-				dataNode.data.hProperties["data-source-offset"] = node.position.start.offset;
-			}
-		});
+		visit(
+			tree,
+			[
+				"heading",
+				"paragraph",
+				"containerDirective",
+				"leafDirective",
+				"textDirective",
+				"list",
+				"blockquote",
+				"table",
+			],
+			(node) => {
+				const dataNode = node as any;
+				if (node.position?.start?.offset != null) {
+					if (!dataNode.data) dataNode.data = {};
+					if (!dataNode.data.hProperties) dataNode.data.hProperties = {};
+					dataNode.data.hProperties["data-source-offset"] =
+						node.position.start.offset;
+				}
+			},
+		);
 	});
 
 	let ast: Root | null = null;
@@ -499,7 +541,10 @@ function executeVoidHooks(
 function executeRenderHooks(
 	plugins: Array<{
 		id: string;
-		hooks: { render?: (context: RenderHookContext) => unknown };
+		hooks: {
+			render?: (context: RenderHookContext) => unknown;
+			directiveRender?: (context: RenderHookContext) => unknown;
+		};
 	}>,
 	target: "web" | "print",
 ): PipelineDiagnostic[] {
@@ -517,11 +562,9 @@ function executeRenderHooks(
 	};
 
 	for (const plugin of plugins) {
-		const hookFn = plugin.hooks.render;
-		if (!hookFn) continue;
-
 		try {
-			hookFn(context);
+			plugin.hooks.render?.(context);
+			plugin.hooks.directiveRender?.(context);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
 			diagnostics.push({
@@ -620,9 +663,8 @@ export function runDocumentPipeline(
 		pluginMapResult.configMap,
 		runtimePluginIds,
 	);
-	const pluginRuntimeResult = validatePluginRuntimeAvailability(
-		runtimePluginIds,
-	);
+	const pluginRuntimeResult =
+		validatePluginRuntimeAvailability(runtimePluginIds);
 	const pluginHooksResult = executePluginHooks(
 		articleResult.content,
 		target,

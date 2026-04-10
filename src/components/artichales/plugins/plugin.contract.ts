@@ -1,5 +1,5 @@
 import type { Root } from "mdast";
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import type { Components } from "react-markdown";
 import type { Plugin } from "unified";
 import type { ZodType } from "zod";
@@ -45,11 +45,34 @@ export type CoreRenderHookContext = {
 	className?: string;
 };
 
+export type DirectiveComponentProps = {
+	node?: unknown;
+	children?: ReactNode;
+	directive: string;
+} & Omit<HTMLAttributes<HTMLDivElement>, "children">;
+
+export type DirectivePrimitive =
+	| "abstract"
+	| "table"
+	| "figure"
+	| "map"
+	| "equation"
+	| "code";
+
+export type DirectiveRendererDefinition = {
+	directive: string;
+	primitive: DirectivePrimitive;
+	component: (props: DirectiveComponentProps) => ReactNode;
+};
+
 export type PluginHooks = {
 	setup?: () => void;
 	parse?: Plugin<[], Root>;
 	process?: () => void;
 	render?: (context: RenderHookContext) => Partial<Components>;
+	directiveRender?: (
+		context: RenderHookContext,
+	) => DirectiveRendererDefinition | DirectiveRendererDefinition[] | null;
 	coreRender?: (context: CoreRenderHookContext) => ReactNode;
 	editor?: () => void;
 };

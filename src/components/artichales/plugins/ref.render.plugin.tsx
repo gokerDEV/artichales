@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Components } from "react-markdown";
 import type { ResolvedReference } from "@/lib/article-analysis";
+import { resolveDirectiveLabelPrefix } from "@/lib/directive.utils";
 import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
 type RefKind = "plot" | "datatable";
@@ -131,14 +132,13 @@ export function createRefRender(
 		const resolved = resolvedReferences[normalizedRefId];
 		const target = refIndexById[normalizedRefId];
 		const config = target ? REF_KIND_CONFIG[target.kind] : null;
-		const mappedLabel =
-			target && referenceLabels
-				? referenceLabels[target.kind === "plot" ? "plotty" : "datatable"]
-				: undefined;
-		const runtimeFallbackLabel =
-			typeof mappedLabel === "string" && mappedLabel.trim() !== ""
-				? mappedLabel.trim()
-				: "?";
+		const runtimeFallbackLabel = target
+			? resolveDirectiveLabelPrefix(
+					target.kind === "plot" ? "plotty" : "datatable",
+					target.kind === "plot" ? "figure" : "table",
+					referenceLabels,
+				)
+			: "?";
 		const label =
 			resolved?.label ||
 			(config && target

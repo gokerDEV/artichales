@@ -1,11 +1,17 @@
 import * as React from "react";
-import type { Components } from "react-markdown";
-import { parse as parseYaml } from "yaml";
-import { AbstractRender } from "@/components/artichales/plugins/abstract.render.plugin";
-import { DatatableRenderBlock } from "@/components/artichales/plugins/datatable.render.plugin";
-import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
+import { DirectiveCaption } from "@/components/artichales/plugins/directive-caption";
+import { useDirectiveFrame } from "@/components/artichales/plugins/directive-frame";
+import type { DocumentTemplate } from "@/hooks/use-document";
+import { isRecord, type UnknownRecord } from "@/lib/artichales.utils";
+import { getDirectiveString } from "@/lib/directive.utils";
+import { formatAssetId } from "@/lib/workspace";
+import type {
+	DirectiveComponentProps,
+	DirectiveRendererDefinition,
+	PluginDefinition,
+	RenderHookContext,
+} from "./plugin.contract";
 
-type UnknownRecord = Record<string, unknown>;
 type PlotTrace = Record<string, unknown>;
 type PlotLayout = Record<string, unknown>;
 type PlotConfig = Record<string, unknown>;
@@ -32,40 +38,8 @@ type PlottyChartProps = {
 	height?: number;
 };
 
-type PlotOverrideResult = {
-	layoutOverride: PlotLayout;
-	caption: string;
-	flow: {
-		span: "column" | "page";
-		breakBefore: "auto" | "page";
-		breakAfter: "auto" | "page";
-	};
-};
-
 type PlotIndexMap = Record<string, number>;
-type DatatableIndexMap = Record<string, number>;
-type ComponentTemplateDefaults = {
-	figure?: {
-		captionPosition?: "top" | "bottom";
-		defaultSpan?: "column" | "page";
-		spacingBefore?: string;
-		spacingAfter?: string;
-	};
-	table?: {
-		captionPosition?: "top" | "bottom";
-		defaultSpan?: "column" | "page";
-		spacingBefore?: string;
-		spacingAfter?: string;
-	};
-};
-
-function isRecord(value: unknown): value is UnknownRecord {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function asString(value: unknown): string {
-	return typeof value === "string" ? value : "";
-}
+type ComponentTemplateDefaults = DocumentTemplate["componentDefaults"];
 
 function toNumber(value: unknown): number | undefined {
 	return typeof value === "number" && Number.isFinite(value)
@@ -89,76 +63,6 @@ function mergeRecords(
 	return merged;
 }
 
-function normalizePlotId(source: string): string {
-	const trimmed = source.trim();
-	return trimmed.replace(/\.[^/.]+$/, "");
-}
-
-function resolvePlotOverride(
-	bodyText: string,
-	defaultSpan: "column" | "page",
-): PlotOverrideResult {
-	const defaultFlow = {
-		span: defaultSpan,
-		breakBefore: "auto" as const,
-		breakAfter: "auto" as const,
-	};
-	if (!bodyText.trim()) {
-		return { layoutOverride: {}, caption: "", flow: defaultFlow };
-	}
-
-	let parsedBody: unknown = {};
-	try {
-		parsedBody = parseYaml(bodyText);
-	} catch {
-		parsedBody = null;
-	}
-
-	if (isRecord(parsedBody)) {
-		const { caption, span, breakBefore, breakAfter, ...layoutOverride } =
-			parsedBody;
-		return {
-			layoutOverride,
-			caption: typeof caption === "string" ? caption.trim() : "",
-			flow: {
-				span: span === "page" ? "page" : "column",
-				breakBefore: breakBefore === "page" ? "page" : "auto",
-				breakAfter: breakAfter === "page" ? "page" : "auto",
-			},
-		};
-	}
-
-	const lines = bodyText
-		.split("\n")
-		.map((line) => line.trim())
-		.filter(Boolean);
-	if (lines.length > 1) {
-		const caption = lines[0];
-		const yamlTail = lines.slice(1).join("\n");
-		try {
-			const parsedTail = parseYaml(yamlTail);
-			if (isRecord(parsedTail)) {
-				return {
-					layoutOverride: parsedTail,
-					caption,
-					flow: {
-						span: parsedTail.span === "page" ? "page" : "column",
-						breakBefore: parsedTail.breakBefore === "page" ? "page" : "auto",
-						breakAfter: parsedTail.breakAfter === "page" ? "page" : "auto",
-					},
-				};
-			}
-		} catch {}
-	}
-
-	return {
-		layoutOverride: {},
-		caption:
-			typeof parsedBody === "string" ? parsedBody.trim() : bodyText.trim(),
-		flow: defaultFlow,
-	};
-}
-
 function resolvePlotDefinition(
 	rawPlot: unknown,
 	layoutOverride: PlotLayout,
@@ -175,25 +79,6 @@ function resolvePlotDefinition(
 		layout: resolvedLayout,
 		config: isRecord(rawPlot.config) ? rawPlot.config : {},
 	};
-}
-
-function getNodeProperty(node: unknown, key: string): unknown {
-	if (!isRecord(node) || !isRecord(node.properties)) return undefined;
-	const properties = node.properties as UnknownRecord;
-	return properties[key];
-}
-
-function getNodePropertyWithFallback(
-	node: unknown,
-	props: UnknownRecord,
-	key: string,
-	fallbackKey?: string,
-): unknown {
-	return (
-		getNodeProperty(node, key) ??
-		props[key] ??
-		(fallbackKey ? props[fallbackKey] : undefined)
-	);
 }
 
 function PlottyChart({ plot, width, height }: PlottyChartProps) {
@@ -237,23 +122,130 @@ function PlottyChart({ plot, width, height }: PlottyChartProps) {
 	);
 }
 
-type PlottyDivProps = {
-	node?: unknown;
-	children?: React.ReactNode;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "children">;
+const MemoizedPlottyChart = React.memo(PlottyChart);
+
+type PlottyRenderBlockProps = {
+	source: string;
+	bodyText: string;
+	plotFiles: Record<string, unknown>;
+	plotIndexById: PlotIndexMap;
+	defaults?: NonNullable<ComponentTemplateDefaults>["figure"];
+	referenceLabels?: Record<string, string>;
+	utilityClasses?: Record<string, string>;
+	containerProps: Omit<React.HTMLAttributes<HTMLDivElement>, "children">;
+};
+
+function PlottyRenderBlock({
+	source,
+	bodyText,
+	plotFiles,
+	plotIndexById,
+	defaults,
+	referenceLabels,
+	utilityClasses,
+	containerProps,
+}: PlottyRenderBlockProps) {
+	const plotId = formatAssetId(source);
+	const rawPlot = plotFiles[source];
+	const baseLayout =
+		isRecord(rawPlot) && isRecord(rawPlot.layout) ? rawPlot.layout : {};
+	const titleFromLayout =
+		typeof baseLayout.title === "string" ? baseLayout.title : undefined;
+	const {
+		extra: layoutOverride,
+		flow,
+		captionPosition,
+		spacingBefore,
+		spacingAfter,
+		captionProps,
+	} = useDirectiveFrame<PlotLayout>({
+		directive: "plotty",
+		primitive: "figure",
+		bodyText,
+		defaults,
+		number: plotIndexById[plotId],
+		referenceLabels,
+		utilityClasses,
+		fallbackCaption: titleFromLayout,
+	});
+	const resolvedPlot = React.useMemo(
+		() => resolvePlotDefinition(rawPlot, layoutOverride),
+		[layoutOverride, rawPlot],
+	);
+	const resolvedLayout = resolvedPlot?.layout || {};
+	const width = toNumber(resolvedLayout.width);
+	const height = toNumber(resolvedLayout.height);
+
+	if (!resolvedPlot) {
+		return (
+			<div
+				{...containerProps}
+				className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs"
+			>
+				Plotty source not found or invalid:{" "}
+				<strong>{source || "(empty)"}</strong>
+			</div>
+		);
+	}
+
+	return (
+		<div
+			{...containerProps}
+			id={plotId ? `plot-${plotId}` : undefined}
+			className="plotty my-6 overflow-x-auto"
+			data-flow-span={flow.span}
+			data-flow-break-before={flow.breakBefore}
+			data-flow-break-after={flow.breakAfter}
+			style={{
+				marginTop: spacingBefore,
+				marginBottom: spacingAfter,
+			}}
+		>
+			{captionPosition === "top" ? (
+				<DirectiveCaption {...captionProps} />
+			) : null}
+			<MemoizedPlottyChart plot={resolvedPlot} width={width} height={height} />
+			{captionPosition === "bottom" ? (
+				<DirectiveCaption {...captionProps} />
+			) : null}
+		</div>
+	);
+}
 
 function registerPlottyRenderRuntime(
 	context: RenderHookContext,
-): Partial<Components> {
+): DirectiveRendererDefinition {
 	return {
-		div: createDirectiveDivRender(
-			context.plotFiles,
-			context.plotIndexById,
-			context.datatableIndexById,
-			context.target,
-			context.templateDefaults,
-			context.referenceLabels,
-		),
+		directive: "plotty",
+		primitive: "figure",
+		component: function PlottyDirectiveRender({
+			node,
+			...rest
+		}: DirectiveComponentProps) {
+			const restProps = rest as UnknownRecord;
+			return (
+				<PlottyRenderBlock
+					source={getDirectiveString(
+						node,
+						restProps,
+						"data-plot-source",
+						"dataPlotSource",
+					)}
+					bodyText={getDirectiveString(
+						node,
+						restProps,
+						"data-plot-body",
+						"dataPlotBody",
+					)}
+					plotFiles={context.plotFiles}
+					plotIndexById={context.plotIndexById}
+					defaults={context.templateDefaults?.figure}
+					referenceLabels={context.referenceLabels}
+					utilityClasses={context.utilityClasses}
+					containerProps={rest}
+				/>
+			);
+		},
 	};
 }
 
@@ -262,143 +254,6 @@ export const plottyRenderPlugin: PluginDefinition = {
 	category: "render",
 	name: "Plotty Render",
 	hooks: {
-		render: registerPlottyRenderRuntime,
+		directiveRender: registerPlottyRenderRuntime,
 	},
 };
-
-export function createDirectiveDivRender(
-	plotFiles: Record<string, unknown>,
-	plotIndexById: PlotIndexMap,
-	datatableIndexById: DatatableIndexMap,
-	target: "web" | "print",
-	componentDefaults?: ComponentTemplateDefaults,
-	referenceLabels?: Record<string, string>,
-): Components["div"] {
-	return function DirectiveDivRender({
-		node,
-		children,
-		...rest
-	}: PlottyDivProps) {
-		const restProps = rest as UnknownRecord;
-		const directive = asString(
-			getNodePropertyWithFallback(node, restProps, "data-directive", "dataDirective"),
-		);
-		if (directive !== "plotty") {
-			if (directive === "datatable") {
-				return (
-					<DatatableRenderBlock
-						source={asString(
-							getNodePropertyWithFallback(
-								node,
-								restProps,
-								"data-datatable-source",
-								"dataDatatableSource",
-							),
-						)}
-						bodyText={asString(
-							getNodePropertyWithFallback(
-								node,
-								restProps,
-								"data-datatable-body",
-								"dataDatatableBody",
-							),
-						)}
-						datatableFiles={plotFiles}
-						datatableIndexById={datatableIndexById}
-						target={target}
-						defaults={componentDefaults?.table}
-					/>
-				);
-			}
-			if (typeof AbstractRender === "function") {
-				return React.createElement(
-					AbstractRender as React.ComponentType<PlottyDivProps>,
-					{ node, ...rest },
-					children,
-				);
-			}
-			return <div {...rest}>{children}</div>;
-		}
-
-		const source = asString(
-			getNodePropertyWithFallback(
-				node,
-				restProps,
-				"data-plot-source",
-				"dataPlotSource",
-			),
-		);
-		const bodyText = asString(
-			getNodePropertyWithFallback(
-				node,
-				restProps,
-				"data-plot-body",
-				"dataPlotBody",
-			),
-		);
-		const defaults = componentDefaults?.figure;
-		const captionPosition = defaults?.captionPosition || "bottom";
-		const spacingBefore = defaults?.spacingBefore || "0";
-		const spacingAfter = defaults?.spacingAfter || "0";
-		const defaultSpan = defaults?.defaultSpan || "column";
-		const { layoutOverride, caption, flow } = resolvePlotOverride(
-			bodyText,
-			defaultSpan,
-		);
-		const plotId = normalizePlotId(source);
-		const rawPlot = plotFiles[source];
-		const resolvedPlot = resolvePlotDefinition(rawPlot, layoutOverride);
-		const resolvedLayout = resolvedPlot?.layout || {};
-		const width = toNumber(resolvedLayout.width);
-		const height = toNumber(resolvedLayout.height);
-		const figureNo = plotIndexById[plotId];
-		const figureLabel = referenceLabels?.plotty || "?";
-		const titleFromLayout = asString(resolvedLayout.title);
-		const captionText = caption || titleFromLayout;
-
-		if (!resolvedPlot) {
-			return (
-				<div
-					{...rest}
-					className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs"
-				>
-					Plotty source not found or invalid:{" "}
-					<strong>{source || "(empty)"}</strong>
-				</div>
-			);
-		}
-
-		return (
-			<div
-				{...rest}
-				id={plotId ? `plot-${plotId}` : undefined}
-				className="plotty my-6 overflow-x-auto"
-				data-flow-span={flow.span}
-				data-flow-break-before={flow.breakBefore}
-				data-flow-break-after={flow.breakAfter}
-				style={{
-					marginTop: spacingBefore,
-					marginBottom: spacingAfter,
-				}}
-			>
-				{captionText && captionPosition === "top" ? (
-					<p className="title mt-2 text-center text-xs italic">
-						{figureNo ? (
-							<span className="label">{`${figureLabel} ${figureNo}. `}</span>
-						) : null}
-						{captionText}
-					</p>
-				) : null}
-				<PlottyChart plot={resolvedPlot} width={width} height={height} />
-				{captionText && captionPosition === "bottom" ? (
-					<p className="title mt-2 text-center text-xs italic">
-						{figureNo ? (
-							<span className="label">{`${figureLabel} ${figureNo}. `}</span>
-						) : null}
-						{captionText}
-					</p>
-				) : null}
-			</div>
-		);
-	};
-}

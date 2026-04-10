@@ -1,17 +1,17 @@
 import type { Root } from "mdast";
 import * as React from "react";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import type { Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeReact from "rehype-react";
-import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import remarkRehype from "remark-rehype";
 import type { Plugin } from "unified";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
-import {
-	resolvePluginExecutionState,
-} from "@/components/artichales/plugins/plugin.runtime";
+import type { DirectiveRendererDefinition } from "@/components/artichales/plugins/plugin.contract";
+import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import { buildAlignmentHeadingId } from "@/lib/alignment";
+import { getDirectiveString } from "@/lib/directive.utils";
 import "katex/dist/katex.min.css";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
@@ -93,7 +93,9 @@ function extractDirectiveSource(node: unknown, propertyName: string): string {
 		nestedChildren[0] && typeof nestedChildren[0] === "object"
 			? (nestedChildren[0] as UnknownRecord)
 			: null;
-	return typeof firstGrandchild?.value === "string" ? firstGrandchild.value : "";
+	return typeof firstGrandchild?.value === "string"
+		? firstGrandchild.value
+		: "";
 }
 
 const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
@@ -152,13 +154,13 @@ function stripDuplicatePrintLeadBlocks(ast: Root, printTitle?: string): void {
 
 		for (let index = 0; index < children.length; index++) {
 			const child = children[index];
-				if (!child || typeof child !== "object") continue;
-				if (child.type === "heading") {
-					const headingText = normalizeInlineText(extractNodeText(child));
-					const isTitleDuplicate =
-						normalizedTitle !== "" &&
-						child.depth === 1 &&
-						headingText === normalizedTitle;
+			if (!child || typeof child !== "object") continue;
+			if (child.type === "heading") {
+				const headingText = normalizeInlineText(extractNodeText(child));
+				const isTitleDuplicate =
+					normalizedTitle !== "" &&
+					child.depth === 1 &&
+					headingText === normalizedTitle;
 				const isAbstractDuplicate =
 					hasAbstractDirective && headingText === "abstract";
 				if (isTitleDuplicate || isAbstractDuplicate) {
@@ -202,7 +204,10 @@ export function MarkdownContent({
 
 			visit(ast, (node) => {
 				const uNode = node as unknown as UnknownRecord;
-				if (uNode.type === "containerDirective" || uNode.type === "leafDirective") {
+				if (
+					uNode.type === "containerDirective" ||
+					uNode.type === "leafDirective"
+				) {
 					if (uNode.name === "plotty") {
 						const sourceStr = extractDirectiveSource(node, "data-plot-source");
 						const dataPlotSource = sourceStr.replace(/\.[^/.]+$/, "");
@@ -217,9 +222,15 @@ export function MarkdownContent({
 							"data-datatable-source",
 						);
 						const dataTableSource = sourceStr.replace(/\.[^/.]+$/, "");
-						if (dataTableSource && datatableMap[dataTableSource] === undefined) {
+						if (
+							dataTableSource &&
+							datatableMap[dataTableSource] === undefined
+						) {
 							datatableMap[dataTableSource] = datatableIdx;
-							refMap[dataTableSource] = { kind: "datatable", index: datatableIdx };
+							refMap[dataTableSource] = {
+								kind: "datatable",
+								index: datatableIdx,
+							};
 							datatableIdx++;
 						}
 					}
@@ -236,6 +247,10 @@ export function MarkdownContent({
 	const markdownComponents = React.useMemo(() => {
 		const components: Partial<Components> = {};
 		const executionState = resolvePluginExecutionState(activeRenderPluginIds);
+		const directiveRenderers = new Map<
+			string,
+			DirectiveRendererDefinition["component"]
+		>();
 		for (const plugin of executionState.render) {
 			const renderHook = plugin.hooks.render;
 			if (!renderHook) continue;
@@ -261,6 +276,61 @@ export function MarkdownContent({
 				);
 			}
 		}
+		for (const plugin of executionState.render) {
+			const directiveRenderHook = plugin.hooks.directiveRender;
+			if (!directiveRenderHook) continue;
+			try {
+				const result = directiveRenderHook({
+					plotFiles,
+					plotIndexById,
+					datatableIndexById,
+					refIndexById,
+					target,
+					resolvedReferences,
+					templateDefaults: templateDefaults?.components,
+					referenceLabels,
+					utilityClasses,
+				});
+				const definitions = Array.isArray(result)
+					? result
+					: result
+						? [result]
+						: [];
+				for (const definition of definitions) {
+					directiveRenderers.set(definition.directive, definition.component);
+				}
+			} catch (error) {
+				console.error(
+					`[artichales:render] directive render hook failed for plugin "${plugin.id}"`,
+					error,
+				);
+			}
+		}
+		const divRenderer = components.div as Components["div"] | undefined;
+		components.div = ((props) => {
+			const { node, children, ...rest } = props as ParagraphProps;
+			const directive = getDirectiveString(
+				node,
+				rest as UnknownRecord,
+				"data-directive",
+				"dataDirective",
+			);
+			const directiveRenderer = directiveRenderers.get(directive);
+			if (directiveRenderer) {
+				return directiveRenderer({ ...props, directive });
+			}
+			if (divRenderer) {
+				return React.createElement(
+					divRenderer as React.ComponentType<Record<string, unknown>>,
+					props as Record<string, unknown>,
+				);
+			}
+			return (
+				<div {...(rest as React.HTMLAttributes<HTMLDivElement>)}>
+					{children}
+				</div>
+			);
+		}) as Components["div"];
 
 		const paragraphRenderer = components.p as
 			| ((props: ParagraphProps) => React.ReactNode)
@@ -307,7 +377,11 @@ export function MarkdownContent({
 			if (paragraphRenderer) {
 				return paragraphRenderer(props);
 			}
-			return <p {...(rest as React.HTMLAttributes<HTMLParagraphElement>)}>{children}</p>;
+			return (
+				<p {...(rest as React.HTMLAttributes<HTMLParagraphElement>)}>
+					{children}
+				</p>
+			);
 		}) as Components["p"];
 
 		return components;
@@ -325,10 +399,11 @@ export function MarkdownContent({
 	]);
 
 	const renderedContent = React.useMemo(() => {
-		const astClone = globalThis.structuredClone
-			&& typeof globalThis.structuredClone === "function"
-			? (structuredClone(ast) as Root)
-			: (JSON.parse(JSON.stringify(ast)) as Root);
+		const astClone =
+			globalThis.structuredClone &&
+			typeof globalThis.structuredClone === "function"
+				? (structuredClone(ast) as Root)
+				: (JSON.parse(JSON.stringify(ast)) as Root);
 		if (target === "print") {
 			stripDuplicatePrintLeadBlocks(astClone, printTitle);
 		}
@@ -343,8 +418,8 @@ export function MarkdownContent({
 				components: markdownComponents,
 			});
 
-			const tree = processor.runSync(astClone);
-			return processor.stringify(tree) as React.ReactNode;
+		const tree = processor.runSync(astClone);
+		return processor.stringify(tree) as React.ReactNode;
 	}, [ast, markdownComponents, printTitle, target]);
 
 	return <>{renderedContent}</>;

@@ -67,6 +67,8 @@ const EDITOR_PANEL_ID = "workspace-editor";
 const PREVIEW_PANEL_ID = "workspace-preview";
 const TEMPLATE_DIRECTIVE_NAMES = listTemplateDirectivePlugins();
 const WORKSPACE_PREVIEW_DEBOUNCE_KEY = "artichales:preview-debounce-enabled";
+const PIPELINE_DEBOUNCE_MS = 300;
+const SAVE_DEBOUNCE_MS = 500;
 
 function normalizePanelSizes(raw: unknown): number[] | null {
 	if (!Array.isArray(raw) || raw.length !== 3) return null;
@@ -205,7 +207,7 @@ export function EditorPreviewSurface() {
 		if (!isPreviewDebounceEnabled) return;
 		const timeout = window.setTimeout(() => {
 			executePipeline(files);
-		}, 300);
+		}, PIPELINE_DEBOUNCE_MS);
 		return () => window.clearTimeout(timeout);
 	}, [executePipeline, files, isPreviewDebounceEnabled]);
 
@@ -275,7 +277,7 @@ export function EditorPreviewSurface() {
 						"Failed to save workspace files. Your latest changes may not persist.",
 					);
 				});
-		}, 500);
+		}, SAVE_DEBOUNCE_MS);
 		return () => window.clearTimeout(timeout);
 	}, [files]);
 

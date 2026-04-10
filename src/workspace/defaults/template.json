@@ -40,11 +40,23 @@
 				"spacingAfter": "0"
 			}
 		},
+		"referenceLabels": {
+			"abstract": "Abstract",
+			"figure": "Figure",
+			"table": "Table",
+			"map": "Map",
+			"equation": "Equation",
+			"code": "Code"
+		},
 		"utilities": {
 			"cite": "cite",
 			"ref": "ref",
 			"plot": "plotty",
-			"table": "datatable"
+			"table": "datatable",
+			"figureCaption": "title mt-2 text-center text-xs italic",
+			"figureCaptionLabel": "label",
+			"tableCaption": "title mt-2 text-center text-xs italic",
+			"tableCaptionLabel": "label"
 		},
 		"citationStyle": "numeric"
 	},

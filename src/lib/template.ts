@@ -139,12 +139,13 @@ const WebTemplateSchema = z.object({
 		.optional(),
 });
 
-const TemplateDirectivePluginSchema = z.string().trim().min(1).refine(
-	(value) => listTemplateDirectivePlugins().includes(value),
-	{
+const TemplateDirectivePluginSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.refine((value) => listTemplateDirectivePlugins().includes(value), {
 		message: `Directive plugin must be one of: ${listTemplateDirectivePlugins().join(", ")}`,
-	},
-);
+	});
 
 export const TemplateFileSchema = z.object({
 	version: z.number().int().optional(),
@@ -288,8 +289,11 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 		utilities: {},
 		referenceLabels: {
 			abstract: "Abstract",
-			plotty: "Figure",
-			datatable: "Table",
+			figure: "Figure",
+			table: "Table",
+			map: "Map",
+			equation: "Equation",
+			code: "Code",
 		},
 		citationStyle: "numeric",
 	},
@@ -349,12 +353,8 @@ function mergeTemplateWithDefaults(
 	return {
 		version: overrides.version ?? DEFAULT_TEMPLATE_FILE.version,
 		publisher: {
-			id:
-				overrides.publisher?.id ??
-				DEFAULT_TEMPLATE_FILE.publisher.id,
-			name:
-				overrides.publisher?.name ??
-				DEFAULT_TEMPLATE_FILE.publisher.name,
+			id: overrides.publisher?.id ?? DEFAULT_TEMPLATE_FILE.publisher.id,
+			name: overrides.publisher?.name ?? DEFAULT_TEMPLATE_FILE.publisher.name,
 		},
 		default: {
 			typography: {

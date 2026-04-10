@@ -6,6 +6,7 @@ import { citationParserPlugin } from "./citation.parser.plugin";
 import { citationRenderPlugin } from "./citation.render.plugin";
 import { codeRenderPlugin } from "./code.render.plugin";
 import { datatableParserPlugin } from "./datatable.parser.plugin";
+import { datatableRenderPlugin } from "./datatable.render.plugin";
 import { mathParserPlugin } from "./math.parser.plugin";
 import { plottyParserPlugin } from "./plotty.parser.plugin";
 import { plottyRenderPlugin } from "./plotty.render.plugin";
@@ -27,11 +28,14 @@ const BUILTIN_PLUGINS: PluginDefinition[] = [
 	citationRenderPlugin,
 	refRenderPlugin,
 	codeRenderPlugin,
+	datatableRenderPlugin,
 	plottyRenderPlugin,
 	citationEditorPlugin,
 ];
 
-const BUILTIN_BY_ID = new Map(BUILTIN_PLUGINS.map((plugin) => [plugin.id, plugin]));
+const BUILTIN_BY_ID = new Map(
+	BUILTIN_PLUGINS.map((plugin) => [plugin.id, plugin]),
+);
 
 const ALWAYS_ON_PLUGIN_IDS = [
 	"citation-parser",
@@ -48,7 +52,7 @@ const ALWAYS_ON_PLUGIN_IDS = [
 const DIRECTIVE_PLUGIN_GROUPS: Record<string, string[]> = {
 	abstract: ["abstract-parser", "abstract-render"],
 	plotty: ["plotty-parser", "plotty-render"],
-	datatable: ["datatable-parser"],
+	datatable: ["datatable-parser", "datatable-render"],
 };
 
 const DEFAULT_DIRECTIVE_PLUGINS = ["abstract", "plotty", "datatable"] as const;
@@ -66,7 +70,8 @@ export function resolveRuntimePluginIdsFromTemplate(
 ): string[] {
 	const runtimeIds: string[] = [...ALWAYS_ON_PLUGIN_IDS];
 	const requestedDirectives =
-		Array.isArray(templateDirectivePlugins) && templateDirectivePlugins.length > 0
+		Array.isArray(templateDirectivePlugins) &&
+		templateDirectivePlugins.length > 0
 			? templateDirectivePlugins
 			: [...DEFAULT_DIRECTIVE_PLUGINS];
 

@@ -1,3 +1,5 @@
+import type { PipelineResultPayload } from "@/lib/document-pipeline";
+
 type PipelineModule = typeof import("@/lib/document-pipeline");
 let pipelineModulePromise: Promise<PipelineModule> | null = null;
 
@@ -98,29 +100,30 @@ self.onmessage = async (event: MessageEvent) => {
 		try {
 			const { runDocumentPipeline } = await getPipelineModule();
 			const result = runDocumentPipeline(event.data.files, event.data.target);
+			const payload: PipelineResultPayload = {
+				ast: result.ast, // make sure runDocumentPipeline produces an AST instead of/in addition to raw html!
+				content: result.content,
+				frontmatter: result.frontmatter,
+				citations: result.citations,
+				validatedBibEntries: result.validatedBibEntries,
+				plots: result.plots,
+				template: result.template,
+				citationStyle: result.template?.default?.citationStyle || "numeric",
+				referenceRegistry: result.resolvedReferences,
+				referenceTargets: result.referenceTargets,
+				diagnostics: [
+					...result.templateDiagnostics,
+					...result.bibDiagnostics,
+					...result.assetDiagnostics,
+					...result.articleDiagnostics,
+					...result.pipelineDiagnostics,
+				],
+				activePluginIds: result.activePluginIds,
+			};
 			self.postMessage({
 				type: "PIPELINE_SUCCESS",
 				requestId: event.data.requestId,
-				payload: {
-					ast: result.ast, // make sure runDocumentPipeline produces an AST instead of/in addition to raw html!
-					content: result.content,
-					frontmatter: result.frontmatter,
-					citations: result.citations,
-					validatedBibEntries: result.validatedBibEntries,
-					plots: result.plots,
-					template: result.template,
-					citationStyle: result.template?.default?.citationStyle || "numeric",
-					referenceRegistry: result.resolvedReferences,
-					referenceTargets: result.referenceTargets,
-					diagnostics: [
-						...result.templateDiagnostics,
-						...result.bibDiagnostics,
-						...result.assetDiagnostics,
-						...result.articleDiagnostics,
-						...result.pipelineDiagnostics,
-					],
-					activePluginIds: result.activePluginIds,
-				},
+				payload,
 			});
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "Unknown error";
