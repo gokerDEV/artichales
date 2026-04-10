@@ -29,6 +29,7 @@ export const remarkAbstract: Plugin<[], Root> = () => {
 export const abstractParserPlugin: PluginDefinition = {
 	id: "abstract-parser",
 	category: "parser",
+	directiveCategory: "abstract",
 	name: "Abstract Parser",
 	ownsSyntax: ["abstract"],
 	hooks: {

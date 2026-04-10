@@ -1,7 +1,6 @@
 import type React from "react";
 import type { Components } from "react-markdown";
 import type { ResolvedReference } from "@/lib/article-analysis";
-import { resolveDirectiveLabelPrefix } from "@/lib/directive.utils";
 import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
 type RefKind = "plot" | "datatable";
@@ -41,7 +40,6 @@ function registerRefRenderRuntime(
 			context.refIndexById,
 			context.resolvedReferences,
 			context.utilityClasses?.ref || "ref",
-			context.referenceLabels,
 		),
 	};
 }
@@ -70,7 +68,6 @@ export function createRefRender(
 	refIndexById: RefIndexMap,
 	resolvedReferences: Record<string, ResolvedReference>,
 	refClassName: string,
-	referenceLabels?: Record<string, string>,
 ): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
 		const restProps = rest as Record<string, unknown>;
@@ -132,18 +129,8 @@ export function createRefRender(
 		const resolved = resolvedReferences[normalizedRefId];
 		const target = refIndexById[normalizedRefId];
 		const config = target ? REF_KIND_CONFIG[target.kind] : null;
-		const runtimeFallbackLabel = target
-			? resolveDirectiveLabelPrefix(
-					target.kind === "plot" ? "plotty" : "datatable",
-					target.kind === "plot" ? "figure" : "table",
-					referenceLabels,
-				)
-			: "?";
 		const label =
-			resolved?.label ||
-			(config && target
-				? `${runtimeFallbackLabel} ${target.index}`.trim()
-				: "?");
+			resolved?.label || (config && target ? `? ${target.index}`.trim() : "?");
 		const href =
 			resolved?.href ||
 			(config ? `#${config.anchorPrefix}-${normalizedRefId}` : "#");

@@ -550,14 +550,9 @@ function executeRenderHooks(
 ): PipelineDiagnostic[] {
 	const diagnostics: PipelineDiagnostic[] = [];
 	const context: RenderHookContext = {
-		plotFiles: {},
-		plotIndexById: {},
-		datatableIndexById: {},
 		refIndexById: {},
 		target,
 		resolvedReferences: {},
-		templateDefaults: undefined,
-		referenceLabels: {},
 		utilityClasses: {},
 	};
 

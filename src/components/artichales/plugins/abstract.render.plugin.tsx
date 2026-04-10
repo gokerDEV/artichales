@@ -10,7 +10,7 @@ function registerAbstractRenderRuntime(
 ): DirectiveRendererDefinition {
 	return {
 		directive: "abstract",
-		primitive: "abstract",
+		category: "abstract",
 		component: AbstractRender,
 	};
 }
@@ -18,6 +18,7 @@ function registerAbstractRenderRuntime(
 export const abstractRenderPlugin: PluginDefinition = {
 	id: "abstract-render",
 	category: "render",
+	directiveCategory: "abstract",
 	name: "Abstract Render",
 	hooks: {
 		directiveRender: registerAbstractRenderRuntime,

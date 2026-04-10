@@ -29,7 +29,7 @@ export function resolvePluginExecutionState(
 			.filter((plugin) => !plugin.hooks.parse)
 			.map((plugin) => plugin.id),
 		missingRenderRuntimeIds: render
-			.filter((plugin) => !plugin.hooks.render)
+			.filter((plugin) => !plugin.hooks.render && !plugin.hooks.directiveRender)
 			.map((plugin) => plugin.id),
 	};
 }

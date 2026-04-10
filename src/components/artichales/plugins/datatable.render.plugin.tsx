@@ -1,19 +1,12 @@
 import * as React from "react";
-import { DirectiveCaption } from "@/components/artichales/plugins/directive-caption";
-import { useDirectiveFrame } from "@/components/artichales/plugins/directive-frame";
+import { useDirectiveJsonData } from "@/components/artichales/plugins/directive-data-file";
 import { DataTable } from "@/components/ui/data-table";
-import type { DocumentTemplate } from "@/hooks/use-document";
-import { isRecord, type UnknownRecord } from "@/lib/artichales.utils";
-import { getDirectiveString } from "@/lib/directive.utils";
-import { formatAssetId } from "@/lib/workspace";
 import type {
 	DirectiveComponentProps,
 	DirectiveRendererDefinition,
 	PluginDefinition,
 	RenderHookContext,
 } from "./plugin.contract";
-
-type DatatableIndexMap = Record<string, number>;
 
 type DatatableColumn = {
 	key: string;
@@ -22,12 +15,16 @@ type DatatableColumn = {
 
 type DatatableDefinition = {
 	columns: DatatableColumn[];
-	rows: UnknownRecord[];
+	rows: Array<Record<string, unknown>>;
 };
 
-type DatatableTemplateDefaults = NonNullable<
-	NonNullable<DocumentTemplate["componentDefaults"]>["table"]
->;
+type DatatableRow = Record<string, unknown> & {
+	__rowKey: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function toCellString(value: unknown): string {
 	if (value === null || value === undefined) return "";
@@ -50,76 +47,52 @@ function resolveDatatableDefinition(
 	if (Array.isArray(rawData)) {
 		const rows = rawData.filter((item) => isRecord(item));
 		if (rows.length === 0) return null;
-		const firstRow = rows[0];
-		const columns = Object.keys(firstRow).map((key) => ({ key, label: key }));
-		return { columns, rows };
+		return {
+			columns: Object.keys(rows[0]).map((key) => ({ key, label: key })),
+			rows,
+		};
 	}
 
 	if (!isRecord(rawData)) return null;
-
-	const candidateRows = Array.isArray(rawData.rows)
+	const rows = Array.isArray(rawData.rows)
 		? rawData.rows.filter((item) => isRecord(item))
 		: [];
-	if (candidateRows.length === 0) return null;
-
-	const candidateColumns = Array.isArray(rawData.columns)
+	if (rows.length === 0) return null;
+	const columns = Array.isArray(rawData.columns)
 		? rawData.columns
-				.filter((col) => isRecord(col) && typeof col.key === "string")
-				.map((col) => ({
-					key: String(col.key),
-					label: typeof col.label === "string" ? col.label : String(col.key),
+				.filter((item) => isRecord(item) && typeof item.key === "string")
+				.map((item) => ({
+					key: String(item.key),
+					label: typeof item.label === "string" ? item.label : String(item.key),
 				}))
-		: [];
-
-	const columns =
-		candidateColumns.length > 0
-			? candidateColumns
-			: Object.keys(candidateRows[0]).map((key) => ({ key, label: key }));
-
+		: Object.keys(rows[0]).map((key) => ({ key, label: key }));
 	return {
 		columns,
-		rows: candidateRows,
+		rows,
 	};
 }
 
-type DatatableRenderBlockProps = {
-	source: string;
-	bodyText: string;
-	datatableFiles: Record<string, unknown>;
-	datatableIndexById: DatatableIndexMap;
-	target: "web" | "print";
-	defaults?: DatatableTemplateDefaults;
-	referenceLabels?: Record<string, string>;
-	utilityClasses?: Record<string, string>;
-};
-
-type DatatableRow = UnknownRecord & {
-	__rowKey: string;
-};
-
-type DatatableVisualProps = {
-	definition: DatatableDefinition;
-	filteredRows: DatatableDefinition["rows"];
-	target: "web" | "print";
-	query: string;
-	onQueryChange: (value: string) => void;
-};
-
 const DatatableVisual = React.memo(function DatatableVisual({
 	definition,
-	filteredRows,
 	target,
-	query,
-	onQueryChange,
-}: DatatableVisualProps) {
-	const columns = React.useMemo(
+}: {
+	definition: DatatableDefinition;
+	target: "web" | "print";
+}) {
+	const [query, setQuery] = React.useState("");
+	const normalizedQuery = query.trim().toLowerCase();
+	const filteredRows = React.useMemo(
 		() =>
-			definition.columns.map((col) => ({
-				key: col.key,
-				label: col.label,
-				getValue: (row: DatatableRow) => toCellString(row[col.key]),
-			})),
-		[definition.columns],
+			normalizedQuery.length === 0
+				? definition.rows
+				: definition.rows.filter((row) =>
+						definition.columns.some((column) =>
+							toCellString(row[column.key])
+								.toLowerCase()
+								.includes(normalizedQuery),
+						),
+					),
+		[definition, normalizedQuery],
 	);
 	const keyedRows: DatatableRow[] = React.useMemo(
 		() =>
@@ -132,6 +105,15 @@ const DatatableVisual = React.memo(function DatatableVisual({
 			})),
 		[filteredRows],
 	);
+	const columns = React.useMemo(
+		() =>
+			definition.columns.map((column) => ({
+				key: column.key,
+				label: column.label,
+				getValue: (row: DatatableRow) => toCellString(row[column.key]),
+			})),
+		[definition.columns],
+	);
 
 	return (
 		<>
@@ -140,7 +122,7 @@ const DatatableVisual = React.memo(function DatatableVisual({
 					<input
 						type="text"
 						value={query}
-						onChange={(event) => onQueryChange(event.target.value)}
+						onChange={(event) => setQuery(event.target.value)}
 						placeholder="Filter table..."
 						className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
 					/>
@@ -160,132 +142,60 @@ const DatatableVisual = React.memo(function DatatableVisual({
 	);
 });
 
-export function DatatableRenderBlock({
-	source,
-	bodyText,
-	datatableFiles,
-	datatableIndexById,
+function DatatableDirectiveRender({
+	params,
+	config,
 	target,
-	defaults,
-	referenceLabels,
-	utilityClasses,
-}: DatatableRenderBlockProps) {
-	const data = datatableFiles[source];
+	...rest
+}: DirectiveComponentProps) {
+	const dataFile = params.data_file;
+	const { data } = useDirectiveJsonData<DatatableDefinition>(dataFile);
 	const definition = React.useMemo(
 		() => resolveDatatableDefinition(data),
 		[data],
 	);
-	const tableId = formatAssetId(source);
-	const { flow, captionPosition, spacingBefore, spacingAfter, captionProps } =
-		useDirectiveFrame({
-			directive: "datatable",
-			primitive: "table",
-			bodyText,
-			defaults,
-			number: datatableIndexById[tableId],
-			referenceLabels,
-			utilityClasses,
-		});
-
-	const [query, setQuery] = React.useState("");
-	const normalizedQuery = query.trim().toLowerCase();
-	const handleQueryChange = React.useCallback((value: string) => {
-		setQuery(value);
-	}, []);
-	const filteredRows = React.useMemo(
-		() =>
-			!definition
-				? []
-				: normalizedQuery.length === 0
-					? definition.rows
-					: definition.rows.filter((row) =>
-							definition.columns.some((col) =>
-								toCellString(row[col.key])
-									.toLowerCase()
-									.includes(normalizedQuery),
-							),
-						),
-		[definition, normalizedQuery],
-	);
 
 	if (!definition) {
 		return (
-			<div className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs">
-				Datatable source not found or invalid:{" "}
-				<strong>{source || "(empty)"}</strong>
+			<div
+				{...rest}
+				className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs"
+			>
+				Datatable data file not found or invalid:{" "}
+				<strong>{dataFile || "(missing)"}</strong>
 			</div>
 		);
 	}
 
 	return (
 		<div
-			id={tableId ? `datatable-${tableId}` : undefined}
-			className="datatable my-6"
-			data-flow-span={flow.span}
-			data-flow-break-before={flow.breakBefore}
-			data-flow-break-after={flow.breakAfter}
+			{...rest}
+			className="datatable"
+			data-flow-span={config.defaultSpan}
 			style={{
-				marginTop: spacingBefore,
-				marginBottom: spacingAfter,
+				marginTop: config.spacingBefore,
+				marginBottom: config.spacingAfter,
 			}}
 		>
-			{captionPosition === "top" ? (
-				<DirectiveCaption {...captionProps} />
-			) : null}
-			<DatatableVisual
-				definition={definition}
-				filteredRows={filteredRows}
-				target={target}
-				query={query}
-				onQueryChange={handleQueryChange}
-			/>
-			{captionPosition === "bottom" ? (
-				<DirectiveCaption {...captionProps} />
-			) : null}
+			<DatatableVisual definition={definition} target={target} />
 		</div>
 	);
 }
 
 function registerDatatableRenderRuntime(
-	context: RenderHookContext,
+	_: RenderHookContext,
 ): DirectiveRendererDefinition {
 	return {
 		directive: "datatable",
-		primitive: "table",
-		component: function DatatableDirectiveRender({
-			node,
-			...rest
-		}: DirectiveComponentProps) {
-			const restProps = rest as UnknownRecord;
-			return (
-				<DatatableRenderBlock
-					source={getDirectiveString(
-						node,
-						restProps,
-						"data-datatable-source",
-						"dataDatatableSource",
-					)}
-					bodyText={getDirectiveString(
-						node,
-						restProps,
-						"data-datatable-body",
-						"dataDatatableBody",
-					)}
-					datatableFiles={context.plotFiles}
-					datatableIndexById={context.datatableIndexById}
-					target={context.target}
-					defaults={context.templateDefaults?.table}
-					referenceLabels={context.referenceLabels}
-					utilityClasses={context.utilityClasses}
-				/>
-			);
-		},
+		category: "table",
+		component: DatatableDirectiveRender,
 	};
 }
 
 export const datatableRenderPlugin: PluginDefinition = {
 	id: "datatable-render",
 	category: "render",
+	directiveCategory: "table",
 	name: "Datatable Render",
 	hooks: {
 		directiveRender: registerDatatableRenderRuntime,

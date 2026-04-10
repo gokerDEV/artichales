@@ -27,13 +27,37 @@
 			"link": "#0f766e"
 		},
 		"components": {
-			"figure": {
+			"abstract": {
 				"captionPosition": "bottom",
 				"defaultSpan": "column",
 				"spacingBefore": "0",
 				"spacingAfter": "0"
 			},
 			"table": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"figure": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"map": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"equation": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"code": {
 				"captionPosition": "bottom",
 				"defaultSpan": "column",
 				"spacingBefore": "0",

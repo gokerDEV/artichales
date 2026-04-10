@@ -8,10 +8,23 @@ import type { ResolvedReference } from "@/lib/article-analysis";
 
 export type PluginCategory = "core" | "parser" | "render" | "editor";
 
+export type DirectiveCategory =
+	| "abstract"
+	| "table"
+	| "figure"
+	| "map"
+	| "equation"
+	| "code";
+
+export type DirectiveConfig = {
+	captionPosition?: "top" | "bottom";
+	defaultSpan?: "column" | "page";
+	spacingBefore?: string;
+	spacingAfter?: string;
+	label?: string;
+};
+
 export type RenderHookContext = {
-	plotFiles: Record<string, unknown>;
-	plotIndexById: Record<string, number>;
-	datatableIndexById: Record<string, number>;
 	refIndexById: Record<
 		string,
 		{
@@ -21,21 +34,6 @@ export type RenderHookContext = {
 	>;
 	target: "web" | "print";
 	resolvedReferences: Record<string, ResolvedReference>;
-	templateDefaults?: {
-		figure?: {
-			captionPosition?: "top" | "bottom";
-			defaultSpan?: "column" | "page";
-			spacingBefore?: string;
-			spacingAfter?: string;
-		};
-		table?: {
-			captionPosition?: "top" | "bottom";
-			defaultSpan?: "column" | "page";
-			spacingBefore?: string;
-			spacingAfter?: string;
-		};
-	};
-	referenceLabels?: Record<string, string>;
 	utilityClasses?: Record<string, string>;
 };
 
@@ -49,19 +47,15 @@ export type DirectiveComponentProps = {
 	node?: unknown;
 	children?: ReactNode;
 	directive: string;
+	raw: string;
+	params: Record<string, string>;
+	config: DirectiveConfig;
+	target: "web" | "print";
 } & Omit<HTMLAttributes<HTMLDivElement>, "children">;
-
-export type DirectiveCategory =
-	| "abstract"
-	| "table"
-	| "figure"
-	| "map"
-	| "equation"
-	| "code";
 
 export type DirectiveRendererDefinition = {
 	directive: string;
-	primitive: DirectiveCategory;
+	category: DirectiveCategory;
 	component: (props: DirectiveComponentProps) => ReactNode;
 };
 
@@ -81,6 +75,7 @@ export type PluginDefinition = {
 	id: string;
 	name: string;
 	category: PluginCategory;
+	directiveCategory?: DirectiveCategory;
 	version?: string;
 	description?: string;
 	ownsSyntax?: string[];

@@ -2,6 +2,10 @@ import type { JSX } from "react";
 import * as React from "react";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
 import type {
+	DirectiveCategory,
+	DirectiveConfig,
+} from "@/components/artichales/plugins/plugin.contract";
+import type {
 	ArticleAnalysisDiagnostic,
 	ResolvedReference,
 } from "@/lib/article-analysis";
@@ -80,20 +84,7 @@ export type DocumentTemplate = {
 		defaultPageColumns?: number;
 		columnGap?: string;
 	};
-	componentDefaults?: {
-		figure?: {
-			captionPosition?: "top" | "bottom";
-			defaultSpan?: "column" | "page";
-			spacingBefore?: string;
-			spacingAfter?: string;
-		};
-		table?: {
-			captionPosition?: "top" | "bottom";
-			defaultSpan?: "column" | "page";
-			spacingBefore?: string;
-			spacingAfter?: string;
-		};
-	};
+	directiveConfigs?: Record<DirectiveCategory, DirectiveConfig>;
 	webLayout?: {
 		containerWidth?: string;
 		containerClass?: string;
@@ -124,6 +115,11 @@ export interface DocumentSource {
 	plots: Record<string, unknown>;
 	template: DocumentTemplate;
 	citationStyle: string;
+	assetFiles: Array<{
+		name: string;
+		kind: string;
+		lastUpdated: number;
+	}>;
 	templateDiagnostics: TemplateDiagnostic[];
 	bibDiagnostics: BibtexDiagnostic[];
 	assetDiagnostics: Array<{
@@ -195,7 +191,7 @@ function resolveTemplateForTarget(
 			defaultPageColumns: print.layout.defaultPageColumns,
 			columnGap: print.layout.columnGap,
 		},
-		componentDefaults: defaults.components,
+		directiveConfigs: defaults.components,
 		webLayout: web.layout,
 		utilities: defaults.utilities,
 		referenceLabels: defaults.referenceLabels,
@@ -226,10 +222,13 @@ export function useDocument(
 	);
 	const plots = useWorkspaceStore((state) => state.plots);
 	const templateFile = useWorkspaceStore((state) => state.template);
-	const referenceRegistry = useWorkspaceStore((state) => state.referenceRegistry);
+	const referenceRegistry = useWorkspaceStore(
+		(state) => state.referenceRegistry,
+	);
 	const referenceTargets = useWorkspaceStore((state) => state.referenceTargets);
 	const diagnostics = useWorkspaceStore((state) => state.diagnostics);
 	const activePluginIds = useWorkspaceStore((state) => state.activePluginIds);
+	const assetFiles = useWorkspaceStore((state) => state.assetFiles);
 
 	const resolvedTemplateForTarget = React.useMemo(() => {
 		if (!templateFile) return {} as any;
@@ -278,7 +277,8 @@ export function useDocument(
 				"Fix article parsing errors before switching away from `article.mda`.";
 		}
 		for (const diagnostic of diagnostics) {
-			if (diagnostic.code !== "asset-json-invalid" || !diagnostic.fileName) continue;
+			if (diagnostic.code !== "asset-json-invalid" || !diagnostic.fileName)
+				continue;
 			result[diagnostic.fileName] =
 				"Fix JSON asset syntax errors before switching away from this file.";
 		}
@@ -288,7 +288,8 @@ export function useDocument(
 	const templateDiagnostics = React.useMemo(
 		() =>
 			diagnostics.filter(
-				(d: any) => typeof d.code === "string" && d.code.startsWith("template-"),
+				(d: any) =>
+					typeof d.code === "string" && d.code.startsWith("template-"),
 			) as any,
 		[diagnostics],
 	);
@@ -300,7 +301,8 @@ export function useDocument(
 		[diagnostics],
 	);
 	const assetDiagnostics = React.useMemo(
-		() => diagnostics.filter((d: any) => d.code === "asset-json-invalid") as any,
+		() =>
+			diagnostics.filter((d: any) => d.code === "asset-json-invalid") as any,
 		[diagnostics],
 	);
 	const articleDiagnostics = React.useMemo(
@@ -325,6 +327,7 @@ export function useDocument(
 		plots,
 		template: resolvedTemplateForTarget as any,
 		citationStyle,
+		assetFiles,
 		templateDiagnostics,
 		bibDiagnostics,
 		assetDiagnostics,

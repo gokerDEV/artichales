@@ -1,10 +1,5 @@
 import * as React from "react";
-import { DirectiveCaption } from "@/components/artichales/plugins/directive-caption";
-import { useDirectiveFrame } from "@/components/artichales/plugins/directive-frame";
-import type { DocumentTemplate } from "@/hooks/use-document";
-import { isRecord, type UnknownRecord } from "@/lib/artichales.utils";
-import { getDirectiveString } from "@/lib/directive.utils";
-import { formatAssetId } from "@/lib/workspace";
+import { useDirectiveJsonData } from "@/components/artichales/plugins/directive-data-file";
 import type {
 	DirectiveComponentProps,
 	DirectiveRendererDefinition,
@@ -32,14 +27,9 @@ type PlotlyModule = {
 	purge: (root: HTMLElement) => void;
 };
 
-type PlottyChartProps = {
-	plot: PlotDefinition;
-	width?: number;
-	height?: number;
-};
-
-type PlotIndexMap = Record<string, number>;
-type ComponentTemplateDefaults = DocumentTemplate["componentDefaults"];
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function toNumber(value: unknown): number | undefined {
 	return typeof value === "number" && Number.isFinite(value)
@@ -48,10 +38,10 @@ function toNumber(value: unknown): number | undefined {
 }
 
 function mergeRecords(
-	base: UnknownRecord,
-	override: UnknownRecord,
-): UnknownRecord {
-	const merged: UnknownRecord = { ...base };
+	base: Record<string, unknown>,
+	override: Record<string, unknown>,
+): Record<string, unknown> {
+	const merged: Record<string, unknown> = { ...base };
 	for (const [key, value] of Object.entries(override)) {
 		const existing = merged[key];
 		if (isRecord(existing) && isRecord(value)) {
@@ -65,25 +55,38 @@ function mergeRecords(
 
 function resolvePlotDefinition(
 	rawPlot: unknown,
-	layoutOverride: PlotLayout,
+	raw: string,
 ): PlotDefinition | null {
 	if (!isRecord(rawPlot) || !Array.isArray(rawPlot.data)) {
 		return null;
 	}
-
+	const override = raw.trim() ? safeParseRecord(raw) : {};
 	const baseLayout = isRecord(rawPlot.layout) ? rawPlot.layout : {};
-	const resolvedLayout = mergeRecords(baseLayout, layoutOverride);
-
 	return {
 		data: rawPlot.data.filter((item) => isRecord(item)) as PlotTrace[],
-		layout: resolvedLayout,
+		layout: mergeRecords(baseLayout, override),
 		config: isRecord(rawPlot.config) ? rawPlot.config : {},
 	};
 }
 
-function PlottyChart({ plot, width, height }: PlottyChartProps) {
+function safeParseRecord(raw: string): Record<string, unknown> {
+	try {
+		const parsed = JSON.parse(raw);
+		return isRecord(parsed) ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+
+function PlottyChart({
+	plot,
+}: {
+	plot: PlotDefinition;
+}) {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [plotly, setPlotly] = React.useState<PlotlyModule | null>(null);
+	const width = toNumber(plot.layout?.width);
+	const height = toNumber(plot.layout?.height);
 
 	React.useEffect(() => {
 		let isMounted = true;
@@ -124,134 +127,60 @@ function PlottyChart({ plot, width, height }: PlottyChartProps) {
 
 const MemoizedPlottyChart = React.memo(PlottyChart);
 
-type PlottyRenderBlockProps = {
-	source: string;
-	bodyText: string;
-	plotFiles: Record<string, unknown>;
-	plotIndexById: PlotIndexMap;
-	defaults?: NonNullable<ComponentTemplateDefaults>["figure"];
-	referenceLabels?: Record<string, string>;
-	utilityClasses?: Record<string, string>;
-	containerProps: Omit<React.HTMLAttributes<HTMLDivElement>, "children">;
-};
-
-function PlottyRenderBlock({
-	source,
-	bodyText,
-	plotFiles,
-	plotIndexById,
-	defaults,
-	referenceLabels,
-	utilityClasses,
-	containerProps,
-}: PlottyRenderBlockProps) {
-	const plotId = formatAssetId(source);
-	const rawPlot = plotFiles[source];
-	const baseLayout =
-		isRecord(rawPlot) && isRecord(rawPlot.layout) ? rawPlot.layout : {};
-	const titleFromLayout =
-		typeof baseLayout.title === "string" ? baseLayout.title : undefined;
-	const {
-		extra: layoutOverride,
-		flow,
-		captionPosition,
-		spacingBefore,
-		spacingAfter,
-		captionProps,
-	} = useDirectiveFrame<PlotLayout>({
-		directive: "plotty",
-		primitive: "figure",
-		bodyText,
-		defaults,
-		number: plotIndexById[plotId],
-		referenceLabels,
-		utilityClasses,
-		fallbackCaption: titleFromLayout,
-	});
-	const resolvedPlot = React.useMemo(
-		() => resolvePlotDefinition(rawPlot, layoutOverride),
-		[layoutOverride, rawPlot],
+function PlottyDirectiveRender({
+	raw,
+	params,
+	config,
+	...rest
+}: DirectiveComponentProps) {
+	const dataFile = params.data_file;
+	const { data } = useDirectiveJsonData<PlotDefinition>(dataFile);
+	const plot = React.useMemo(
+		() => resolvePlotDefinition(data, raw),
+		[data, raw],
 	);
-	const resolvedLayout = resolvedPlot?.layout || {};
-	const width = toNumber(resolvedLayout.width);
-	const height = toNumber(resolvedLayout.height);
 
-	if (!resolvedPlot) {
+	if (!plot) {
 		return (
 			<div
-				{...containerProps}
+				{...rest}
 				className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs"
 			>
-				Plotty source not found or invalid:{" "}
-				<strong>{source || "(empty)"}</strong>
+				Plotty data file not found or invalid:{" "}
+				<strong>{dataFile || "(missing)"}</strong>
 			</div>
 		);
 	}
 
 	return (
 		<div
-			{...containerProps}
-			id={plotId ? `plot-${plotId}` : undefined}
-			className="plotty my-6 overflow-x-auto"
-			data-flow-span={flow.span}
-			data-flow-break-before={flow.breakBefore}
-			data-flow-break-after={flow.breakAfter}
+			{...rest}
+			className="plotty overflow-x-auto"
+			data-flow-span={config.defaultSpan}
 			style={{
-				marginTop: spacingBefore,
-				marginBottom: spacingAfter,
+				marginTop: config.spacingBefore,
+				marginBottom: config.spacingAfter,
 			}}
 		>
-			{captionPosition === "top" ? (
-				<DirectiveCaption {...captionProps} />
-			) : null}
-			<MemoizedPlottyChart plot={resolvedPlot} width={width} height={height} />
-			{captionPosition === "bottom" ? (
-				<DirectiveCaption {...captionProps} />
-			) : null}
+			<MemoizedPlottyChart plot={plot} />
 		</div>
 	);
 }
 
 function registerPlottyRenderRuntime(
-	context: RenderHookContext,
+	_: RenderHookContext,
 ): DirectiveRendererDefinition {
 	return {
 		directive: "plotty",
-		primitive: "figure",
-		component: function PlottyDirectiveRender({
-			node,
-			...rest
-		}: DirectiveComponentProps) {
-			const restProps = rest as UnknownRecord;
-			return (
-				<PlottyRenderBlock
-					source={getDirectiveString(
-						node,
-						restProps,
-						"data-plot-source",
-						"dataPlotSource",
-					)}
-					bodyText={getDirectiveString(
-						node,
-						restProps,
-						"data-plot-body",
-						"dataPlotBody",
-					)}
-					plotFiles={context.plotFiles}
-					plotIndexById={context.plotIndexById}
-					defaults={context.templateDefaults?.figure}
-					referenceLabels={context.referenceLabels}
-					utilityClasses={context.utilityClasses}
-					containerProps={rest}
-				/>
-			);
-		},
+		category: "figure",
+		component: PlottyDirectiveRender,
 	};
 }
 
 export const plottyRenderPlugin: PluginDefinition = {
 	id: "plotty-render",
 	category: "render",
+	directiveCategory: "figure",
 	name: "Plotty Render",
 	hooks: {
 		directiveRender: registerPlottyRenderRuntime,

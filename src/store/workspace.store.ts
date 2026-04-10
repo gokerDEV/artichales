@@ -1,13 +1,68 @@
 import type { Root } from "mdast";
 import { create } from "zustand";
-import type { ReferenceSelectorTarget, ResolvedReference } from "@/lib/article-analysis";
+import type {
+	ReferenceSelectorTarget,
+	ResolvedReference,
+} from "@/lib/article-analysis";
 import type { CitationEntry, ValidatedBibEntry } from "@/lib/bibtex";
-import type { AppDiagnostic, PipelineResultPayload } from "@/lib/document-pipeline";
+import type {
+	AppDiagnostic,
+	PipelineResultPayload,
+} from "@/lib/document-pipeline";
 import type { TemplateFileResolved } from "@/lib/template";
+import {
+	CORE_ARTICLE_FILE,
+	CORE_BIB_FILE,
+	CORE_TEMPLATE_FILE,
+} from "@/lib/workspace";
+
+type WorkspaceAssetFile = {
+	name: string;
+	kind: string;
+	lastUpdated: number;
+};
+
+function getAssetKind(fileName: string): string {
+	const extension = fileName.includes(".")
+		? fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase()
+		: "";
+	return extension || "unknown";
+}
+
+function isAssetFile(fileName: string): boolean {
+	return (
+		fileName !== CORE_TEMPLATE_FILE &&
+		fileName !== CORE_ARTICLE_FILE &&
+		fileName !== CORE_BIB_FILE
+	);
+}
+
+function buildAssetFiles(
+	files: Record<string, string>,
+	previousFiles: Record<string, string>,
+	previousAssets: WorkspaceAssetFile[],
+): WorkspaceAssetFile[] {
+	const previousByName = new Map(
+		previousAssets.map((asset) => [asset.name, asset]),
+	);
+	return Object.keys(files)
+		.filter(isAssetFile)
+		.sort((a, b) => a.localeCompare(b))
+		.map((fileName) => {
+			const previous = previousByName.get(fileName);
+			const didChange = previousFiles[fileName] !== files[fileName];
+			return {
+				name: fileName,
+				kind: getAssetKind(fileName),
+				lastUpdated: previous && !didChange ? previous.lastUpdated : Date.now(),
+			};
+		});
+}
 
 interface WorkspaceState {
 	// Slice 1: Input (Read by Editor and Worker only)
 	rawFiles: Record<string, string>;
+	assetFiles: WorkspaceAssetFile[];
 	setRawFiles: (files: Record<string, string>) => void;
 	updateFile: (fileName: string, content: string) => void;
 
@@ -41,10 +96,20 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	rawFiles: {},
-	setRawFiles: (files) => set({ rawFiles: files }),
+	assetFiles: [],
+	setRawFiles: (files) =>
+		set((state) => ({
+			rawFiles: files,
+			assetFiles: buildAssetFiles(files, state.rawFiles, state.assetFiles),
+		})),
 	updateFile: (fileName, content) =>
 		set((state) => ({
 			rawFiles: { ...state.rawFiles, [fileName]: content },
+			assetFiles: buildAssetFiles(
+				{ ...state.rawFiles, [fileName]: content },
+				state.rawFiles,
+				state.assetFiles,
+			),
 		})),
 
 	ast: null,

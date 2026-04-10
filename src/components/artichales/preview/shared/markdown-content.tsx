@@ -8,7 +8,11 @@ import remarkRehype from "remark-rehype";
 import type { Plugin } from "unified";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
-import type { DirectiveRendererDefinition } from "@/components/artichales/plugins/plugin.contract";
+import type {
+	DirectiveCategory,
+	DirectiveConfig,
+	DirectiveRendererDefinition,
+} from "@/components/artichales/plugins/plugin.contract";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import { buildAlignmentHeadingId } from "@/lib/alignment";
 import { getDirectiveString } from "@/lib/directive.utils";
@@ -18,30 +22,13 @@ import type { ResolvedReference } from "@/lib/article-analysis";
 type MarkdownContentProps = {
 	ast: Root;
 	content: string;
-	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
 	printTitle?: string;
 	resolvedReferences: Record<string, ResolvedReference>;
 	activeParserPluginIds: string[];
 	activeRenderPluginIds: string[];
 	indexContent?: string;
-	templateDefaults?: {
-		components?: {
-			figure?: {
-				captionPosition?: "top" | "bottom";
-				defaultSpan?: "column" | "page";
-				spacingBefore?: string;
-				spacingAfter?: string;
-			};
-			table?: {
-				captionPosition?: "top" | "bottom";
-				defaultSpan?: "column" | "page";
-				spacingBefore?: string;
-				spacingAfter?: string;
-			};
-		};
-	};
-	referenceLabels?: Record<string, string>;
+	directiveConfigs?: Record<DirectiveCategory, DirectiveConfig>;
 	utilityClasses?: Record<string, string>;
 };
 
@@ -65,7 +52,7 @@ function extractNodeText(node: unknown): string {
 		.trim();
 }
 
-function extractDirectiveSource(node: unknown, propertyName: string): string {
+function extractDirectiveProperty(node: unknown, propertyName: string): string {
 	if (!node || typeof node !== "object") return "";
 	const record = node as UnknownRecord;
 	const data =
@@ -76,26 +63,11 @@ function extractDirectiveSource(node: unknown, propertyName: string): string {
 		data?.hProperties && typeof data.hProperties === "object"
 			? (data.hProperties as UnknownRecord)
 			: null;
-	const directSource = hProperties?.[propertyName];
-	if (typeof directSource === "string" && directSource.trim() !== "") {
-		return directSource;
+	const directValue = hProperties?.[propertyName];
+	if (typeof directValue === "string" && directValue.trim() !== "") {
+		return directValue;
 	}
-
-	const children = Array.isArray(record.children) ? record.children : [];
-	const firstChild =
-		children[0] && typeof children[0] === "object"
-			? (children[0] as UnknownRecord)
-			: null;
-	const nestedChildren = Array.isArray(firstChild?.children)
-		? firstChild.children
-		: [];
-	const firstGrandchild =
-		nestedChildren[0] && typeof nestedChildren[0] === "object"
-			? (nestedChildren[0] as UnknownRecord)
-			: null;
-	return typeof firstGrandchild?.value === "string"
-		? firstGrandchild.value
-		: "";
+	return "";
 }
 
 const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
@@ -178,79 +150,54 @@ function stripDuplicatePrintLeadBlocks(ast: Root, printTitle?: string): void {
 export function MarkdownContent({
 	ast,
 	content: _content,
-	plotFiles,
 	target,
 	printTitle,
 	resolvedReferences,
 	activeParserPluginIds: _activeParserPluginIds,
 	activeRenderPluginIds,
-	templateDefaults,
-	referenceLabels,
+	directiveConfigs,
 	utilityClasses,
 }: MarkdownContentProps) {
-	const { plotIndexById, datatableIndexById, refIndexById } =
-		React.useMemo(() => {
-			const plotMap: Record<string, number> = {};
-			const datatableMap: Record<string, number> = {};
-			const refMap: Record<
-				string,
-				{
-					kind: "plot" | "datatable";
-					index: number;
-				}
-			> = {};
-			let plotIdx = 1;
-			let datatableIdx = 1;
+	const refIndexById = React.useMemo(() => {
+		const refMap: Record<
+			string,
+			{
+				kind: "plot" | "datatable";
+				index: number;
+			}
+		> = {};
+		let plotIdx = 1;
+		let datatableIdx = 1;
 
-			visit(ast, (node) => {
-				const uNode = node as unknown as UnknownRecord;
-				if (
-					uNode.type === "containerDirective" ||
-					uNode.type === "leafDirective"
-				) {
-					if (uNode.name === "plotty") {
-						const sourceStr = extractDirectiveSource(node, "data-plot-source");
-						const dataPlotSource = sourceStr.replace(/\.[^/.]+$/, "");
-						if (dataPlotSource && plotMap[dataPlotSource] === undefined) {
-							plotMap[dataPlotSource] = plotIdx;
-							refMap[dataPlotSource] = { kind: "plot", index: plotIdx };
-							plotIdx++;
-						}
-					} else if (uNode.name === "datatable") {
-						const sourceStr = extractDirectiveSource(
-							node,
-							"data-datatable-source",
-						);
-						const dataTableSource = sourceStr.replace(/\.[^/.]+$/, "");
-						if (
-							dataTableSource &&
-							datatableMap[dataTableSource] === undefined
-						) {
-							datatableMap[dataTableSource] = datatableIdx;
-							refMap[dataTableSource] = {
-								kind: "datatable",
-								index: datatableIdx,
-							};
-							datatableIdx++;
-						}
-					}
-				}
-			});
+		visit(ast, (node) => {
+			const uNode = node as unknown as UnknownRecord;
+			if (
+				uNode.type !== "containerDirective" &&
+				uNode.type !== "leafDirective"
+			) {
+				return;
+			}
+			const dataFile = extractDirectiveProperty(
+				node,
+				"data-directive-data-file",
+			).replace(/\.[^/.]+$/, "");
+			if (!dataFile) return;
+			if (uNode.name === "plotty" && refMap[dataFile] === undefined) {
+				refMap[dataFile] = { kind: "plot", index: plotIdx++ };
+				return;
+			}
+			if (uNode.name === "datatable" && refMap[dataFile] === undefined) {
+				refMap[dataFile] = { kind: "datatable", index: datatableIdx++ };
+			}
+		});
 
-			return {
-				plotIndexById: plotMap,
-				datatableIndexById: datatableMap,
-				refIndexById: refMap,
-			};
-		}, [ast]);
+		return refMap;
+	}, [ast]);
 
 	const markdownComponents = React.useMemo(() => {
 		const components: Partial<Components> = {};
 		const executionState = resolvePluginExecutionState(activeRenderPluginIds);
-		const directiveRenderers = new Map<
-			string,
-			DirectiveRendererDefinition["component"]
-		>();
+		const directiveRenderers = new Map<string, DirectiveRendererDefinition>();
 		for (const plugin of executionState.render) {
 			const renderHook = plugin.hooks.render;
 			if (!renderHook) continue;
@@ -258,14 +205,9 @@ export function MarkdownContent({
 				Object.assign(
 					components,
 					renderHook({
-						plotFiles,
-						plotIndexById,
-						datatableIndexById,
 						refIndexById,
 						target,
 						resolvedReferences,
-						templateDefaults: templateDefaults?.components,
-						referenceLabels,
 						utilityClasses,
 					}),
 				);
@@ -281,14 +223,9 @@ export function MarkdownContent({
 			if (!directiveRenderHook) continue;
 			try {
 				const result = directiveRenderHook({
-					plotFiles,
-					plotIndexById,
-					datatableIndexById,
 					refIndexById,
 					target,
 					resolvedReferences,
-					templateDefaults: templateDefaults?.components,
-					referenceLabels,
 					utilityClasses,
 				});
 				const definitions = Array.isArray(result)
@@ -297,7 +234,7 @@ export function MarkdownContent({
 						? [result]
 						: [];
 				for (const definition of definitions) {
-					directiveRenderers.set(definition.directive, definition.component);
+					directiveRenderers.set(definition.directive, definition);
 				}
 			} catch (error) {
 				console.error(
@@ -317,7 +254,24 @@ export function MarkdownContent({
 			);
 			const directiveRenderer = directiveRenderers.get(directive);
 			if (directiveRenderer) {
-				return directiveRenderer({ ...props, directive });
+				return directiveRenderer.component({
+					...props,
+					directive,
+					raw: getDirectiveString(
+						node,
+						rest as UnknownRecord,
+						"data-directive-raw",
+					),
+					params: {
+						data_file: getDirectiveString(
+							node,
+							rest as UnknownRecord,
+							"data-directive-data-file",
+						),
+					},
+					config: directiveConfigs?.[directiveRenderer.category] || {},
+					target,
+				});
 			}
 			if (divRenderer) {
 				return React.createElement(
@@ -387,14 +341,10 @@ export function MarkdownContent({
 		return components;
 	}, [
 		activeRenderPluginIds,
-		plotFiles,
-		plotIndexById,
-		datatableIndexById,
 		refIndexById,
 		target,
 		resolvedReferences,
-		templateDefaults,
-		referenceLabels,
+		directiveConfigs,
 		utilityClasses,
 	]);
 

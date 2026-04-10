@@ -3,6 +3,10 @@ import {
 	getDefaultTemplateDirectivePlugins,
 	listTemplateDirectivePlugins,
 } from "@/components/artichales/plugins/plugin.registry";
+import type {
+	DirectiveCategory,
+	DirectiveConfig,
+} from "@/components/artichales/plugins/plugin.contract";
 
 const SpanSchema = z.enum(["column", "page", "full"]).transform((value) => {
 	return value === "full" ? "page" : value;
@@ -10,6 +14,13 @@ const SpanSchema = z.enum(["column", "page", "full"]).transform((value) => {
 const CaptionPositionSchema = z.enum(["top", "bottom"]);
 const OrientationSchema = z.enum(["portrait", "landscape"]);
 const TextAlignSchema = z.enum(["left", "right", "center", "justify"]);
+const DirectiveConfigSchema = z.object({
+	captionPosition: CaptionPositionSchema.optional(),
+	defaultSpan: SpanSchema.optional(),
+	spacingBefore: z.string().optional(),
+	spacingAfter: z.string().optional(),
+	label: z.string().optional(),
+});
 
 const HeaderFooterTokensSchema = z.object({
 	left: z.string().optional(),
@@ -61,22 +72,12 @@ const DefaultTemplateSchema = z.object({
 		.optional(),
 	components: z
 		.object({
-			figure: z
-				.object({
-					captionPosition: CaptionPositionSchema.optional(),
-					defaultSpan: SpanSchema.optional(),
-					spacingBefore: z.string().optional(),
-					spacingAfter: z.string().optional(),
-				})
-				.optional(),
-			table: z
-				.object({
-					captionPosition: CaptionPositionSchema.optional(),
-					defaultSpan: SpanSchema.optional(),
-					spacingBefore: z.string().optional(),
-					spacingAfter: z.string().optional(),
-				})
-				.optional(),
+			abstract: DirectiveConfigSchema.optional(),
+			table: DirectiveConfigSchema.optional(),
+			figure: DirectiveConfigSchema.optional(),
+			map: DirectiveConfigSchema.optional(),
+			equation: DirectiveConfigSchema.optional(),
+			code: DirectiveConfigSchema.optional(),
 		})
 		.optional(),
 	utilities: z.record(z.string(), z.string()).optional(),
@@ -186,20 +187,7 @@ export type TemplateFileResolved = {
 		assets: {
 			maxFileSize?: number;
 		};
-		components: {
-			figure: {
-				captionPosition: "top" | "bottom";
-				defaultSpan: "column" | "page";
-				spacingBefore: string;
-				spacingAfter: string;
-			};
-			table: {
-				captionPosition: "top" | "bottom";
-				defaultSpan: "column" | "page";
-				spacingBefore: string;
-				spacingAfter: string;
-			};
-		};
+		components: Record<DirectiveCategory, DirectiveConfig>;
 		utilities: Record<string, string>;
 		referenceLabels: Record<string, string>;
 		citationStyle: "numeric" | "ieee" | "apc" | "author-year" | "apa";
@@ -273,13 +261,37 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 		},
 		assets: {},
 		components: {
-			figure: {
+			abstract: {
 				captionPosition: "bottom",
 				defaultSpan: "column",
 				spacingBefore: "0",
 				spacingAfter: "0",
 			},
 			table: {
+				captionPosition: "bottom",
+				defaultSpan: "column",
+				spacingBefore: "0",
+				spacingAfter: "0",
+			},
+			figure: {
+				captionPosition: "bottom",
+				defaultSpan: "column",
+				spacingBefore: "0",
+				spacingAfter: "0",
+			},
+			map: {
+				captionPosition: "bottom",
+				defaultSpan: "column",
+				spacingBefore: "0",
+				spacingAfter: "0",
+			},
+			equation: {
+				captionPosition: "bottom",
+				defaultSpan: "column",
+				spacingBefore: "0",
+				spacingAfter: "0",
+			},
+			code: {
 				captionPosition: "bottom",
 				defaultSpan: "column",
 				spacingBefore: "0",
@@ -410,33 +422,29 @@ function mergeTemplateWithDefaults(
 					DEFAULT_TEMPLATE_FILE.default.assets.maxFileSize,
 			},
 			components: {
-				figure: {
-					captionPosition:
-						overrides.default?.components?.figure?.captionPosition ??
-						DEFAULT_TEMPLATE_FILE.default.components.figure.captionPosition,
-					defaultSpan:
-						overrides.default?.components?.figure?.defaultSpan ??
-						DEFAULT_TEMPLATE_FILE.default.components.figure.defaultSpan,
-					spacingBefore:
-						overrides.default?.components?.figure?.spacingBefore ??
-						DEFAULT_TEMPLATE_FILE.default.components.figure.spacingBefore,
-					spacingAfter:
-						overrides.default?.components?.figure?.spacingAfter ??
-						DEFAULT_TEMPLATE_FILE.default.components.figure.spacingAfter,
+				abstract: {
+					...DEFAULT_TEMPLATE_FILE.default.components.abstract,
+					...(overrides.default?.components?.abstract ?? {}),
 				},
 				table: {
-					captionPosition:
-						overrides.default?.components?.table?.captionPosition ??
-						DEFAULT_TEMPLATE_FILE.default.components.table.captionPosition,
-					defaultSpan:
-						overrides.default?.components?.table?.defaultSpan ??
-						DEFAULT_TEMPLATE_FILE.default.components.table.defaultSpan,
-					spacingBefore:
-						overrides.default?.components?.table?.spacingBefore ??
-						DEFAULT_TEMPLATE_FILE.default.components.table.spacingBefore,
-					spacingAfter:
-						overrides.default?.components?.table?.spacingAfter ??
-						DEFAULT_TEMPLATE_FILE.default.components.table.spacingAfter,
+					...DEFAULT_TEMPLATE_FILE.default.components.table,
+					...(overrides.default?.components?.table ?? {}),
+				},
+				figure: {
+					...DEFAULT_TEMPLATE_FILE.default.components.figure,
+					...(overrides.default?.components?.figure ?? {}),
+				},
+				map: {
+					...DEFAULT_TEMPLATE_FILE.default.components.map,
+					...(overrides.default?.components?.map ?? {}),
+				},
+				equation: {
+					...DEFAULT_TEMPLATE_FILE.default.components.equation,
+					...(overrides.default?.components?.equation ?? {}),
+				},
+				code: {
+					...DEFAULT_TEMPLATE_FILE.default.components.code,
+					...(overrides.default?.components?.code ?? {}),
 				},
 			},
 			utilities: {
