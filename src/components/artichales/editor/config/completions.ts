@@ -52,6 +52,10 @@ export function buildArticleCompletions(completions: EditorCompletions) {
 		label: `[cite:${key}]`,
 		type: "variable",
 	}));
+	const directiveOptions = completions.directiveNames.map((directive) => ({
+		label: `:::${directive}`,
+		type: "keyword",
+	}));
 
 	return completeFromList([
 		{ label: "---", type: "keyword" },
@@ -63,11 +67,8 @@ export function buildArticleCompletions(completions: EditorCompletions) {
 		{ label: "[ref:type]", type: "keyword" },
 		{ label: "[caption:type:key]", type: "keyword" },
 		{ label: "[caption:type:key](Title)", type: "keyword" },
-		{ label: ":::abstract", type: "keyword" },
-		{ label: ":::plotty[data.json]", type: "keyword" },
-		{ label: ":::datatable[data.json]", type: "keyword" },
+		...directiveOptions,
 		...refOptions,
 		...citeOptions,
 	]);
 }
-

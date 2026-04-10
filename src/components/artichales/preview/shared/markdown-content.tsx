@@ -17,6 +17,7 @@ import type { ResolvedReference } from "@/lib/article-analysis";
 
 type MarkdownContentProps = {
 	ast: Root;
+	content: string;
 	plotFiles: Record<string, unknown>;
 	target: "web" | "print";
 	resolvedReferences: Record<string, ResolvedReference>;
@@ -86,6 +87,7 @@ const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
 
 export function MarkdownContent({
 	ast,
+	content,
 	plotFiles,
 	target,
 	resolvedReferences,
@@ -96,9 +98,7 @@ export function MarkdownContent({
 	utilityClasses,
 }: MarkdownContentProps) {
 	const parserPlugins = React.useMemo(() => {
-		const executionState = resolvePluginExecutionState(
-			activeParserPluginIds.map((id) => ({ id, enabled: true })),
-		);
+		const executionState = resolvePluginExecutionState(activeParserPluginIds);
 		return getParserRemarkPluginsFromExecutionState(executionState);
 	}, [activeParserPluginIds]);
 	const { plotIndexById, datatableIndexById, refIndexById } =
@@ -148,9 +148,7 @@ export function MarkdownContent({
 	const markdownComponents = React.useMemo(() => {
 		const components: React.ComponentProps<typeof ReactMarkdown>["components"] =
 			{};
-		const executionState = resolvePluginExecutionState(
-			activeRenderPluginIds.map((id) => ({ id, enabled: true })),
-		);
+		const executionState = resolvePluginExecutionState(activeRenderPluginIds);
 		for (const plugin of executionState.render) {
 			const renderHook = plugin.hooks.render;
 			if (!renderHook) continue;

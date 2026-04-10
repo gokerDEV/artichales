@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { citationParserPlugin } from "@/components/artichales/plugins/citation.parser.plugin";
-import { runDocumentPipeline } from "./document-pipeline";
+import { runDocumentPipeline } from "@/lib/document-pipeline";
 
 const VALID_BIB = `@article{knuth1984,
   author = {Donald E. Knuth},

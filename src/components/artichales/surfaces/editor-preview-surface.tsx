@@ -8,6 +8,10 @@ import {
 	type PreviewTarget,
 } from "@/components/artichales/panels/preview-header";
 import { CitationContext } from "@/components/artichales/plugins/citation.context";
+import {
+	getOwnedSyntaxByRuntimePluginIds,
+	listTemplateDirectivePlugins,
+} from "@/components/artichales/plugins/plugin.registry";
 import { PrintPreview } from "@/components/artichales/preview/print/print-preview";
 import { WebPreview } from "@/components/artichales/preview/web/web-preview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -55,6 +59,7 @@ type UiDiagnostic = {
 const FILE_TREE_PANEL_ID = "workspace-file-tree";
 const EDITOR_PANEL_ID = "workspace-editor";
 const PREVIEW_PANEL_ID = "workspace-preview";
+const TEMPLATE_DIRECTIVE_NAMES = listTemplateDirectivePlugins();
 
 function normalizePanelSizes(raw: unknown): number[] | null {
 	if (!Array.isArray(raw) || raw.length !== 3) return null;
@@ -121,7 +126,7 @@ export function EditorPreviewSurface() {
 	const { setRawFiles, setPipelineResult } = useWorkspaceStore();
 
 	React.useEffect(() => {
-		workerRef.current = new Worker(new URL("../../workers/pipeline.worker", import.meta.url), { type: "module" });
+		workerRef.current = new Worker(new URL("../../../workers/pipeline.worker", import.meta.url), { type: "module" });
 		
 		workerRef.current.onmessage = (event) => {
 			if (event.data.type === "PIPELINE_SUCCESS") {
@@ -359,6 +364,16 @@ export function EditorPreviewSurface() {
 		[activeFile],
 	);
 
+	const handleResetWorkspace = React.useCallback(() => {
+		const confirmed = window.confirm(
+			"Reset workspace to default files? This will discard current edits.",
+		);
+		if (!confirmed) return;
+		setFiles({ ...DEFAULT_WORKSPACE_FILES });
+		setActiveFile(CORE_ARTICLE_FILE);
+		toast.success("Workspace reset to defaults.");
+	}, []);
+
 	const savedSizes = normalizePanelSizes(panelSizesOverride) ||
 		normalizePanelSizes(settings.ux?.editorPanelSizes) || [15, 40, 45];
 	const defaultPanelLayout = React.useMemo(
@@ -461,8 +476,11 @@ export function EditorPreviewSurface() {
 			referenceSelectors: docSource.referenceTargets.map(
 				(target) => target.selector,
 			),
+			directiveNames: getOwnedSyntaxByRuntimePluginIds(
+				docSource.activePluginIds.parser,
+			).filter((directive) => TEMPLATE_DIRECTIVE_NAMES.includes(directive)),
 		}),
-		[docSource.citations, docSource.referenceTargets],
+		[docSource.citations, docSource.referenceTargets, docSource.activePluginIds],
 	);
 
 	const handleSelectFile = React.useCallback(
@@ -665,20 +683,29 @@ export function EditorPreviewSurface() {
 								<AlertDescription>{saveError}</AlertDescription>
 							</Alert>
 						) : null}
-						<div className="mb-2 flex items-center gap-2">
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
+							<div className="mb-2 flex items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
 								className="h-7 px-2 text-xs"
 								onClick={handleAddAssetsClick}
-							>
-								Add Asset
-							</Button>
-							<span className="text-[11px] text-muted-foreground">
-								Drop files here
-							</span>
-						</div>
+								>
+									Add Asset
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="h-7 px-2 text-xs"
+									onClick={handleResetWorkspace}
+								>
+									Reset
+								</Button>
+								<span className="text-[11px] text-muted-foreground">
+									Drop files here
+								</span>
+							</div>
 						<section
 							aria-label="Workspace assets drop zone"
 							className={

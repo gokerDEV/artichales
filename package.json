@@ -18,7 +18,7 @@
 		"format": "biome format --write src",
 		"preview": "vite preview",
 		"test": "bun test",
-		"test:migration": "bun test src/lib/document-pipeline.test.ts"
+		"test:migration": "bun test test/document-pipeline.test.ts"
 	},
 	"dependencies": {
 		"@codemirror/autocomplete": "^6.20.1",

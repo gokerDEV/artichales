@@ -10,10 +10,7 @@ import type {
 	CitationEntry,
 	ValidatedBibEntry,
 } from "@/lib/bibtex";
-import {
-	type PipelineDiagnostic,
-	runDocumentPipeline,
-} from "@/lib/document-pipeline";
+import { type PipelineDiagnostic } from "@/lib/document-pipeline";
 import type { TemplateDiagnostic, TemplateFileResolved } from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,
@@ -113,10 +110,7 @@ export type DocumentTemplate = {
 	};
 	citationStyle?: string;
 	assetMaxFileSize?: number;
-	plugins?: Array<{
-		id: string;
-		enabled: boolean;
-	}>;
+	plugins?: string[];
 };
 
 import type { Root } from "mdast";
@@ -220,7 +214,7 @@ function resolveTemplateForTarget(
 import { useWorkspaceStore } from "@/store/workspace.store";
 
 export function useDocument(
-	files: Record<string, string>,
+	_files: Record<string, string>,
 	target: PreviewTarget,
 ): DocumentSource {
 	const pipeline = useWorkspaceStore();
@@ -238,12 +232,24 @@ export function useDocument(
 	const blockingByFile = React.useMemo(() => {
 		const result: Partial<Record<string, string>> = {};
 		if (
-			pipeline.diagnostics.some((diag: any) => diag.severity === "error" && diag.source === "template" && diag.stage === "validate-template")
+			pipeline.diagnostics.some(
+				(diag: any) =>
+					diag.severity === "error" &&
+					typeof diag.code === "string" &&
+					diag.code.startsWith("template-"),
+			)
 		) {
 			result[CORE_TEMPLATE_FILE] =
 				"Fix template errors before switching away from `template.json`.";
 		}
-		if (pipeline.diagnostics.some((diag: any) => diag.severity === "error" && diag.source === "bibliography")) {
+		if (
+			pipeline.diagnostics.some(
+				(diag: any) =>
+					diag.severity === "error" &&
+					typeof diag.code === "string" &&
+					diag.code.startsWith("bibtex-"),
+			)
+		) {
 			result[CORE_BIB_FILE] =
 				"Fix BibTeX errors before switching away from `references.bib`.";
 		}
@@ -259,15 +265,27 @@ export function useDocument(
 		return result;
 	}, [pipeline.diagnostics]);
 
-	const templateDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.source === "template" && d.stage === "validate-template") as any, [pipeline.diagnostics]);
-	const bibDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.source === "bibliography") as any, [pipeline.diagnostics]);
+	const templateDiagnostics = React.useMemo(
+		() =>
+			pipeline.diagnostics.filter(
+				(d: any) => typeof d.code === "string" && d.code.startsWith("template-"),
+			) as any,
+		[pipeline.diagnostics],
+	);
+	const bibDiagnostics = React.useMemo(
+		() =>
+			pipeline.diagnostics.filter(
+				(d: any) => typeof d.code === "string" && d.code.startsWith("bibtex-"),
+			) as any,
+		[pipeline.diagnostics],
+	);
 	const assetDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.code === "asset-json-invalid") as any, [pipeline.diagnostics]);
 	const articleDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.source === "parser" || d.source === "plugin") as any, [pipeline.diagnostics]);
 	const pipelineDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.source === "pipeline") as any, [pipeline.diagnostics]);
 
 	return {
 		ast: pipeline.ast,
-		content: pipeline.rawFiles[CORE_ARTICLE_FILE] || "",
+		content: pipeline.content || "",
 		frontmatter: pipeline.frontmatter,
 		citations: pipeline.citations,
 		validatedBibEntries: pipeline.validatedBibEntries,
@@ -279,7 +297,7 @@ export function useDocument(
 		assetDiagnostics,
 		articleDiagnostics,
 		resolvedReferences: pipeline.referenceRegistry,
-		referenceTargets: [], // TODO: extract from store if needed
+		referenceTargets: pipeline.referenceTargets,
 		activePluginIds: pipeline.activePluginIds,
 		pipelineDiagnostics,
 		blockingByFile,

@@ -1,9 +1,6 @@
 import type { Root } from "mdast";
 import type { Plugin } from "unified";
-import {
-	getPluginsByCategory,
-	type PluginRegistryEntry,
-} from "@/components/artichales/plugins/plugin.registry";
+import { getPluginsByCategory } from "@/components/artichales/plugins/plugin.registry";
 import type { PluginDefinition } from "./plugin.contract";
 
 export type PluginExecutionState = {
@@ -16,12 +13,12 @@ export type PluginExecutionState = {
 };
 
 export function resolvePluginExecutionState(
-	registryEntries?: PluginRegistryEntry[],
+	runtimePluginIds?: string[],
 ): PluginExecutionState {
-	const parser = getPluginsByCategory("parser", registryEntries);
-	const core = getPluginsByCategory("core", registryEntries);
-	const render = getPluginsByCategory("render", registryEntries);
-	const editor = getPluginsByCategory("editor", registryEntries);
+	const parser = getPluginsByCategory("parser", runtimePluginIds);
+	const core = getPluginsByCategory("core", runtimePluginIds);
+	const render = getPluginsByCategory("render", runtimePluginIds);
+	const editor = getPluginsByCategory("editor", runtimePluginIds);
 
 	return {
 		parser,

@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"journal": {
+	"publisher": {
 		"id": "demo-journal",
 		"name": "Demo Journal"
 	},
@@ -107,5 +107,6 @@
 				}
 			}
 		}
-	}
+	},
+	"plugins": ["abstract", "plotty", "datatable"]
 }

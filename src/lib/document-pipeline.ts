@@ -5,7 +5,10 @@ import { unified } from "unified";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import type { RenderHookContext } from "@/components/artichales/plugins/plugin.contract";
-import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
+import {
+	loadPluginRegistry,
+	resolveRuntimePluginIdsFromTemplate,
+} from "@/components/artichales/plugins/plugin.registry";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import {
 	type ArticleAnalysisDiagnostic,
@@ -122,7 +125,7 @@ function parseArticleContent(articleText: string): {
 	frontmatter: Record<string, unknown>;
 	diagnostics: PipelineDiagnostic[];
 } {
-	const match = articleText.match(/^---\n([\s\S]*?)\n---/);
+	const match = articleText.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
 	if (!match) {
 		return {
 			content: articleText,
@@ -173,7 +176,7 @@ function parseArticleContent(articleText: string): {
 		};
 	} catch {
 		return {
-			content: articleText,
+			content: articleText.slice(match[0].length).trim(),
 			frontmatter: {},
 			diagnostics: [
 				{
@@ -275,10 +278,10 @@ function parsePluginConfigMap(frontmatter: Record<string, unknown>): {
 
 function validatePluginConfigs(
 	configMap: Record<string, unknown>,
-	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+	runtimePluginIds: string[] | undefined,
 ): PipelineDiagnostic[] {
 	const diagnostics: PipelineDiagnostic[] = [];
-	const activePlugins = loadPluginRegistry(templatePlugins);
+	const activePlugins = loadPluginRegistry(runtimePluginIds);
 
 	for (const plugin of activePlugins) {
 		if (!plugin.configSchema) continue;
@@ -303,12 +306,12 @@ function validatePluginConfigs(
 }
 
 function validatePluginRuntimeAvailability(
-	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+	runtimePluginIds: string[] | undefined,
 ): {
 	diagnostics: PipelineDiagnostic[];
 	activePluginIds: PipelineResult["activePluginIds"];
 } {
-	const executionState = resolvePluginExecutionState(templatePlugins);
+	const executionState = resolvePluginExecutionState(runtimePluginIds);
 	const diagnostics: PipelineDiagnostic[] = [];
 
 	for (const parserPluginId of executionState.missingParserRuntimeIds) {
@@ -348,10 +351,10 @@ import { visit } from "unist-util-visit";
 
 function executeParserHooks(
 	articleContent: string,
-	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+	runtimePluginIds: string[] | undefined,
 ): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
 	const diagnostics: PipelineDiagnostic[] = [];
-	const executionState = resolvePluginExecutionState(templatePlugins);
+	const executionState = resolvePluginExecutionState(runtimePluginIds);
 
 	let processor = unified()
 		.use(remarkParse)
@@ -501,10 +504,10 @@ function executeRenderHooks(
 function executePluginHooks(
 	articleContent: string,
 	target: "web" | "print",
-	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+	runtimePluginIds: string[] | undefined,
 ): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
-	const executionState = resolvePluginExecutionState(templatePlugins);
-	const parserResult = executeParserHooks(articleContent, templatePlugins);
+	const executionState = resolvePluginExecutionState(runtimePluginIds);
+	const parserResult = executeParserHooks(articleContent, runtimePluginIds);
 	return {
 		ast: parserResult.ast,
 		diagnostics: [
@@ -516,11 +519,11 @@ function executePluginHooks(
 }
 
 function emitPluginTrace(
-	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
+	runtimePluginIds: string[] | undefined,
 	pluginConfigDiagnostics: PipelineDiagnostic[],
 ): void {
 	if (!import.meta.env.DEV) return;
-	const activePlugins = loadPluginRegistry(templatePlugins).map((p) => p.id);
+	const activePlugins = loadPluginRegistry(runtimePluginIds).map((p) => p.id);
 	const failedPlugins = pluginConfigDiagnostics
 		.map((diag) => diag.pluginId)
 		.filter((id): id is string => typeof id === "string");
@@ -571,21 +574,24 @@ export function runDocumentPipeline(
 	const unsupportedConceptDiagnostics = detectUnsupportedSourceConcepts(
 		articleResult.content,
 	);
+	const runtimePluginIds = resolveRuntimePluginIdsFromTemplate(
+		templateResult.template.plugins,
+	);
 
 	const pluginMapResult = parsePluginConfigMap(articleResult.frontmatter);
 	const pluginConfigDiagnostics = validatePluginConfigs(
 		pluginMapResult.configMap,
-		templateResult.template.plugins,
+		runtimePluginIds,
 	);
 	const pluginRuntimeResult = validatePluginRuntimeAvailability(
-		templateResult.template.plugins,
+		runtimePluginIds,
 	);
 	const pluginHooksResult = executePluginHooks(
 		articleResult.content,
 		target,
-		templateResult.template.plugins,
+		runtimePluginIds,
 	);
-	emitPluginTrace(templateResult.template.plugins, [
+	emitPluginTrace(runtimePluginIds, [
 		...pluginConfigDiagnostics,
 		...pluginRuntimeResult.diagnostics,
 		...pluginHooksResult.diagnostics,

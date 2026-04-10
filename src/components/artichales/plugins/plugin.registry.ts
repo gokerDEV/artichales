@@ -31,36 +31,94 @@ const BUILTIN_PLUGINS: PluginDefinition[] = [
 	citationEditorPlugin,
 ];
 
-export type PluginRegistryEntry = {
-	id: string;
-	enabled?: boolean;
+const BUILTIN_BY_ID = new Map(BUILTIN_PLUGINS.map((plugin) => [plugin.id, plugin]));
+
+const ALWAYS_ON_PLUGIN_IDS = [
+	"citation-parser",
+	"math-parser",
+	"citation-core",
+	"references-core",
+	"title-core",
+	"citation-render",
+	"ref-render",
+	"code-render",
+	"citation-editor",
+] as const;
+
+const DIRECTIVE_PLUGIN_GROUPS: Record<string, string[]> = {
+	abstract: ["abstract-parser", "abstract-render"],
+	plotty: ["plotty-parser", "plotty-render"],
+	datatable: ["datatable-parser"],
 };
 
+const DEFAULT_DIRECTIVE_PLUGINS = ["abstract", "plotty", "datatable"] as const;
+
+export function getDefaultTemplateDirectivePlugins(): string[] {
+	return [...DEFAULT_DIRECTIVE_PLUGINS];
+}
+
+export function listTemplateDirectivePlugins(): string[] {
+	return Object.keys(DIRECTIVE_PLUGIN_GROUPS);
+}
+
+export function resolveRuntimePluginIdsFromTemplate(
+	templateDirectivePlugins?: string[],
+): string[] {
+	const runtimeIds: string[] = [...ALWAYS_ON_PLUGIN_IDS];
+	const requestedDirectives =
+		Array.isArray(templateDirectivePlugins) && templateDirectivePlugins.length > 0
+			? templateDirectivePlugins
+			: [...DEFAULT_DIRECTIVE_PLUGINS];
+
+	for (const directive of requestedDirectives) {
+		for (const pluginId of DIRECTIVE_PLUGIN_GROUPS[directive] || []) {
+			runtimeIds.push(pluginId);
+		}
+	}
+
+	const deduped: string[] = [];
+	const seen = new Set<string>();
+	for (const id of runtimeIds) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		deduped.push(id);
+	}
+	return deduped;
+}
+
+export function getOwnedSyntaxByRuntimePluginIds(
+	runtimePluginIds?: string[],
+): string[] {
+	const syntax = new Set<string>();
+	for (const plugin of loadPluginRegistry(runtimePluginIds)) {
+		for (const owned of plugin.ownsSyntax || []) {
+			syntax.add(owned);
+		}
+	}
+	return [...syntax];
+}
+
 export function loadPluginRegistry(
-	registryEntries?: PluginRegistryEntry[],
+	runtimePluginIds?: string[],
 ): PluginDefinition[] {
-	if (!registryEntries || registryEntries.length === 0) {
+	if (!runtimePluginIds || runtimePluginIds.length === 0) {
 		return [...BUILTIN_PLUGINS];
 	}
 
-	const builtinById = new Map(
-		BUILTIN_PLUGINS.map((plugin) => [plugin.id, plugin]),
-	);
 	const resolved: PluginDefinition[] = [];
-	const dedupedReversed: PluginRegistryEntry[] = [];
+	const dedupedReversed: string[] = [];
 	const seen = new Set<string>();
-	for (let index = registryEntries.length - 1; index >= 0; index--) {
-		const entry = registryEntries[index];
-		if (seen.has(entry.id)) continue;
-		seen.add(entry.id);
-		dedupedReversed.push(entry);
+	for (let index = runtimePluginIds.length - 1; index >= 0; index--) {
+		const pluginId = runtimePluginIds[index];
+		if (seen.has(pluginId)) continue;
+		seen.add(pluginId);
+		dedupedReversed.push(pluginId);
 	}
 	const dedupedEntries = dedupedReversed.reverse();
 
-	for (const entry of dedupedEntries) {
-		const plugin = builtinById.get(entry.id);
+	for (const pluginId of dedupedEntries) {
+		const plugin = BUILTIN_BY_ID.get(pluginId);
 		if (!plugin) continue;
-		if (entry.enabled === false) continue;
 		resolved.push(plugin);
 	}
 
@@ -69,9 +127,9 @@ export function loadPluginRegistry(
 
 export function getPluginsByCategory(
 	category: PluginCategory,
-	registryEntries?: PluginRegistryEntry[],
+	runtimePluginIds?: string[],
 ): PluginDefinition[] {
-	return loadPluginRegistry(registryEntries).filter(
+	return loadPluginRegistry(runtimePluginIds).filter(
 		(plugin) => plugin.category === category,
 	);
 }

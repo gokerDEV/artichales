@@ -1,6 +1,6 @@
 import type { Root } from "mdast";
 import { create } from "zustand";
-import type { ResolvedReference } from "@/lib/article-analysis";
+import type { ReferenceSelectorTarget, ResolvedReference } from "@/lib/article-analysis";
 import type { CitationEntry, ValidatedBibEntry } from "@/lib/bibtex";
 import type { PipelineDiagnostic } from "@/lib/document-pipeline";
 import type { TemplateFileResolved } from "@/lib/template";
@@ -13,6 +13,7 @@ interface WorkspaceState {
 
 	// Slice 2: Processed Output (Read by root Preview components)
 	ast: Root | null;
+	content: string;
 	frontmatter: Record<string, unknown>;
 	citations: Record<string, CitationEntry>;
 	validatedBibEntries: Record<string, ValidatedBibEntry>;
@@ -22,6 +23,7 @@ interface WorkspaceState {
 
 	// Slice 3: Reactive Numbering (Read exclusively by Tier 1 Plugin Containers)
 	referenceRegistry: Record<string, ResolvedReference>;
+	referenceTargets: ReferenceSelectorTarget[];
 
 	// Slice 4: Diagnostics & UI (Read exclusively by diagnostic panels / specific UI logic)
 	diagnostics: PipelineDiagnostic[];
@@ -39,6 +41,7 @@ interface WorkspaceState {
 
 export type PipelineResultPayload = {
 	ast: Root | null;
+	content: string;
 	frontmatter: Record<string, unknown>;
 	citations: Record<string, CitationEntry>;
 	validatedBibEntries: Record<string, ValidatedBibEntry>;
@@ -46,6 +49,7 @@ export type PipelineResultPayload = {
 	template: TemplateFileResolved;
 	citationStyle: string;
 	referenceRegistry: Record<string, ResolvedReference>;
+	referenceTargets: ReferenceSelectorTarget[];
 	diagnostics: PipelineDiagnostic[];
 	activePluginIds: {
 		parser: string[];
@@ -64,6 +68,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 		})),
 
 	ast: null,
+	content: "",
 	frontmatter: {},
 	citations: {},
 	validatedBibEntries: {},
@@ -72,6 +77,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	citationStyle: "numeric",
 
 	referenceRegistry: {},
+	referenceTargets: [],
 
 	diagnostics: [],
 	activePluginIds: {
@@ -85,6 +91,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	setPipelineResult: (result) =>
 		set({
 			ast: result.ast,
+			content: result.content,
 			frontmatter: result.frontmatter,
 			citations: result.citations,
 			validatedBibEntries: result.validatedBibEntries,
@@ -92,10 +99,10 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 			template: result.template,
 			citationStyle: result.citationStyle,
 			referenceRegistry: result.referenceRegistry,
+			referenceTargets: result.referenceTargets,
 			diagnostics: result.diagnostics,
 			activePluginIds: result.activePluginIds,
 			isPipelineRunning: false,
 		}),
 }));
-
 

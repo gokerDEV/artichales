@@ -47,7 +47,7 @@ export function DocumentRenderContent({
 }: DocumentRenderContentProps) {
 	const coreRenderers = React.useMemo(() => {
 		const executionState = resolvePluginExecutionState(
-			document.activePluginIds.core.map((id) => ({ id, enabled: true })),
+			document.activePluginIds.core,
 		);
 		const renderedById = new Map<string, React.ReactNode>();
 		for (const plugin of executionState.core) {
@@ -75,6 +75,7 @@ export function DocumentRenderContent({
 				{document.ast ? (
 					<MarkdownContent
 						ast={document.ast}
+						content={document.content}
 						plotFiles={document.plots}
 						target={target}
 						resolvedReferences={document.resolvedReferences}

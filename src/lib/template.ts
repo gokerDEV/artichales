@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+	getDefaultTemplateDirectivePlugins,
+	listTemplateDirectivePlugins,
+} from "@/components/artichales/plugins/plugin.registry";
 
 const SpanSchema = z.enum(["column", "page", "full"]).transform((value) => {
 	return value === "full" ? "page" : value;
@@ -135,10 +139,12 @@ const WebTemplateSchema = z.object({
 		.optional(),
 });
 
-const PluginRegistrySchema = z.object({
-	id: z.string().min(1),
-	enabled: z.boolean().optional(),
-});
+const TemplateDirectivePluginSchema = z.string().trim().min(1).refine(
+	(value) => listTemplateDirectivePlugins().includes(value),
+	{
+		message: `Directive plugin must be one of: ${listTemplateDirectivePlugins().join(", ")}`,
+	},
+);
 
 export const TemplateFileSchema = z.object({
 	version: z.number().int().optional(),
@@ -148,17 +154,10 @@ export const TemplateFileSchema = z.object({
 			name: z.string().optional(),
 		})
 		.optional(),
-	// Backward compatibility for pre-migration templates.
-	journal: z
-		.object({
-			id: z.string().optional(),
-			name: z.string().optional(),
-		})
-		.optional(),
 	default: DefaultTemplateSchema.optional(),
 	print: PrintTemplateSchema.optional(),
 	web: WebTemplateSchema.optional(),
-	plugins: z.array(PluginRegistrySchema).optional(),
+	plugins: z.array(TemplateDirectivePluginSchema).optional(),
 });
 
 export type TemplateFile = z.infer<typeof TemplateFileSchema>;
@@ -243,10 +242,7 @@ export type TemplateFileResolved = {
 			contentClass: string;
 		};
 	};
-	plugins: Array<{
-		id: string;
-		enabled: boolean;
-	}>;
+	plugins: string[];
 };
 
 export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
@@ -342,22 +338,7 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			contentClass: "max-w-none",
 		},
 	},
-	plugins: [
-		{ id: "citation-parser", enabled: true },
-		{ id: "abstract-parser", enabled: true },
-		{ id: "plotty-parser", enabled: true },
-		{ id: "datatable-parser", enabled: true },
-		{ id: "math-parser", enabled: true },
-		{ id: "citation-core", enabled: true },
-		{ id: "references-core", enabled: true },
-		{ id: "title-core", enabled: true },
-		{ id: "abstract-render", enabled: true },
-		{ id: "citation-render", enabled: true },
-		{ id: "ref-render", enabled: true },
-		{ id: "code-render", enabled: true },
-		{ id: "plotty-render", enabled: true },
-		{ id: "citation-editor", enabled: true },
-	],
+	plugins: getDefaultTemplateDirectivePlugins(),
 };
 
 const TEMPLATE_FALLBACK_MESSAGE = "Using internal fallback template defaults.";
@@ -370,11 +351,9 @@ function mergeTemplateWithDefaults(
 		publisher: {
 			id:
 				overrides.publisher?.id ??
-				overrides.journal?.id ??
 				DEFAULT_TEMPLATE_FILE.publisher.id,
 			name:
 				overrides.publisher?.name ??
-				overrides.journal?.name ??
 				DEFAULT_TEMPLATE_FILE.publisher.name,
 		},
 		default: {
@@ -599,13 +578,9 @@ function mergeTemplateWithDefaults(
 		},
 		plugins:
 			Array.isArray(overrides.plugins) && overrides.plugins.length > 0
-				? [
-						...DEFAULT_TEMPLATE_FILE.plugins,
-						...overrides.plugins.map((plugin) => ({
-							id: plugin.id,
-							enabled: plugin.enabled !== false,
-						})),
-					]
+				? [...new Set(overrides.plugins.map((plugin) => plugin.trim()))].filter(
+						Boolean,
+					)
 				: DEFAULT_TEMPLATE_FILE.plugins,
 	};
 }

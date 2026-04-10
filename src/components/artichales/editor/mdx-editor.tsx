@@ -92,7 +92,7 @@ export function MdxEditor({
 	jumpToOffsetSignal = 0,
 	className,
 	label = "Source",
-	completions = { bibKeys: [], referenceSelectors: [] },
+	completions = { bibKeys: [], referenceSelectors: [], directiveNames: [] },
 }: MdxEditorProps) {
 	void jumpToOffsetSignal;
 	const id = React.useId();
