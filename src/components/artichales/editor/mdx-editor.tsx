@@ -8,6 +8,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import * as React from "react";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type EditorFileKind = "article" | "template" | "bibliography" | "asset";
@@ -166,6 +167,7 @@ export function MdxEditor({
 	label = "Source",
 	completions = { bibKeys: [], referenceSelectors: [] },
 }: MdxEditorProps) {
+	void jumpToOffsetSignal;
 	const id = React.useId();
 	const editorHostRef = React.useRef<HTMLDivElement | null>(null);
 	const viewRef = React.useRef<EditorView | null>(null);
@@ -205,13 +207,13 @@ export function MdxEditor({
 		const nextState =
 			existingState ||
 			createEditorState(
-					value,
-					fileKind,
-					onChangeRef,
-					onBlurRef,
-					onCursorOffsetChangeRef,
-					completions,
-				);
+				value,
+				fileKind,
+				onChangeRef,
+				onBlurRef,
+				onCursorOffsetChangeRef,
+				completions,
+			);
 
 		if (!viewRef.current) {
 			const view = new EditorView({
@@ -226,7 +228,9 @@ export function MdxEditor({
 
 		viewRef.current.setState(nextState);
 		statesByFileRef.current.set(fileName, nextState);
-		onCursorOffsetChangeRef.current?.(viewRef.current.state.selection.main.head);
+		onCursorOffsetChangeRef.current?.(
+			viewRef.current.state.selection.main.head,
+		);
 	}, [completions, fileName, value]);
 
 	React.useEffect(() => {
@@ -252,7 +256,7 @@ export function MdxEditor({
 			effects: EditorView.scrollIntoView(clampedOffset, { y: "center" }),
 		});
 		view.focus();
-	}, [jumpToOffset, jumpToOffsetSignal]);
+	}, [jumpToOffset]);
 
 	React.useEffect(() => {
 		return () => {
@@ -277,11 +281,13 @@ export function MdxEditor({
 					{label}
 				</Label>
 			</div>
+			<ScrollArea className="h-full min-h-0 rounded-none bg-card">
 				<div
 					id={id}
 					ref={editorHostRef}
-					className="h-full min-h-0 overflow-hidden rounded-none border-none bg-card font-mono text-sm [&_.cm-content]:min-h-full [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-gutters]:border-border [&_.cm-gutters]:border-r [&_.cm-scroller]:h-full [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:font-mono"
+					className="min-h-full border-none bg-card font-mono text-sm [&_.cm-content]:min-h-full [&_.cm-editor]:h-auto [&_.cm-editor]:min-h-full [&_.cm-editor]:outline-none [&_.cm-gutters]:border-border [&_.cm-gutters]:border-r [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:font-mono"
 				/>
-			</div>
-		);
-	}
+			</ScrollArea>
+		</div>
+	);
+}

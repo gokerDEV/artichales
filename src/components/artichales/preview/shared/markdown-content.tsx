@@ -1,5 +1,6 @@
-import * as React from "react";
 import type { Root } from "mdast";
+import * as React from "react";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
@@ -60,11 +61,12 @@ const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
 		visit(tree, "heading", (node) => {
 			const heading = node as unknown as UnknownRecord;
 			const text = extractNodeText(heading) || "Heading";
-			const slug = text
-				.toLowerCase()
-				.trim()
-				.replace(/[^a-z0-9]+/g, "-")
-				.replace(/^-+|-+$/g, "") || "heading";
+			const slug =
+				text
+					.toLowerCase()
+					.trim()
+					.replace(/[^a-z0-9]+/g, "-")
+					.replace(/^-+|-+$/g, "") || "heading";
 			const occurrence = (slugCounts.get(slug) ?? 0) + 1;
 			slugCounts.set(slug, occurrence);
 			const headingId = buildAlignmentHeadingId(text, occurrence);
@@ -176,6 +178,37 @@ export function MarkdownContent({
 				);
 			}
 		}
+
+		const paragraphRenderer = components.p as Components["p"] | undefined;
+		components.p = ({ children, ...rest }) => {
+			const childNodes = React.Children.toArray(children);
+			const hasDirectiveBlock = childNodes.some((child) => {
+				if (!React.isValidElement(child)) return false;
+				const props = child.props as UnknownRecord;
+				const node = (props.node as UnknownRecord | undefined) || undefined;
+				const nodeTagName =
+					typeof node?.tagName === "string" ? node.tagName : undefined;
+				const nodeProperties =
+					(node?.properties as UnknownRecord | undefined) || undefined;
+				const nodeDirective =
+					nodeProperties?.["data-directive"] ?? nodeProperties?.dataDirective;
+				if (nodeDirective !== undefined || nodeTagName === "div") return true;
+				if (typeof child.type !== "string") return false;
+				if (child.type !== "div") return false;
+				return (
+					props["data-directive"] !== undefined ||
+					props.dataDirective !== undefined
+				);
+			});
+			if (hasDirectiveBlock) {
+				return <>{children}</>;
+			}
+			if (paragraphRenderer && typeof paragraphRenderer !== "string") {
+				return React.createElement(paragraphRenderer, rest, children);
+			}
+			return <p {...rest}>{children}</p>;
+		};
+
 		return components;
 	}, [
 		activeRenderPluginIds,
@@ -193,9 +226,9 @@ export function MarkdownContent({
 	return (
 		<ReactMarkdown
 			remarkPlugins={[
-				...parserPlugins,
 				remarkGfm,
 				remarkDirective,
+				...parserPlugins,
 				remarkAlignmentHeadingAnchors,
 			]}
 			rehypePlugins={[rehypeKatex]}

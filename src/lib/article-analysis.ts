@@ -105,8 +105,7 @@ function parseDirectiveTargets(content: string): {
 			});
 		}
 
-		let dataFile: string | undefined;
-		dataFile = dataSegments[0];
+		const dataFile = dataSegments[0];
 
 		if (PLUGINS_REQUIRING_DATA_FILE.has(pluginId) && !dataFile) {
 			diagnostics.push({

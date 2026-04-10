@@ -20,6 +20,7 @@ export default function Layout() {
 		<SystemProvider initialLoading={settings.showCredits}>
 			<AppLoader timeout={settings.loaderTimeout} skip={skip}>
 				<SidebarProvider
+					className="h-svh overflow-hidden"
 					open={!settings.ux.sidebarCollapsed}
 					onOpenChange={(open) =>
 						updateSettings({
@@ -28,10 +29,10 @@ export default function Layout() {
 					}
 				>
 					<AppSidebar />
-					<SidebarInset>
+					<SidebarInset className="min-h-0 overflow-hidden">
 						<Header />
-						<div className="flex grow flex-col gap-4">
-							<div className="grow md:min-h-min">
+						<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+							<div className="min-h-0 flex-1 overflow-auto">
 								<Outlet />
 							</div>
 						</div>

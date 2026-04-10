@@ -77,9 +77,7 @@ const DefaultTemplateSchema = z.object({
 		.optional(),
 	utilities: z.record(z.string(), z.string()).optional(),
 	referenceLabels: z.record(z.string(), z.string()).optional(),
-	citationStyle: z
-		.enum(["numeric", "ieee", "author-year", "apa"])
-		.optional(),
+	citationStyle: z.enum(["numeric", "ieee", "author-year", "apa"]).optional(),
 });
 
 const PrintTemplateSchema = z.object({

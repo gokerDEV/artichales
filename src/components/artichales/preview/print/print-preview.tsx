@@ -1,11 +1,5 @@
 import * as React from "react";
-import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
-import {
-	buildPaginatedPageTree,
-	PAGE_LIMIT,
-} from "@/components/artichales/preview/print/pagination.service";
 import { DocumentRenderContent } from "@/components/artichales/preview/shared/document-render-content";
-import { MarkdownContent } from "@/components/artichales/preview/shared/markdown-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
@@ -23,6 +17,8 @@ type PagedPreviewerInstance = {
 		renderTo: HTMLElement,
 	) => Promise<unknown>;
 };
+
+const PAGE_LIMIT = 40;
 
 function resolvePagedPreviewerFactory(
 	module: unknown,
@@ -50,62 +46,18 @@ export function PrintPreview({
 	className,
 	scale = 100,
 }: PrintPreviewProps) {
-	const { template, frontmatter } = document;
-	const coreRenderers = React.useMemo(() => {
-		const executionState = resolvePluginExecutionState(
-			document.activePluginIds.core.map((id) => ({ id, enabled: true })),
-		);
-		const renderedById = new Map<string, React.ReactNode>();
-		for (const plugin of executionState.core) {
-			const renderHook = plugin.hooks.coreRender;
-			if (!renderHook) continue;
-			renderedById.set(
-				plugin.id,
-				renderHook({
-					document,
-					target: "print",
-				}),
-			);
-		}
-		return renderedById;
-	}, [document, document.activePluginIds.core]);
-	const enabledCorePluginIds = React.useMemo(
-		() => new Set(document.activePluginIds.core),
-		[document.activePluginIds.core],
-	);
-	const paginatedTree = React.useMemo(
-		() =>
-			buildPaginatedPageTree({
-				content: document.content,
-				template: template,
-				title: typeof frontmatter?.title === "string" ? frontmatter.title : "",
-				includeTitleNode: true,
-				includeReferencesNode: true,
-			}),
-		[document.content, template, frontmatter],
-	);
+	const { template } = document;
 	const pagedSourceRef = React.useRef<HTMLDivElement | null>(null);
 	const pagedPreviewRef = React.useRef<HTMLDivElement | null>(null);
+	const renderSequenceRef = React.useRef(0);
 	const [pagedStatus, setPagedStatus] = React.useState<
 		"idle" | "loading" | "ready" | "error"
 	>("idle");
 	const [pagedError, setPagedError] = React.useState<string | null>(null);
 	const [pagedWasTruncated, setPagedWasTruncated] = React.useState(false);
 
-	const docStyle = template?.document || {};
 	const pageConfig = template?.page;
 	const margins = pageConfig?.margin;
-	const pagePaddingTop =
-		typeof margins?.top === "string" ? margins.top : "24mm";
-	const pagePaddingRight =
-		typeof margins?.right === "string" ? margins.right : "20mm";
-	const pagePaddingBottom =
-		typeof margins?.bottom === "string" ? margins.bottom : "24mm";
-	const pagePaddingLeft =
-		typeof margins?.left === "string" ? margins.left : "20mm";
-	const showHeaderFooter = template?.headerFooter?.enabled !== false;
-	const headerArea = showHeaderFooter ? "10mm" : "0mm";
-	const footerArea = showHeaderFooter ? "10mm" : "0mm";
 	const pageHeightPx = pageConfig?.orientation === "landscape" ? 794 : 1123;
 	const columnGap = template.layout?.columnGap || "7mm";
 	const pagedCss = React.useMemo(() => {
@@ -161,12 +113,15 @@ export function PrintPreview({
 	React.useEffect(() => {
 		void pagedPreviewKey;
 		let cancelled = false;
+		const currentSequence = ++renderSequenceRef.current;
 		const runPagedPreview = async () => {
-			if (!pagedSourceRef.current || !pagedPreviewRef.current) return;
+			const sourceElement = pagedSourceRef.current;
+			const previewElement = pagedPreviewRef.current;
+			if (!sourceElement || !previewElement) return;
 			setPagedStatus("loading");
 			setPagedError(null);
 			setPagedWasTruncated(false);
-			pagedPreviewRef.current.innerHTML = "";
+			previewElement.innerHTML = "";
 
 			try {
 				const pagedModule = await import("pagedjs");
@@ -176,16 +131,18 @@ export function PrintPreview({
 				}
 
 				const previewer = createPreviewer();
-				await previewer.preview(
-					pagedSourceRef.current.innerHTML,
-					[],
-					pagedPreviewRef.current,
-				);
+				await previewer.preview(sourceElement.innerHTML, [], previewElement);
 
-				if (cancelled) return;
+				if (
+					cancelled ||
+					currentSequence !== renderSequenceRef.current ||
+					!pagedPreviewRef.current
+				) {
+					return;
+				}
 
 				const renderedPages = Array.from(
-					pagedPreviewRef.current.querySelectorAll(".pagedjs_page"),
+					previewElement.querySelectorAll(".pagedjs_page"),
 				);
 				if (renderedPages.length > PAGE_LIMIT) {
 					for (const page of renderedPages.slice(PAGE_LIMIT)) {
@@ -193,14 +150,13 @@ export function PrintPreview({
 					}
 					setPagedWasTruncated(true);
 				}
-
 				setPagedStatus("ready");
 			} catch (error) {
-				console.error("Paged.js preview failed, falling back:", error);
-				if (cancelled) return;
+				console.error("Paged.js preview failed:", error);
+				if (cancelled || currentSequence !== renderSequenceRef.current) return;
 				setPagedStatus("error");
 				setPagedError(
-					"Paged.js preview failed. Falling back to legacy print stack.",
+					"Paged.js preview failed. Check browser console for details.",
 				);
 			}
 		};
@@ -235,201 +191,27 @@ export function PrintPreview({
 						backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${pageHeightPx - 24}px, rgb(226 232 240) ${pageHeightPx - 24}px, rgb(226 232 240) ${pageHeightPx}px)`,
 					}}
 				>
-					{pagedStatus !== "error" ? (
-						<>
-							{pagedStatus === "loading" || pagedStatus === "idle" ? (
-								<div className="w-full max-w-[210mm] border border-muted bg-background p-4 text-muted-foreground text-sm">
-									Preparing Paged.js print preview...
-								</div>
-							) : null}
-							{pagedWasTruncated ? (
-								<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
-									Print preview was limited to {PAGE_LIMIT} pages. Reduce
-									content or adjust layout to view all pages.
-								</div>
-							) : null}
-							<div
-								ref={pagedPreviewRef}
-								className="paged-print-content w-full"
-								data-artichales-pagedjs-preview="true"
-							/>
-						</>
-					) : (
-						<>
-							{pagedError ? (
-								<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
-									{pagedError}
-								</div>
-							) : null}
-							{paginatedTree.wasTruncated ? (
-								<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
-									Print preview was limited to {PAGE_LIMIT} pages. Reduce
-									content or adjust layout to view all pages.
-								</div>
-							) : null}
-							{paginatedTree.pages.map((page) => {
-								const headerRegion = page.regions.find(
-									(r) => r.type === "header",
-								);
-								const bodyRegion = page.regions.find((r) => r.type === "body");
-								const footerRegion = page.regions.find(
-									(r) => r.type === "footer",
-								);
-								if (!bodyRegion || bodyRegion.type !== "body") return null;
-
-								return (
-									<div
-										key={`print-page-${page.number}`}
-										data-artichales-print-root="true"
-										data-artichales-print-page="true"
-										className="relative shrink-0 rounded-none bg-white shadow-xl ring-1 ring-border"
-										style={{
-											width: paginatedTree.pageBox.width,
-											height: paginatedTree.pageBox.height,
-											fontFamily: docStyle.fontFamily?.body,
-											fontSize: docStyle.fontSize?.body,
-											lineHeight: docStyle.lineHeight,
-											textAlign: docStyle.textAlign,
-										}}
-									>
-										{showHeaderFooter &&
-										headerRegion &&
-										headerRegion.type === "header" ? (
-											<div
-												data-artichales-print-header="true"
-												className="pointer-events-none absolute text-[10px] text-neutral-500"
-												style={{
-													top: pagePaddingTop,
-													left: pagePaddingLeft,
-													right: pagePaddingRight,
-												}}
-											>
-												<div className="grid grid-cols-3 gap-2">
-													<span className="text-left">{headerRegion.left}</span>
-													<span className="text-center">
-														{headerRegion.center}
-													</span>
-													<span className="text-right">
-														{headerRegion.right}
-													</span>
-												</div>
-											</div>
-										) : null}
-
-										{showHeaderFooter &&
-										footerRegion &&
-										footerRegion.type === "footer" ? (
-											<div
-												data-artichales-print-footer="true"
-												className="pointer-events-none absolute text-[10px] text-neutral-500"
-												style={{
-													bottom: pagePaddingBottom,
-													left: pagePaddingLeft,
-													right: pagePaddingRight,
-												}}
-											>
-												<div className="grid grid-cols-3 gap-2">
-													<span className="text-left">{footerRegion.left}</span>
-													<span className="text-center">
-														{footerRegion.center}
-													</span>
-													<span className="text-right">
-														{footerRegion.right}
-													</span>
-												</div>
-											</div>
-										) : null}
-
-										<div
-											className="artichales artichales--print mx-auto h-full w-full text-[11px] text-black leading-relaxed"
-											style={{
-												paddingTop: `calc(${pagePaddingTop} + ${headerArea})`,
-												paddingRight: pagePaddingRight,
-												paddingBottom: `calc(${pagePaddingBottom} + ${footerArea})`,
-												paddingLeft: pagePaddingLeft,
-											}}
-										>
-											<div
-												className="h-full"
-												style={{
-													// Default document flow is column-based; page-span nodes use `column-span: all`
-													// and automatically return control to the configured column count afterward.
-													columnCount: bodyRegion.columns,
-													columnGap,
-													columnFill: "auto",
-												}}
-											>
-												{bodyRegion.nodes.map((node) => {
-													const spanClass =
-														node.layoutHint.span === "page"
-															? "print-flow-span-page"
-															: "print-flow-span-column";
-													const breakBeforeClass =
-														node.layoutHint.breakBefore === "page"
-															? "print-flow-break-before-page"
-															: "";
-													const breakAfterClass =
-														node.layoutHint.breakAfter === "page"
-															? "print-flow-break-after-page"
-															: "";
-													const flowClass = cn(
-														"print-flow-node mb-3 break-inside-avoid",
-														spanClass,
-														breakBeforeClass,
-														breakAfterClass,
-													);
-
-													if (node.kind === "title") {
-														if (!enabledCorePluginIds.has("title-core"))
-															return null;
-														return (
-															<div key={node.id} className={flowClass}>
-																{coreRenderers.get("title-core") ?? null}
-															</div>
-														);
-													}
-													if (node.kind === "references") {
-														if (!enabledCorePluginIds.has("references-core"))
-															return null;
-														return (
-															<div key={node.id} className={flowClass}>
-																{coreRenderers.get("references-core") ?? null}
-															</div>
-														);
-													}
-													return (
-														<div key={node.id} className={flowClass}>
-															<MarkdownContent
-																content={node.markdown || ""}
-																plotFiles={document.plots}
-																target="print"
-																resolvedReferences={document.resolvedReferences}
-																activeParserPluginIds={
-																	document.activePluginIds.parser
-																}
-																activeRenderPluginIds={
-																	document.activePluginIds.render
-																}
-																indexContent={document.content}
-																templateDefaults={{
-																	components:
-																		document.template.componentDefaults,
-																}}
-																referenceLabels={
-																	document.template.referenceLabels
-																}
-																utilityClasses={document.template.utilities}
-															/>
-														</div>
-													);
-												})}
-											</div>
-										</div>
-									</div>
-								);
-							})}
-						</>
-					)}
+					{pagedStatus === "loading" || pagedStatus === "idle" ? (
+						<div className="w-full max-w-[210mm] border border-muted bg-background p-4 text-muted-foreground text-sm">
+							Preparing Paged.js print preview...
+						</div>
+					) : null}
+					{pagedError ? (
+						<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
+							{pagedError}
+						</div>
+					) : null}
+					{pagedWasTruncated ? (
+						<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
+							Print preview was limited to {PAGE_LIMIT} pages. Reduce content or
+							adjust layout to view all pages.
+						</div>
+					) : null}
+					<div
+						ref={pagedPreviewRef}
+						className="paged-print-content w-full"
+						data-artichales-pagedjs-preview="true"
+					/>
 				</div>
 			</ScrollArea>
 		</div>
