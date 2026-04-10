@@ -8,6 +8,7 @@ export type ArticleAnalysisDiagnostic = {
 		| "article-ref-label-unmapped"
 		| "article-directive-identity-duplicate"
 		| "article-caption-identity-duplicate"
+		| "article-directive-invalid-data-file-segments"
 		| "plugin-required-data-file-missing";
 	severity: DiagnosticSeverity;
 	message: string;
@@ -19,6 +20,11 @@ export type ResolvedReference = {
 	label: string;
 	href: string;
 	diagnostic?: ArticleAnalysisDiagnostic;
+};
+
+export type ReferenceSelectorTarget = {
+	selector: string;
+	mode: "full" | "partial";
 };
 
 type ReferenceTarget = {
@@ -87,13 +93,20 @@ function parseDirectiveTargets(content: string): {
 		const pluginId = normalizeToken(match[1] || "");
 		const tail = match[2] || "";
 		const segments = parseBracketSegments(tail);
+		const dataSegments = segments.filter(
+			(segment) => !segment.toLowerCase().startsWith("span="),
+		);
+		if (dataSegments.length > 1) {
+			diagnostics.push({
+				code: "article-directive-invalid-data-file-segments",
+				severity: "error",
+				source: "parser",
+				message: `Directive "${pluginId}" can declare at most one data file segment.`,
+			});
+		}
 
 		let dataFile: string | undefined;
-		for (const segment of segments) {
-			if (segment.toLowerCase().startsWith("span=")) continue;
-			dataFile = segment;
-			break;
-		}
+		dataFile = dataSegments[0];
 
 		if (PLUGINS_REQUIRING_DATA_FILE.has(pluginId) && !dataFile) {
 			diagnostics.push({
@@ -342,6 +355,7 @@ export function analyzeArticleSource(
 ): {
 	diagnostics: ArticleAnalysisDiagnostic[];
 	resolvedReferences: Record<string, ResolvedReference>;
+	referenceTargets: ReferenceSelectorTarget[];
 } {
 	const directiveResult = parseDirectiveTargets(content);
 	const counters = new Map<string, number>();
@@ -359,6 +373,27 @@ export function analyzeArticleSource(
 		allTargets,
 		referenceLabels,
 	);
+	const referenceTargets: ReferenceSelectorTarget[] = [];
+	const referenceTargetSet = new Set<string>();
+	const unkeyedCounts = new Map<string, number>();
+	for (const target of allTargets) {
+		const type = normalizeToken(target.type);
+		if (!target.key) {
+			unkeyedCounts.set(type, (unkeyedCounts.get(type) ?? 0) + 1);
+			continue;
+		}
+		const selector = `${type}:${normalizeKey(target.key)}`;
+		if (referenceTargetSet.has(selector)) continue;
+		referenceTargetSet.add(selector);
+		referenceTargets.push({ selector, mode: "full" });
+	}
+	for (const [type, count] of unkeyedCounts) {
+		if (count !== 1) continue;
+		if (referenceTargetSet.has(type)) continue;
+		referenceTargetSet.add(type);
+		referenceTargets.push({ selector: type, mode: "partial" });
+	}
+	referenceTargets.sort((a, b) => a.selector.localeCompare(b.selector));
 
 	return {
 		diagnostics: [
@@ -367,5 +402,6 @@ export function analyzeArticleSource(
 			...resolutionResult.diagnostics,
 		],
 		resolvedReferences: resolutionResult.resolvedReferences,
+		referenceTargets,
 	};
 }

@@ -25,7 +25,7 @@ type DatatableOverrideResult = {
 };
 type DatatableTemplateDefaults = {
 	captionPosition?: "top" | "bottom";
-	defaultSpan?: "column" | "full";
+	defaultSpan?: "column" | "page";
 	spacingBefore?: string;
 	spacingAfter?: string;
 };
@@ -92,18 +92,13 @@ function resolveDatatableDefinition(
 	};
 }
 
-const SPAN_MAP: Record<"column" | "full", "column" | "page"> = {
-	column: "column",
-	full: "page",
-};
-
 function resolveDatatableOverride(
 	bodyText: string,
 	templateDefaults?: DatatableTemplateDefaults,
 ): DatatableOverrideResult {
 	const templateSpan = templateDefaults?.defaultSpan || "column";
 	const defaultFlow = {
-		span: SPAN_MAP[templateSpan],
+		span: templateSpan,
 		breakBefore: "auto" as const,
 		breakAfter: "auto" as const,
 	};

@@ -10,6 +10,7 @@ import { resolvePluginExecutionState } from "@/components/artichales/plugins/plu
 import {
 	type ArticleAnalysisDiagnostic,
 	analyzeArticleSource,
+	type ReferenceSelectorTarget,
 	type ResolvedReference,
 } from "@/lib/article-analysis";
 import type {
@@ -70,6 +71,7 @@ export type PipelineResult = {
 	assetDiagnostics: PipelineDiagnostic[];
 	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	referenceTargets: ReferenceSelectorTarget[];
 	activePluginIds: {
 		parser: string[];
 		core: string[];
@@ -559,6 +561,7 @@ export function runDocumentPipeline(
 			...pluginHookDiagnostics,
 		],
 		resolvedReferences: articleAnalysis.resolvedReferences,
+		referenceTargets: articleAnalysis.referenceTargets,
 		activePluginIds: pluginRuntimeResult.activePluginIds,
 		pipelineDiagnostics: stageDiagnostics,
 	};

@@ -106,3 +106,17 @@ This document is an actionable migration plan to close the gaps between the curr
 
 This plan minimizes delivery risk on the path to `SPEC.md` alignment: first data integrity + parser semantics, then schema hardening, then UX resilience.
 
+## 6) Execution Update (2026-04-10, Session 10)
+
+Closed in code:
+- Added blur-triggered immediate workspace save in editor flow.
+- Switched editor reference autocomplete source to normalized target registry (`referenceTargets`), not only already-resolved refs.
+- Unified span token to `column|page` across template/runtime types; legacy `full` still accepted and normalized to `page`.
+- Constrained template citation style schema to `numeric|ieee|apc` and switched runtime fallback/default to `numeric`.
+- Updated default bibliography fixture to supported type set (`@proceedings` instead of `@inproceedings`).
+- Added directive bracket validation error when multiple data-file segments are declared.
+
+Verification:
+- `bun test src/lib/template.test.ts src/lib/document-pipeline.test.ts` passed.
+- `bunx tsc -b` passed.
+- `bun run build` passed.

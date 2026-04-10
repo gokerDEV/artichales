@@ -21,4 +21,22 @@ describe("template merge behavior", () => {
 		expect(pluginIds.includes("citation-parser")).toBe(false);
 		expect(pluginIds.includes("plotty-parser")).toBe(true);
 	});
+
+	test("rejects unsupported citationStyle values", () => {
+		const resolved = resolveTemplateFile(
+			JSON.stringify({
+				default: {
+					citationStyle: "author-year",
+				},
+			}),
+		);
+
+		expect(resolved.hasError).toBe(true);
+		expect(
+			resolved.diagnostics.some(
+				(diag) =>
+					diag.code === "template-schema-invalid" && diag.severity === "error",
+			),
+		).toBe(true);
+	});
 });

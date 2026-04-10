@@ -86,13 +86,13 @@ export type DocumentTemplate = {
 	componentDefaults?: {
 		figure?: {
 			captionPosition?: "top" | "bottom";
-			defaultSpan?: "column" | "full";
+			defaultSpan?: "column" | "page";
 			spacingBefore?: string;
 			spacingAfter?: string;
 		};
 		table?: {
 			captionPosition?: "top" | "bottom";
-			defaultSpan?: "column" | "full";
+			defaultSpan?: "column" | "page";
 			spacingBefore?: string;
 			spacingAfter?: string;
 		};
@@ -150,6 +150,10 @@ export interface DocumentSource {
 		| ArticleAnalysisDiagnostic
 	>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	referenceTargets: Array<{
+		selector: string;
+		mode: "full" | "partial";
+	}>;
 	activePluginIds: {
 		parser: string[];
 		core: string[];
@@ -225,7 +229,7 @@ export function useDocument(
 	);
 
 	const citationStyle = React.useMemo(
-		() => resolvedTemplateForTarget.citationStyle || "author-year",
+		() => resolvedTemplateForTarget.citationStyle || "numeric",
 		[resolvedTemplateForTarget.citationStyle],
 	);
 
@@ -273,6 +277,7 @@ export function useDocument(
 		articleDiagnostics:
 			pipeline.articleDiagnostics as DocumentSource["articleDiagnostics"],
 		resolvedReferences: pipeline.resolvedReferences,
+		referenceTargets: pipeline.referenceTargets,
 		activePluginIds: pipeline.activePluginIds,
 		pipelineDiagnostics: pipeline.pipelineDiagnostics,
 		blockingByFile,

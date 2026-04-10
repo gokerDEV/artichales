@@ -54,7 +54,7 @@ const STYLE_REGISTRY: Record<string, CitationStyleConfig> = {
 	ieee: { formatter: numericFormatter, joiner: ", " },
 };
 
-const DEFAULT_STYLE_CONFIG = STYLE_REGISTRY["author-year"];
+const DEFAULT_STYLE_CONFIG = STYLE_REGISTRY.numeric;
 
 export const CitationRender: Components["cite"] = ({
 	node,

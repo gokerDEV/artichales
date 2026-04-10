@@ -47,21 +47,16 @@ type DatatableIndexMap = Record<string, number>;
 type ComponentTemplateDefaults = {
 	figure?: {
 		captionPosition?: "top" | "bottom";
-		defaultSpan?: "column" | "full";
+		defaultSpan?: "column" | "page";
 		spacingBefore?: string;
 		spacingAfter?: string;
 	};
 	table?: {
 		captionPosition?: "top" | "bottom";
-		defaultSpan?: "column" | "full";
+		defaultSpan?: "column" | "page";
 		spacingBefore?: string;
 		spacingAfter?: string;
 	};
-};
-
-const SPAN_MAP: Record<"column" | "full", "column" | "page"> = {
-	column: "column",
-	full: "page",
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -101,10 +96,10 @@ function normalizePlotId(source: string): string {
 
 function resolvePlotOverride(
 	bodyText: string,
-	defaultSpan: "column" | "full",
+	defaultSpan: "column" | "page",
 ): PlotOverrideResult {
 	const defaultFlow = {
-		span: SPAN_MAP[defaultSpan],
+		span: defaultSpan,
 		breakBefore: "auto" as const,
 		breakAfter: "auto" as const,
 	};

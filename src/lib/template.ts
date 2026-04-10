@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const SpanSchema = z.enum(["column", "full"]);
+const SpanSchema = z.enum(["column", "page", "full"]).transform((value) => {
+	return value === "full" ? "page" : value;
+});
 const CaptionPositionSchema = z.enum(["top", "bottom"]);
 const OrientationSchema = z.enum(["portrait", "landscape"]);
 const TextAlignSchema = z.enum(["left", "right", "center", "justify"]);
@@ -75,7 +77,7 @@ const DefaultTemplateSchema = z.object({
 		.optional(),
 	utilities: z.record(z.string(), z.string()).optional(),
 	referenceLabels: z.record(z.string(), z.string()).optional(),
-	citationStyle: z.string().optional(),
+	citationStyle: z.enum(["numeric", "ieee", "apc"]).optional(),
 });
 
 const PrintTemplateSchema = z.object({
@@ -187,20 +189,20 @@ export type TemplateFileResolved = {
 		components: {
 			figure: {
 				captionPosition: "top" | "bottom";
-				defaultSpan: "column" | "full";
+				defaultSpan: "column" | "page";
 				spacingBefore: string;
 				spacingAfter: string;
 			};
 			table: {
 				captionPosition: "top" | "bottom";
-				defaultSpan: "column" | "full";
+				defaultSpan: "column" | "page";
 				spacingBefore: string;
 				spacingAfter: string;
 			};
 		};
 		utilities: Record<string, string>;
 		referenceLabels: Record<string, string>;
-		citationStyle: string;
+		citationStyle: "numeric" | "ieee" | "apc";
 	};
 	print: {
 		page: {
@@ -293,7 +295,7 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			plotty: "Figure",
 			datatable: "Table",
 		},
-		citationStyle: "author-year",
+		citationStyle: "numeric",
 	},
 	print: {
 		page: {

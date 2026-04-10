@@ -377,9 +377,11 @@ export function EditorPreviewSurface() {
 	const editorCompletions = React.useMemo(
 		() => ({
 			bibKeys: Object.keys(docSource.citations),
-			referenceSelectors: Object.keys(docSource.resolvedReferences),
+			referenceSelectors: docSource.referenceTargets.map(
+				(target) => target.selector,
+			),
 		}),
-		[docSource.citations, docSource.resolvedReferences],
+		[docSource.citations, docSource.referenceTargets],
 	);
 
 	const handleSelectFile = React.useCallback(
@@ -618,13 +620,24 @@ export function EditorPreviewSurface() {
 					className="flex flex-col border-border border-r bg-muted/30"
 					onResize={(size) => handleResize(1, size)}
 				>
-					<MdxEditor
-						fileName={activeFile}
-						value={files[activeFile] || ""}
-						onChange={handleFileChange}
-						onCursorOffsetChange={(offset) => {
-							if (activeFile === CORE_ARTICLE_FILE) {
-								setEditorCursorOffset(offset);
+						<MdxEditor
+							fileName={activeFile}
+							value={files[activeFile] || ""}
+							onChange={handleFileChange}
+							onBlur={() => {
+								workspaceRepository
+									.saveWorkspace(files)
+									.then(() => setSaveError(null))
+									.catch((error) => {
+										console.error("Failed to save workspace on blur:", error);
+										setSaveError(
+											"Failed to save workspace files. Your latest changes may not persist.",
+										);
+									});
+							}}
+							onCursorOffsetChange={(offset) => {
+								if (activeFile === CORE_ARTICLE_FILE) {
+									setEditorCursorOffset(offset);
 							}
 						}}
 						jumpToOffset={editorJumpRequest?.offset ?? null}

@@ -248,4 +248,41 @@ See [ref:plotty:data].`,
 		expect(mapped?.label).toBe("? 1");
 		expect(warning).toBeDefined();
 	});
+
+	test("builds reference target completion entries from normalized targets", () => {
+		const files = createWorkspace(`---
+title: "Completion target registry"
+---
+:::abstract
+Only one abstract
+:::
+
+:::plotty[plot_1.json]
+Plot block
+:::
+`);
+
+		const result = runDocumentPipeline(files, "print");
+		const selectors = result.referenceTargets.map((entry) => entry.selector);
+		expect(selectors.includes("abstract")).toBe(true);
+		expect(selectors.includes("plotty:plot_1")).toBe(true);
+	});
+
+	test("rejects directives with more than one data file bracket segment", () => {
+		const files = createWorkspace(`---
+title: "Invalid directive brackets"
+---
+:::plotty[data.json][extra.json]
+Bad
+:::
+`);
+		const result = runDocumentPipeline(files, "print");
+		const invalidSegments = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-directive-invalid-data-file-segments" &&
+				diag.severity === "error",
+		);
+
+		expect(invalidSegments).toBeDefined();
+	});
 });

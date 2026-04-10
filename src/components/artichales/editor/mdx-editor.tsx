@@ -21,6 +21,7 @@ export type MdxEditorProps = {
 	fileName: string;
 	value: string;
 	onChange: (value: string) => void;
+	onBlur?: () => void;
 	onCursorOffsetChange?: (offset: number) => void;
 	jumpToOffset?: number | null;
 	jumpToOffsetSignal?: number;
@@ -109,6 +110,7 @@ function createEditorState(
 	content: string,
 	fileKind: EditorFileKind,
 	onChangeRef: React.MutableRefObject<(value: string) => void>,
+	onBlurRef: React.MutableRefObject<(() => void) | undefined>,
 	onCursorOffsetChangeRef: React.MutableRefObject<
 		((offset: number) => void) | undefined
 	>,
@@ -144,6 +146,9 @@ function createEditorState(
 				if (update.selectionSet || update.docChanged) {
 					onCursorOffsetChangeRef.current?.(update.state.selection.main.head);
 				}
+				if (update.focusChanged && !update.view.hasFocus) {
+					onBlurRef.current?.();
+				}
 			}),
 		],
 	});
@@ -153,6 +158,7 @@ export function MdxEditor({
 	fileName,
 	value,
 	onChange,
+	onBlur,
 	onCursorOffsetChange,
 	jumpToOffset = null,
 	jumpToOffsetSignal = 0,
@@ -166,11 +172,16 @@ export function MdxEditor({
 	const statesByFileRef = React.useRef(new Map<string, EditorState>());
 	const lastFileNameRef = React.useRef(fileName);
 	const onChangeRef = React.useRef(onChange);
+	const onBlurRef = React.useRef(onBlur);
 	const onCursorOffsetChangeRef = React.useRef(onCursorOffsetChange);
 
 	React.useEffect(() => {
 		onChangeRef.current = onChange;
 	}, [onChange]);
+
+	React.useEffect(() => {
+		onBlurRef.current = onBlur;
+	}, [onBlur]);
 
 	React.useEffect(() => {
 		onCursorOffsetChangeRef.current = onCursorOffsetChange;
@@ -191,12 +202,13 @@ export function MdxEditor({
 		const nextState =
 			existingState ||
 			createEditorState(
-				value,
-				fileKind,
-				onChangeRef,
-				onCursorOffsetChangeRef,
-				completions,
-			);
+					value,
+					fileKind,
+					onChangeRef,
+					onBlurRef,
+					onCursorOffsetChangeRef,
+					completions,
+				);
 
 		if (!viewRef.current) {
 			const view = new EditorView({

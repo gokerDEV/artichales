@@ -11,7 +11,7 @@ export type CitationContextType = {
 export const CitationContext = React.createContext<CitationContextType>({
 	entries: {},
 	validatedEntries: {},
-	style: "author-year",
+	style: "numeric",
 	citeClassName: "cite",
 });
 

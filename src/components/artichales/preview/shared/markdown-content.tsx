@@ -26,13 +26,13 @@ type MarkdownContentProps = {
 		components?: {
 			figure?: {
 				captionPosition?: "top" | "bottom";
-				defaultSpan?: "column" | "full";
+				defaultSpan?: "column" | "page";
 				spacingBefore?: string;
 				spacingAfter?: string;
 			};
 			table?: {
 				captionPosition?: "top" | "bottom";
-				defaultSpan?: "column" | "full";
+				defaultSpan?: "column" | "page";
 				spacingBefore?: string;
 				spacingAfter?: string;
 			};
