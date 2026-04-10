@@ -931,3 +931,38 @@ The following topics are intentionally deferred from this specification unless l
 * broader accessibility commitments
 * formal math rendering engine standardization
 * v2 distribution and component packaging details
+
+## 23. Performance and Render Architecture
+
+To guarantee a fluid, non-blocking authoring experience and support real-time "live preview" capabilities for complex academic documents, the system must adhere to strict performance and render isolation boundaries.
+
+### 23.1 Thread Management and Pipeline Execution
+The canonical document pipeline (AST generation, schema validation, frontmatter parsing, and reference registry resolution) is computationally heavy.
+* **Debounce Requirement:** The source editor must not trigger the document pipeline synchronously on every keystroke. Editor state updates must be debounced (e.g., 200-300ms) before passing the payload to the pipeline.
+* **Asynchronous Processing:** To prevent the main UI thread from locking during the authoring phase, the core document pipeline should ideally be offloaded to a Web Worker. The UI thread must only be responsible for receiving the computed AST and updated reference indices.
+
+### 23.2 AST-Based Render Extraction
+String-based or regex-based extraction is forbidden. The live preview must rely on the structured AST emitted by the `remark` ecosystem.
+* Standard Markdown nodes (paragraphs, text, basic headings) are lightweight and must be processed natively.
+* Computationally expensive nodes—specifically plugin-owned directives, captions, and references—must be extracted at the AST level and mapped to isolated, memoized React components (`React.memo`).
+
+### 23.3 Reactive Numbering State
+Numbering is highly dynamic. Inserting a single caption at the top of a document cascades numbering changes to all subsequent targets.
+* **Isolated Registry:** The resolved reference and numbering registry must be maintained in a reactive state container (e.g., React Context or a lightweight store).
+* **Targeted Subscriptions:** Components that display a resolved number must subscribe only to their specific identifier. A change in a resolved number must update only the affected label, strictly preventing a top-down re-render of the entire document preview.
+
+### 23.4 3-Tier Directive Memoization Model
+To ensure that heavy plugin visuals (e.g., Plotly charts, data tables) do not re-render unnecessarily when a user types unrelated text or when document numbering shifts, directive rendering must strictly implement a three-tier nested architecture:
+
+1. **Plugin Container (Tier 1):**
+    * Acts as the outer boundary.
+    * Receives the parsed AST node data and subscribes to the central numbering state for its specific directive identity.
+2. **Label / Title Component (Tier 2):**
+    * A lightweight text-only component residing inside the Container.
+    * Renders the caption, title, and the dynamically resolved number (e.g., "Figure 4: Impact Analysis").
+    * Updates cheaply and instantly whenever the central numbering state changes.
+3. **Heavy Visual Component (Tier 3 - Strictly Isolated):**
+    * The component responsible for executing the heavy data parsing and DOM painting (e.g., SVG, Canvas, complex tables).
+    * **Immutability Rule:** This component MUST be wrapped in `React.memo`.
+    * **Prop Constraint:** The props passed to this tier MUST NEVER include the resolved `number` or the `title` string. It must only receive stable identity markers (`plugin_id` and the contents of `data_file`).
+    * **Result:** If a prior directive is added or removed, shifting the current directive's number from "Figure 4" to "Figure 5", Tier 2 will re-render to update the text, while Tier 3 remains perfectly cached, ensuring zero performance degradation during live authoring.
