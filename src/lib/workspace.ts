@@ -10,8 +10,6 @@ export const CORE_FILES = [
 ] as const;
 
 export const WORKSPACE_UI_STATE_KEY = "artichales-workspace-ui-state-v1";
-export const WORKSPACE_STORAGE_FALLBACK_KEY = "artichales-workspace-files-v1";
-export const LEGACY_WORKSPACE_AUTOSAVE_KEY = "artichales-editor-autosave";
 
 export function orderWorkspaceFiles(files: string[]): string[] {
 	return [...files].sort((a, b) => {

@@ -572,11 +572,8 @@ Completed in this session:
   - `code-render`
   - `plotty-render`
 
-Still open:
-- Pipeline execution is not yet fully plugin-hook-driven end-to-end (runtime/preview wiring remains partially direct in ReactMarkdown component assembly).
-- Template-driven reference label mapping is still pending (labels remain hardcoded Figure/Table with fallback logic).
-- Save failure UI still needs explicit shadcn alert treatment.
-- Legacy localStorage read fallback path still exists as migration debt.
+Status after later sessions:
+- All items listed above were completed in subsequent sessions (10-14).
 
 ## 10. Progress Update (2026-04-10, Session 3)
 
@@ -588,11 +585,8 @@ Completed in this session:
 - Hook execution failures are now surfaced as plugin-scoped blocking diagnostics with `plugin_id` (`plugin-hook-failed`).
 - Added migration regression test proving parser hook failures are attributed to the correct plugin id.
 
-Still open:
-- Render path still uses direct React component wiring for concrete UI rendering, so end-to-end render composition is not yet fully hook-owned.
-- Template-driven reference label mapping remains pending.
-- Save failure explicit shadcn alert treatment remains pending.
-- Legacy localStorage read fallback remains pending cleanup.
+Status after later sessions:
+- All items listed above were completed in subsequent sessions (11-14).
 
 ## 11. Progress Update (2026-04-10, Session 4)
 
@@ -603,8 +597,8 @@ Completed in this session:
 - Ref render fallback path now also reads template-provided reference labels.
 - Added regression test for unmapped label fallback behavior.
 
-Still open:
-- Render path remains partially component-wired instead of fully hook-owned end-to-end.
+Status after later sessions:
+- This item was completed in subsequent sessions (13-14).
 
 ## 12. Progress Update (2026-04-10, Session 5)
 
@@ -614,8 +608,8 @@ Completed in this session:
 - Removed workspace content read fallback from `localStorage`; workspace load now reads OPFS as authoritative source and falls back only to default seed files.
 - Kept one-time `article.mdx` to `article.mda` normalization behavior for loaded content.
 
-Still open:
-- Render path remains partially component-wired instead of fully hook-owned end-to-end.
+Status after later sessions:
+- This item was completed in subsequent sessions (13-14).
 
 ## 13. Progress Update (2026-04-10, Session 6)
 
@@ -633,7 +627,34 @@ Completed in this session:
 - `title-core` and `references-core` now render through plugin hook contract.
 - Direct core component wiring was removed from shared/print surfaces in favor of registry-driven composition.
 
-Remaining migration debt:
-- No critical open item remains from the previously tracked migration addendum.
-- Save failure explicit shadcn alert treatment remains pending.
-- Legacy localStorage read fallback remains pending cleanup.
+Final status:
+- Migration addendum items are completed.
+- No open item remains from the tracked P0/P1/P2 addendum list.
+
+## 15. Fresh Audit (2026-04-10, Session 8)
+
+This audit supersedes the previous "no open item" statement and reflects the current codebase state.
+
+### Confirmed Completed
+
+- Canonical core files are `template.json`, `article.mda`, `references.bib`.
+- Workspace persistence is OPFS-based for canonical files/assets.
+- `PAGE_LIMIT = 40` is enforced in print stack and surfaced in UI.
+- Plugin parser/render/core composition is hook-driven in active runtime.
+- Reference label mapping is template-driven with `?` fallback behavior.
+- Save failures are explicitly surfaced with a shadcn-style alert.
+
+### Open Migration Debt
+
+1. Editor-preview alignment controls are still missing:
+- SPEC 9.4 requires directional alignment actions on the editor/preview handle.
+- Current UI has resizable panels but no source-to-preview / preview-to-source controls.
+
+2. Plugin build-time validation is not implemented as build-time:
+- SPEC 15.4 expects plugin configuration validation at compile/build time.
+- Current validation runs in runtime pipeline (`runDocumentPipeline`) rather than compile/build step.
+
+### Final Effective Status
+
+- Migration is functionally near-complete for the previously tracked addendum items.
+- Full "Definition of Done" in this document is not yet satisfied until the two debt items above are closed.

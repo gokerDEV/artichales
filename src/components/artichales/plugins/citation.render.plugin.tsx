@@ -49,6 +49,7 @@ const numericFormatter: CitationFormatter = (id, _, entries) => {
 const STYLE_REGISTRY: Record<string, CitationStyleConfig> = {
 	"author-year": { formatter: authorYearFormatter, joiner: "; " },
 	apa: { formatter: authorYearFormatter, joiner: "; " },
+	apc: { formatter: authorYearFormatter, joiner: "; " },
 	numeric: { formatter: numericFormatter, joiner: ", " },
 	ieee: { formatter: numericFormatter, joiner: ", " },
 };

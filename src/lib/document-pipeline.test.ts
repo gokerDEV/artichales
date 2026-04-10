@@ -161,6 +161,21 @@ Body.`);
 		expect(missingFrontmatter).toBeDefined();
 	});
 
+	test("marks invalid frontmatter schema as blocking", () => {
+		const files = createWorkspace(`---
+authors: ["No title field"]
+---
+Body.`);
+		const result = runDocumentPipeline(files, "print");
+		const invalidFrontmatter = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-frontmatter-schema-invalid" &&
+				diag.severity === "error",
+		);
+
+		expect(invalidFrontmatter).toBeDefined();
+	});
+
 	test("marks footnote syntax as unsupported blocking error", () => {
 		const files = createWorkspace(`---
 title: "Footnote test"

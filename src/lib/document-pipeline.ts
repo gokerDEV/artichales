@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { parse as parseYaml } from "yaml";
+import { z } from "zod";
 import type { RenderHookContext } from "@/components/artichales/plugins/plugin.contract";
 import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
@@ -42,6 +43,7 @@ export type PipelineDiagnostic = {
 		| "pipeline-stage-complete"
 		| "article-frontmatter-missing"
 		| "article-frontmatter-invalid"
+		| "article-frontmatter-schema-invalid"
 		| "article-footnote-unsupported"
 		| "asset-json-invalid"
 		| "plugin-config-invalid"
@@ -76,6 +78,25 @@ export type PipelineResult = {
 	};
 	pipelineDiagnostics: PipelineDiagnostic[];
 };
+
+const ArticleFrontmatterSchema = z
+	.object({
+		title: z.string().trim().min(1),
+		authors: z
+			.union([
+				z.string().trim().min(1),
+				z.array(
+					z.union([
+						z.string().trim().min(1),
+						z.object({ name: z.string().trim().min(1) }).passthrough(),
+					]),
+				),
+			])
+			.optional(),
+		keywords: z.array(z.string().trim().min(1)).optional(),
+		plugins: z.record(z.string(), z.unknown()).optional(),
+	})
+	.passthrough();
 
 function getStageInfoMessage(
 	stage: PipelineStage,
@@ -118,12 +139,33 @@ function parseArticleContent(articleText: string): {
 
 	try {
 		const parsed = parseYaml(match[1]);
+		const parsedFrontmatter =
+			typeof parsed === "object" && parsed !== null
+				? (parsed as Record<string, unknown>)
+				: {};
+		const frontmatterValidation =
+			ArticleFrontmatterSchema.safeParse(parsedFrontmatter);
+		if (!frontmatterValidation.success) {
+			const issueMessage =
+				frontmatterValidation.error.issues[0]?.message ||
+				"Frontmatter does not match required schema.";
+			return {
+				content: articleText.slice(match[0].length).trim(),
+				frontmatter: parsedFrontmatter,
+				diagnostics: [
+					{
+						code: "article-frontmatter-schema-invalid",
+						severity: "error",
+						source: "parser",
+						message: `\`article.mda\` frontmatter schema is invalid: ${issueMessage}`,
+						stage: "parse-article",
+					},
+				],
+			};
+		}
 		return {
 			content: articleText.slice(match[0].length).trim(),
-			frontmatter:
-				typeof parsed === "object" && parsed !== null
-					? (parsed as Record<string, unknown>)
-					: {},
+			frontmatter: parsedFrontmatter,
 			diagnostics: [],
 		};
 	} catch {

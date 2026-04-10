@@ -140,6 +140,13 @@ const PluginRegistrySchema = z.object({
 
 export const TemplateFileSchema = z.object({
 	version: z.number().int().optional(),
+	publisher: z
+		.object({
+			id: z.string().optional(),
+			name: z.string().optional(),
+		})
+		.optional(),
+	// Backward compatibility for pre-migration templates.
 	journal: z
 		.object({
 			id: z.string().optional(),
@@ -165,7 +172,7 @@ export type TemplateDiagnostic = {
 
 export type TemplateFileResolved = {
 	version: number;
-	journal: { id: string; name: string };
+	publisher: { id: string; name: string };
 	default: {
 		typography: {
 			fontFamily: { body: string; heading: string; mono: string };
@@ -242,7 +249,7 @@ export type TemplateFileResolved = {
 
 export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 	version: 1,
-	journal: { id: "default", name: "Default Journal" },
+	publisher: { id: "default", name: "Default Publisher" },
 	default: {
 		typography: {
 			fontFamily: {
@@ -358,9 +365,15 @@ function mergeTemplateWithDefaults(
 ): TemplateFileResolved {
 	return {
 		version: overrides.version ?? DEFAULT_TEMPLATE_FILE.version,
-		journal: {
-			id: overrides.journal?.id ?? DEFAULT_TEMPLATE_FILE.journal.id,
-			name: overrides.journal?.name ?? DEFAULT_TEMPLATE_FILE.journal.name,
+		publisher: {
+			id:
+				overrides.publisher?.id ??
+				overrides.journal?.id ??
+				DEFAULT_TEMPLATE_FILE.publisher.id,
+			name:
+				overrides.publisher?.name ??
+				overrides.journal?.name ??
+				DEFAULT_TEMPLATE_FILE.publisher.name,
 		},
 		default: {
 			typography: {

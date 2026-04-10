@@ -42,7 +42,7 @@ type DocumentStyle = {
 
 export type DocumentTemplate = {
 	version: number;
-	journal: {
+	publisher: {
 		id: string;
 		name: string;
 	};
@@ -141,6 +141,7 @@ export interface DocumentSource {
 				code:
 					| "article-frontmatter-missing"
 					| "article-frontmatter-invalid"
+					| "article-frontmatter-schema-invalid"
 					| "article-footnote-unsupported";
 				severity: "error";
 				message: string;
@@ -172,7 +173,7 @@ function resolveTemplateForTarget(
 
 	const baseTemplate: Omit<DocumentTemplate, "target"> = {
 		version: templateFile.version,
-		journal: templateFile.journal,
+		publisher: templateFile.publisher,
 		container: "article",
 		document: {
 			columns: print.layout.defaultPageColumns,
