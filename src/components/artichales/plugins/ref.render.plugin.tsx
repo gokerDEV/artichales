@@ -1,7 +1,7 @@
 import type React from "react";
 import type { Components } from "react-markdown";
 import type { ResolvedReference } from "@/lib/article-analysis";
-import type { PluginDefinition } from "./plugin.contract";
+import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
 type RefKind = "plot" | "datatable";
 
@@ -32,7 +32,18 @@ const REF_KIND_CONFIG: Record<RefKind, RefKindConfig> = {
 	},
 };
 
-function registerRefRenderRuntime(): void {}
+function registerRefRenderRuntime(
+	context: RenderHookContext,
+): Partial<Components> {
+	return {
+		span: createRefRender(
+			context.refIndexById,
+			context.resolvedReferences,
+			context.utilityClasses?.ref || "ref",
+			context.referenceLabels,
+		),
+	};
+}
 
 export const refRenderPlugin: PluginDefinition = {
 	id: "ref-render",

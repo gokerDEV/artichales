@@ -3,19 +3,11 @@ import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
-import { CitationRender } from "@/components/artichales/plugins/citation.render.plugin";
-import { CodeRender } from "@/components/artichales/plugins/code.render.plugin";
-import { createDirectiveDivRender } from "@/components/artichales/plugins/plotty.render.plugin";
 import {
 	getParserRemarkPluginsFromExecutionState,
 	resolvePluginExecutionState,
 } from "@/components/artichales/plugins/plugin.runtime";
-import { createRefRender } from "@/components/artichales/plugins/ref.render.plugin";
 import "katex/dist/katex.min.css";
-import { citationRenderPlugin } from "@/components/artichales/plugins/citation.render.plugin";
-import { codeRenderPlugin } from "@/components/artichales/plugins/code.render.plugin";
-import { plottyRenderPlugin } from "@/components/artichales/plugins/plotty.render.plugin";
-import { refRenderPlugin } from "@/components/artichales/plugins/ref.render.plugin";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
 type MarkdownContentProps = {
@@ -64,11 +56,6 @@ export function MarkdownContent({
 		);
 		return getParserRemarkPluginsFromExecutionState(executionState);
 	}, [activeParserPluginIds]);
-	const enabledRenderPluginIds = React.useMemo(
-		() => new Set(activeRenderPluginIds),
-		[activeRenderPluginIds],
-	);
-
 	const indexingSource = indexContent || content;
 	const { plotIndexById, datatableIndexById, refIndexById } =
 		React.useMemo(() => {
@@ -114,44 +101,50 @@ export function MarkdownContent({
 			};
 		}, [indexingSource]);
 
-	const divRenderer = React.useMemo(
-		() =>
-			createDirectiveDivRender(
-				plotFiles,
-				plotIndexById,
-				datatableIndexById,
-				target,
-				templateDefaults?.components,
-			),
-		[plotFiles, plotIndexById, datatableIndexById, target, templateDefaults],
-	);
-	const refRenderer = React.useMemo(
-		() =>
-			createRefRender(
-				refIndexById,
-				resolvedReferences,
-				utilityClasses?.ref || "ref",
-				referenceLabels,
-			),
-		[refIndexById, resolvedReferences, utilityClasses, referenceLabels],
-	);
 	const markdownComponents = React.useMemo(() => {
 		const components: React.ComponentProps<typeof ReactMarkdown>["components"] =
 			{};
-		if (enabledRenderPluginIds.has(citationRenderPlugin.id)) {
-			components.cite = CitationRender;
-		}
-		if (enabledRenderPluginIds.has(codeRenderPlugin.id)) {
-			components.code = CodeRender;
-		}
-		if (enabledRenderPluginIds.has(plottyRenderPlugin.id)) {
-			components.div = divRenderer;
-		}
-		if (enabledRenderPluginIds.has(refRenderPlugin.id)) {
-			components.span = refRenderer;
+		const executionState = resolvePluginExecutionState(
+			activeRenderPluginIds.map((id) => ({ id, enabled: true })),
+		);
+		for (const plugin of executionState.render) {
+			const renderHook = plugin.hooks.render;
+			if (!renderHook) continue;
+			try {
+				Object.assign(
+					components,
+					renderHook({
+						plotFiles,
+						plotIndexById,
+						datatableIndexById,
+						refIndexById,
+						target,
+						resolvedReferences,
+						templateDefaults: templateDefaults?.components,
+						referenceLabels,
+						utilityClasses,
+					}),
+				);
+			} catch (error) {
+				console.error(
+					`[artichales:render] render hook failed for plugin "${plugin.id}"`,
+					error,
+				);
+			}
 		}
 		return components;
-	}, [divRenderer, enabledRenderPluginIds, refRenderer]);
+	}, [
+		activeRenderPluginIds,
+		plotFiles,
+		plotIndexById,
+		datatableIndexById,
+		refIndexById,
+		target,
+		resolvedReferences,
+		templateDefaults,
+		referenceLabels,
+		utilityClasses,
+	]);
 
 	return (
 		<ReactMarkdown

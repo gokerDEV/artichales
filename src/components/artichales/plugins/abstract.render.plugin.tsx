@@ -1,7 +1,13 @@
 import type { Components } from "react-markdown";
-import type { PluginDefinition } from "./plugin.contract";
+import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
-function registerAbstractRenderRuntime(): void {}
+function registerAbstractRenderRuntime(
+	_: RenderHookContext,
+): Partial<Components> {
+	return {
+		div: AbstractRender,
+	};
+}
 
 export const abstractRenderPlugin: PluginDefinition = {
 	id: "abstract-render",

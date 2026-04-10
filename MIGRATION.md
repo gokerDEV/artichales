@@ -605,8 +605,6 @@ Completed in this session:
 
 Still open:
 - Render path remains partially component-wired instead of fully hook-owned end-to-end.
-- Save failure explicit shadcn alert treatment remains pending.
-- Legacy localStorage read fallback remains pending cleanup.
 
 ## 12. Progress Update (2026-04-10, Session 5)
 
@@ -618,3 +616,17 @@ Completed in this session:
 
 Still open:
 - Render path remains partially component-wired instead of fully hook-owned end-to-end.
+
+## 13. Progress Update (2026-04-10, Session 6)
+
+Completed in this session:
+- `MarkdownContent` render component assembly migrated from hardcoded plugin-id checks to plugin-driven hook composition.
+- Active render plugins are now resolved from registry state and executed via `hooks.render(context)` in registry order.
+- Render plugin contracts now return ReactMarkdown component partials through typed render context.
+- Updated render plugins (`abstract`, `citation`, `code`, `ref`, `plotty`) to provide runtime component mappings via render hooks.
+- Pipeline render-hook execution path was updated to call render hooks with minimal context during plugin-processing validation.
+
+Still open:
+- Core visual blocks (`title-core`, `references-core`) are still directly wired in surface components, not yet composed through a generic core hook renderer.
+- Save failure explicit shadcn alert treatment remains pending.
+- Legacy localStorage read fallback remains pending cleanup.

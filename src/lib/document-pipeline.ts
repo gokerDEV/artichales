@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { parse as parseYaml } from "yaml";
+import type { RenderHookContext } from "@/components/artichales/plugins/plugin.contract";
 import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import {
@@ -335,15 +336,14 @@ function executeParserHooks(
 function executeVoidHooks(
 	plugins: Array<{
 		id: string;
-		hooks: { process?: () => void; render?: () => void };
+		hooks: { process?: () => void };
 	}>,
-	stage: PipelineStage,
-	hook: "process" | "render",
+	stage: "plugin-processing",
 ): PipelineDiagnostic[] {
 	const diagnostics: PipelineDiagnostic[] = [];
 
 	for (const plugin of plugins) {
-		const hookFn = plugin.hooks[hook];
+		const hookFn = plugin.hooks.process;
 		if (!hookFn) continue;
 
 		try {
@@ -356,7 +356,49 @@ function executeVoidHooks(
 				source: "plugin",
 				pluginId: plugin.id,
 				stage,
-				message: `${hook === "process" ? "Process" : "Render"} hook failed for "${plugin.id}": ${detail}`,
+				message: `Process hook failed for "${plugin.id}": ${detail}`,
+			});
+		}
+	}
+
+	return diagnostics;
+}
+
+function executeRenderHooks(
+	plugins: Array<{
+		id: string;
+		hooks: { render?: (context: RenderHookContext) => unknown };
+	}>,
+	target: "web" | "print",
+): PipelineDiagnostic[] {
+	const diagnostics: PipelineDiagnostic[] = [];
+	const context: RenderHookContext = {
+		plotFiles: {},
+		plotIndexById: {},
+		datatableIndexById: {},
+		refIndexById: {},
+		target,
+		resolvedReferences: {},
+		templateDefaults: undefined,
+		referenceLabels: {},
+		utilityClasses: {},
+	};
+
+	for (const plugin of plugins) {
+		const hookFn = plugin.hooks.render;
+		if (!hookFn) continue;
+
+		try {
+			hookFn(context);
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			diagnostics.push({
+				code: "plugin-hook-failed",
+				severity: "error",
+				source: "plugin",
+				pluginId: plugin.id,
+				stage: "render-active-target",
+				message: `Render hook failed for "${plugin.id}": ${detail}`,
 			});
 		}
 	}
@@ -366,17 +408,14 @@ function executeVoidHooks(
 
 function executePluginHooks(
 	articleContent: string,
+	target: "web" | "print",
 	templatePlugins: Array<{ id: string; enabled: boolean }> | undefined,
 ): PipelineDiagnostic[] {
 	const executionState = resolvePluginExecutionState(templatePlugins);
 	return [
 		...executeParserHooks(articleContent, templatePlugins),
-		...executeVoidHooks(executionState.core, "plugin-processing", "process"),
-		...executeVoidHooks(
-			executionState.render,
-			"render-active-target",
-			"render",
-		),
+		...executeVoidHooks(executionState.core, "plugin-processing"),
+		...executeRenderHooks(executionState.render, target),
 	];
 }
 
@@ -447,6 +486,7 @@ export function runDocumentPipeline(
 	);
 	const pluginHookDiagnostics = executePluginHooks(
 		articleResult.content,
+		target,
 		templateResult.template.plugins,
 	);
 	emitPluginTrace(templateResult.template.plugins, [

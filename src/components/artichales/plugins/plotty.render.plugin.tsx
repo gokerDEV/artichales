@@ -3,7 +3,7 @@ import type { Components } from "react-markdown";
 import { parse as parseYaml } from "yaml";
 import { AbstractRender } from "@/components/artichales/plugins/abstract.render.plugin";
 import { DatatableRenderBlock } from "@/components/artichales/plugins/datatable.render.plugin";
-import type { PluginDefinition } from "./plugin.contract";
+import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
 type UnknownRecord = Record<string, unknown>;
 type PlotTrace = Record<string, unknown>;
@@ -267,7 +267,19 @@ type PlottyDivProps = {
 	children?: React.ReactNode;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, "children">;
 
-function registerPlottyRenderRuntime(): void {}
+function registerPlottyRenderRuntime(
+	context: RenderHookContext,
+): Partial<Components> {
+	return {
+		div: createDirectiveDivRender(
+			context.plotFiles,
+			context.plotIndexById,
+			context.datatableIndexById,
+			context.target,
+			context.templateDefaults,
+		),
+	};
+}
 
 export const plottyRenderPlugin: PluginDefinition = {
 	id: "plotty-render",

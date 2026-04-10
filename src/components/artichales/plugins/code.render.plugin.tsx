@@ -1,8 +1,12 @@
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
-import type { PluginDefinition } from "./plugin.contract";
+import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
-function registerCodeRenderRuntime(): void {}
+function registerCodeRenderRuntime(_: RenderHookContext): Partial<Components> {
+	return {
+		code: CodeRender,
+	};
+}
 
 export const codeRenderPlugin: PluginDefinition = {
 	id: "code-render",

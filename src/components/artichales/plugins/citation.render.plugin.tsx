@@ -2,9 +2,15 @@ import type { Components } from "react-markdown";
 import type { CitationEntry } from "@/lib/bibtex";
 import { cn } from "@/lib/utils";
 import { useCitations } from "./citation.context";
-import type { PluginDefinition } from "./plugin.contract";
+import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
-function registerCitationRenderRuntime(): void {}
+function registerCitationRenderRuntime(
+	_: RenderHookContext,
+): Partial<Components> {
+	return {
+		cite: CitationRender,
+	};
+}
 
 export const citationRenderPlugin: PluginDefinition = {
 	id: "citation-render",
