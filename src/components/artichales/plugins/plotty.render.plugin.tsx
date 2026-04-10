@@ -183,37 +183,17 @@ function getNodeProperty(node: unknown, key: string): unknown {
 	return properties[key];
 }
 
-function getDirective(node: unknown): string {
-	const directive = getNodeProperty(node, "data-directive");
-	return asString(directive);
-}
-
-function getPlotSource(node: unknown): string {
-	const value =
-		getNodeProperty(node, "data-plot-source") ??
-		getNodeProperty(node, "dataPlotSource");
-	return asString(value);
-}
-
-function getPlotBodyText(node: unknown): string {
-	const value =
-		getNodeProperty(node, "data-plot-body") ??
-		getNodeProperty(node, "dataPlotBody");
-	return asString(value);
-}
-
-function getDatatableSource(node: unknown): string {
-	const value =
-		getNodeProperty(node, "data-datatable-source") ??
-		getNodeProperty(node, "dataDatatableSource");
-	return asString(value);
-}
-
-function getDatatableBodyText(node: unknown): string {
-	const value =
-		getNodeProperty(node, "data-datatable-body") ??
-		getNodeProperty(node, "dataDatatableBody");
-	return asString(value);
+function getNodePropertyWithFallback(
+	node: unknown,
+	props: UnknownRecord,
+	key: string,
+	fallbackKey?: string,
+): unknown {
+	return (
+		getNodeProperty(node, key) ??
+		props[key] ??
+		(fallbackKey ? props[fallbackKey] : undefined)
+	);
 }
 
 function PlottyChart({ plot, width, height }: PlottyChartProps) {
@@ -299,13 +279,30 @@ export function createDirectiveDivRender(
 		children,
 		...rest
 	}: PlottyDivProps) {
-		const directive = getDirective(node);
+		const restProps = rest as UnknownRecord;
+		const directive = asString(
+			getNodePropertyWithFallback(node, restProps, "data-directive", "dataDirective"),
+		);
 		if (directive !== "plotty") {
 			if (directive === "datatable") {
 				return (
 					<DatatableRenderBlock
-						source={getDatatableSource(node)}
-						bodyText={getDatatableBodyText(node)}
+						source={asString(
+							getNodePropertyWithFallback(
+								node,
+								restProps,
+								"data-datatable-source",
+								"dataDatatableSource",
+							),
+						)}
+						bodyText={asString(
+							getNodePropertyWithFallback(
+								node,
+								restProps,
+								"data-datatable-body",
+								"dataDatatableBody",
+							),
+						)}
 						datatableFiles={plotFiles}
 						datatableIndexById={datatableIndexById}
 						target={target}
@@ -323,8 +320,22 @@ export function createDirectiveDivRender(
 			return <div {...rest}>{children}</div>;
 		}
 
-		const source = getPlotSource(node);
-		const bodyText = getPlotBodyText(node);
+		const source = asString(
+			getNodePropertyWithFallback(
+				node,
+				restProps,
+				"data-plot-source",
+				"dataPlotSource",
+			),
+		);
+		const bodyText = asString(
+			getNodePropertyWithFallback(
+				node,
+				restProps,
+				"data-plot-body",
+				"dataPlotBody",
+			),
+		);
 		const defaults = componentDefaults?.figure;
 		const captionPosition = defaults?.captionPosition || "bottom";
 		const spacingBefore = defaults?.spacingBefore || "0";

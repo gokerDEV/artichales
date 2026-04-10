@@ -72,15 +72,22 @@ export function createRefRender(
 	referenceLabels?: Record<string, string>,
 ): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
+		const restProps = rest as Record<string, unknown>;
 		const rawCaptionType =
 			node?.properties?.dataCaptionType ||
-			node?.properties?.["data-caption-type"];
+			node?.properties?.["data-caption-type"] ||
+			restProps.dataCaptionType ||
+			restProps["data-caption-type"];
 		const rawCaptionKey =
 			node?.properties?.dataCaptionKey ||
-			node?.properties?.["data-caption-key"];
+			node?.properties?.["data-caption-key"] ||
+			restProps.dataCaptionKey ||
+			restProps["data-caption-key"];
 		const rawCaptionTitle =
 			node?.properties?.dataCaptionTitle ||
-			node?.properties?.["data-caption-title"];
+			node?.properties?.["data-caption-title"] ||
+			restProps.dataCaptionTitle ||
+			restProps["data-caption-title"];
 		const captionType =
 			typeof rawCaptionType === "string" ? rawCaptionType.trim() : "";
 		const captionKey =
@@ -112,7 +119,11 @@ export function createRefRender(
 		}
 
 		const rawRefId =
-			node?.properties?.dataRefId || node?.properties?.["data-ref-id"] || "";
+			node?.properties?.dataRefId ||
+			node?.properties?.["data-ref-id"] ||
+			restProps.dataRefId ||
+			restProps["data-ref-id"] ||
+			"";
 		const refId = typeof rawRefId === "string" ? rawRefId.trim() : "";
 		const normalizedRefId = normalizeRefId(refId);
 		const hasRefId = normalizedRefId !== "";

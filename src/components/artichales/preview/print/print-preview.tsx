@@ -20,6 +20,10 @@ type PagedPreviewerInstance = {
 
 const PAGE_LIMIT = 40;
 
+function escapeCssContent(value: string): string {
+	return value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+}
+
 function resolvePagedPreviewerFactory(
 	module: unknown,
 ): (() => PagedPreviewerInstance) | null {
@@ -79,15 +83,69 @@ export function PrintPreview({
 			1,
 			template.layout?.firstPageColumns || 1,
 		);
+		const printTitle =
+			typeof document.frontmatter.title === "string"
+				? document.frontmatter.title
+				: "";
+		const headerFooter = template.headerFooter;
+		const firstPageHeader =
+			headerFooter?.firstPage?.header || headerFooter?.defaultPage?.header;
+		const firstPageFooter =
+			headerFooter?.firstPage?.footer || headerFooter?.defaultPage?.footer;
+		const defaultPageHeader =
+			headerFooter?.defaultPage?.header || headerFooter?.firstPage?.header;
+		const defaultPageFooter =
+			headerFooter?.defaultPage?.footer || headerFooter?.firstPage?.footer;
+		const resolveTokenText = (value?: string) =>
+			escapeCssContent((value || "").replaceAll("{title}", printTitle));
+		const pageNumberToken = "counter(page)";
+		const resolvePageContent = (value?: string) => {
+			if (!value) return "\"\"";
+			const parts = value.split("{pageNumber}");
+			if (parts.length === 1) {
+				return `"${resolveTokenText(value)}"`;
+			}
+			return parts
+				.map((part, index) => {
+					const contentPart = `"${resolveTokenText(part)}"`;
+					return index === parts.length - 1
+						? contentPart
+						: `${contentPart} ${pageNumberToken} `;
+				})
+				.join("");
+		};
+		const marginBoxes =
+			headerFooter?.enabled === false
+				? ""
+				: `
+@page {
+	@top-left { content: ${resolvePageContent(defaultPageHeader?.left)}; }
+	@top-center { content: ${resolvePageContent(defaultPageHeader?.center)}; }
+	@top-right { content: ${resolvePageContent(defaultPageHeader?.right)}; }
+	@bottom-left { content: ${resolvePageContent(defaultPageFooter?.left)}; }
+	@bottom-center { content: ${resolvePageContent(defaultPageFooter?.center)}; }
+	@bottom-right { content: ${resolvePageContent(defaultPageFooter?.right)}; }
+}
+@page :first {
+	@top-left { content: ${resolvePageContent(firstPageHeader?.left)}; }
+	@top-center { content: ${resolvePageContent(firstPageHeader?.center)}; }
+	@top-right { content: ${resolvePageContent(firstPageHeader?.right)}; }
+	@bottom-left { content: ${resolvePageContent(firstPageFooter?.left)}; }
+	@bottom-center { content: ${resolvePageContent(firstPageFooter?.center)}; }
+	@bottom-right { content: ${resolvePageContent(firstPageFooter?.right)}; }
+}`;
 
-		return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
+			return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
 .paged-print-content .artichales__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
-.paged-print-content .pagedjs_first_page .artichales__body { column-count: ${firstPageColumns}; }`;
+.paged-print-content .pagedjs_first_page .artichales__body { column-count: ${firstPageColumns}; }
+${marginBoxes}`;
 	}, [
+		document.frontmatter.title,
 		columnGap,
 		margins,
 		pageConfig?.orientation,
 		pageConfig?.size,
+		template.headerFooter,
 		template.layout,
 	]);
 	const pagedPreviewKey = React.useMemo(
@@ -165,8 +223,13 @@ export function PrintPreview({
 					}
 					setPagedWasTruncated(true);
 				}
-				const nextNodes = Array.from(stagingElement.childNodes);
-				pagedPreviewRef.current.replaceChildren(...nextNodes);
+				const pagedPagesRoot = stagingElement.querySelector(".pagedjs_pages");
+				if (pagedPagesRoot) {
+					pagedPreviewRef.current.replaceChildren(pagedPagesRoot);
+				} else {
+					const nextNodes = Array.from(stagingElement.childNodes);
+					pagedPreviewRef.current.replaceChildren(...nextNodes);
+				}
 				stagingElement.remove();
 				if (viewport) {
 					window.requestAnimationFrame(() => {
@@ -204,8 +267,14 @@ export function PrintPreview({
 	}, [pagedPreviewKey]);
 
 	return (
-		<div className={cn("absolute inset-0 bg-neutral-100", className)}>
-			<div className="pointer-events-none absolute top-0 -left-[200vw] opacity-0">
+		<div
+			className={cn("absolute inset-0 bg-neutral-100", className)}
+			data-artichales-print-container="true"
+		>
+			<div
+				className="pointer-events-none absolute top-0 -left-[200vw] opacity-0"
+				data-artichales-print-source="true"
+			>
 				<div ref={pagedSourceRef}>
 					<style>{pagedCss}</style>
 					<div className="paged-print-content">
@@ -217,7 +286,7 @@ export function PrintPreview({
 					</div>
 				</div>
 			</div>
-			<ScrollArea className="h-full w-full">
+			<ScrollArea className="h-full w-full" data-artichales-print-scroll="true">
 				<div
 					data-artichales-print-preview-shell="true"
 					className="flex w-full flex-col items-center gap-8 p-8 transition-transform duration-200"

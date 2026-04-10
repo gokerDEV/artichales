@@ -177,6 +177,23 @@ Body.`);
 		expect(invalidFrontmatter).toBeDefined();
 	});
 
+	test("rejects unsupported frontmatter keys", () => {
+		const files = createWorkspace(`---
+title: "Bad frontmatter"
+references:
+  - source: "./refs.bib"
+---
+Body.`);
+		const result = runDocumentPipeline(files, "print");
+		const invalidFrontmatter = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-frontmatter-schema-invalid" &&
+				diag.severity === "error",
+		);
+
+		expect(invalidFrontmatter).toBeDefined();
+	});
+
 	test("marks footnote syntax as unsupported blocking error", () => {
 		const files = createWorkspace(`---
 title: "Footnote test"
@@ -285,5 +302,22 @@ Bad
 		);
 
 		expect(invalidSegments).toBeDefined();
+	});
+
+	test("rejects abstract directives with data file segments", () => {
+		const files = createWorkspace(`---
+title: "Abstract data file"
+---
+:::abstract[data.json]
+Body
+:::`);
+		const result = runDocumentPipeline(files, "print");
+		const unsupportedDataFile = result.articleDiagnostics.find(
+			(diag) =>
+				diag.code === "article-directive-data-file-unsupported" &&
+				diag.severity === "error",
+		);
+
+		expect(unsupportedDataFile).toBeDefined();
 	});
 });

@@ -78,6 +78,11 @@ export function DocumentRenderContent({
 						content={document.content}
 						plotFiles={document.plots}
 						target={target}
+						printTitle={
+							target === "print" && typeof document.frontmatter.title === "string"
+								? document.frontmatter.title
+								: undefined
+						}
 						resolvedReferences={document.resolvedReferences}
 						activeParserPluginIds={document.activePluginIds.parser}
 						activeRenderPluginIds={document.activePluginIds.render}

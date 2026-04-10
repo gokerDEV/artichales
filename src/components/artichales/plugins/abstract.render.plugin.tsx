@@ -23,9 +23,12 @@ export const AbstractRender: Components["div"] = ({
 	children,
 	...rest
 }) => {
+	const restProps = rest as Record<string, unknown>;
 	const isAbstract =
 		node?.properties?.["data-directive"] === "abstract" ||
-		node?.properties?.dataDirective === "abstract";
+		node?.properties?.dataDirective === "abstract" ||
+		restProps["data-directive"] === "abstract" ||
+		restProps.dataDirective === "abstract";
 
 	if (isAbstract) {
 		return (

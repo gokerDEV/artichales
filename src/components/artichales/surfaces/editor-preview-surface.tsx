@@ -54,6 +54,10 @@ type UiDiagnostic = {
 	source: string;
 	message: string;
 	details?: string;
+	line?: number;
+	column?: number;
+	offset?: number;
+	fileName?: string;
 };
 
 const FILE_TREE_PANEL_ID = "workspace-file-tree";
@@ -122,16 +126,20 @@ export function EditorPreviewSurface() {
 	const hasLoadedWorkspaceRef = React.useRef(false);
 	const isHydratingRef = React.useRef(true);
 	const workerRef = React.useRef<Worker | null>(null);
+	const pipelineRequestIdRef = React.useRef(0);
 
-	const { setRawFiles, setPipelineResult } = useWorkspaceStore();
+	const setRawFiles = useWorkspaceStore((state) => state.setRawFiles);
+	const setPipelineResult = useWorkspaceStore((state) => state.setPipelineResult);
 
 	React.useEffect(() => {
 		workerRef.current = new Worker(new URL("../../../workers/pipeline.worker", import.meta.url), { type: "module" });
 		
 		workerRef.current.onmessage = (event) => {
 			if (event.data.type === "PIPELINE_SUCCESS") {
+				if (event.data.requestId !== pipelineRequestIdRef.current) return;
 				setPipelineResult(event.data.payload);
 			} else if (event.data.type === "PIPELINE_ERROR") {
+				if (event.data.requestId !== pipelineRequestIdRef.current) return;
 				console.error("[pipeline-worker] error:", event.data.error);
 			}
 		};
@@ -145,11 +153,14 @@ export function EditorPreviewSurface() {
 		const timeout = setTimeout(() => {
 			setRawFiles(files);
 			if (workerRef.current) {
+				const requestId = pipelineRequestIdRef.current + 1;
+				pipelineRequestIdRef.current = requestId;
 				useWorkspaceStore.setState({ isPipelineRunning: true });
 				workerRef.current.postMessage({
 					type: "EXECUTE_PIPELINE",
 					files,
-					target
+					target,
+					requestId,
 				});
 			}
 		}, 300);
@@ -240,19 +251,24 @@ export function EditorPreviewSurface() {
 
 	const { settings, updateSettings, loading } = useSettings();
 	const docSource = useDocument(files, target);
+	const deferredArticleContent = React.useDeferredValue(
+		files[CORE_ARTICLE_FILE] || "",
+	);
 	const layoutTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
 		null,
 	);
 
 	const handleFileChange = React.useCallback(
 		(content: string) => {
-			setFiles((prev) => ({ ...prev, [activeFile]: content }));
+			React.startTransition(() => {
+				setFiles((prev) => ({ ...prev, [activeFile]: content }));
+			});
 		},
 		[activeFile],
 	);
 	const articleHeadings = React.useMemo(
-		() => collectAlignmentHeadings(files[CORE_ARTICLE_FILE] || ""),
-		[files],
+		() => collectAlignmentHeadings(deferredArticleContent),
+		[deferredArticleContent],
 	);
 
 	const maxAssetFileSize = docSource.template.assetMaxFileSize;
@@ -410,6 +426,9 @@ export function EditorPreviewSurface() {
 				source: "template",
 				message: diag.message,
 				details: diag.details,
+				line: (diag as { line?: number }).line,
+				column: (diag as { column?: number }).column,
+				offset: (diag as { offset?: number }).offset,
 			});
 		}
 		for (const diag of docSource.bibDiagnostics) {
@@ -417,20 +436,42 @@ export function EditorPreviewSurface() {
 				severity: diag.severity,
 				source: "bibliography",
 				message: diag.message,
+				line: (diag as { line?: number }).line,
+				column: (diag as { column?: number }).column,
+				offset: (diag as { offset?: number }).offset,
+				fileName: "references.bib",
 			});
 		}
 		for (const diag of docSource.assetDiagnostics) {
+			const location = diag as {
+				line?: number;
+				column?: number;
+				offset?: number;
+			};
 			entries.push({
 				severity: diag.severity,
 				source: `asset:${diag.fileName}`,
 				message: diag.message,
+				line: location.line,
+				column: location.column,
+				offset: location.offset,
+				fileName: diag.fileName,
 			});
 		}
 		for (const diag of docSource.articleDiagnostics) {
+			const location = diag as {
+				line?: number;
+				column?: number;
+				offset?: number;
+			};
 			entries.push({
 				severity: diag.severity,
 				source: `article:${diag.source}`,
 				message: diag.message,
+				line: location.line,
+				column: location.column,
+				offset: location.offset,
+				fileName: CORE_ARTICLE_FILE,
 			});
 		}
 		for (const diag of docSource.pipelineDiagnostics) {
@@ -438,6 +479,10 @@ export function EditorPreviewSurface() {
 				severity: diag.severity,
 				source: diag.stage ? `pipeline:${diag.stage}` : "pipeline",
 				message: diag.message,
+				line: diag.line,
+				column: diag.column,
+				offset: diag.offset,
+				fileName: diag.fileName,
 			});
 		}
 		if (saveError) {
@@ -553,6 +598,29 @@ export function EditorPreviewSurface() {
 			nonce: Date.now(),
 		});
 	}, [articleHeadings]);
+
+	const handleDiagnosticClick = React.useCallback((diag: UiDiagnostic) => {
+		if (diag.fileName !== CORE_ARTICLE_FILE || typeof diag.offset !== "number") {
+			return;
+		}
+		setActiveFile(CORE_ARTICLE_FILE);
+		setEditorJumpRequest({
+			offset: diag.offset,
+			nonce: Date.now(),
+		});
+	}, []);
+
+	const formatDiagnosticLocation = React.useCallback((diag: UiDiagnostic) => {
+		if (
+			typeof diag.line === "number" &&
+			typeof diag.column === "number" &&
+			diag.line > 0 &&
+			diag.column > 0
+		) {
+			return `L${diag.line}:${diag.column}`;
+		}
+		return null;
+	}, []);
 
 	const runPdfExport = React.useCallback(() => {
 		globalThis.document.body.setAttribute("data-artichales-printing", "true");
@@ -834,8 +902,14 @@ export function EditorPreviewSurface() {
 														<li
 															key={`error-${diag.source}-${diag.message}-${index}`}
 															className="rounded border border-red-300 bg-red-50 px-2 py-1 text-red-700 text-xs"
+															onClick={() => handleDiagnosticClick(diag)}
 														>
-															[{diag.source}] {diag.message}
+															[{diag.source}]
+															{formatDiagnosticLocation(diag)
+																? ` ${formatDiagnosticLocation(diag)}`
+																: ""}
+															{" "}
+															{diag.message}
 															{diag.details ? ` ${diag.details}` : ""}
 														</li>
 													))}
@@ -856,8 +930,14 @@ export function EditorPreviewSurface() {
 														<li
 															key={`warning-${diag.source}-${diag.message}-${index}`}
 															className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-700 text-xs"
+															onClick={() => handleDiagnosticClick(diag)}
 														>
-															[{diag.source}] {diag.message}
+															[{diag.source}]
+															{formatDiagnosticLocation(diag)
+																? ` ${formatDiagnosticLocation(diag)}`
+																: ""}
+															{" "}
+															{diag.message}
 															{diag.details ? ` ${diag.details}` : ""}
 														</li>
 													))}
@@ -878,8 +958,14 @@ export function EditorPreviewSurface() {
 														<li
 															key={`info-${diag.source}-${diag.message}-${index}`}
 															className="rounded border border-sky-300 bg-sky-50 px-2 py-1 text-sky-700 text-xs"
+															onClick={() => handleDiagnosticClick(diag)}
 														>
-															[{diag.source}] {diag.message}
+															[{diag.source}]
+															{formatDiagnosticLocation(diag)
+																? ` ${formatDiagnosticLocation(diag)}`
+																: ""}
+															{" "}
+															{diag.message}
 															{diag.details ? ` ${diag.details}` : ""}
 														</li>
 													))}

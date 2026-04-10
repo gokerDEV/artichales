@@ -1,21 +1,24 @@
 import { autocompletion } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import * as React from "react";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import type { EditorCompletions } from "@/types/editor";
 import {
 	BIBTEX_LANGUAGE,
 	buildArticleCompletions,
 	buildBibliographyCompletions,
 	buildTemplateCompletions,
-} from "./config/completions";
-import { getBaseExtensions } from "./config/extensions";
+} from "@/editor/config/completions";
+import { getBaseExtensions } from "@/editor/config/extensions";
+import { cn } from "@/lib/utils";
+import type { EditorCompletions } from "@/types/editor";
 
 type EditorFileKind = "article" | "template" | "bibliography" | "asset";
+
+const languageCompartment = new Compartment();
+const completionCompartment = new Compartment();
 
 export type MdxEditorProps = {
 	fileName: string;
@@ -65,8 +68,10 @@ function createEditorState(
 		doc: content,
 		extensions: [
 			...getBaseExtensions(),
-			languageByFileKind[fileKind],
-			autocompletion({ override: [completionByFileKind[fileKind]] }),
+			languageCompartment.of(languageByFileKind[fileKind]),
+			completionCompartment.of(
+				autocompletion({ override: [completionByFileKind[fileKind]] }),
+			),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
 					onChangeRef.current(update.state.doc.toString());
@@ -94,7 +99,6 @@ export function MdxEditor({
 	label = "Source",
 	completions = { bibKeys: [], referenceSelectors: [], directiveNames: [] },
 }: MdxEditorProps) {
-	void jumpToOffsetSignal;
 	const id = React.useId();
 	const editorHostRef = React.useRef<HTMLDivElement | null>(null);
 	const viewRef = React.useRef<EditorView | null>(null);
@@ -159,6 +163,39 @@ export function MdxEditor({
 	}, [completions, fileName, value]);
 
 	React.useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		if (lastFileNameRef.current !== fileName) return;
+
+		const fileKind = resolveEditorFileKind(fileName);
+		const languageExtension =
+			fileKind === "article"
+				? markdown()
+				: fileKind === "template"
+					? json()
+					: fileKind === "bibliography"
+						? BIBTEX_LANGUAGE
+						: markdown();
+		const completionSource =
+			fileKind === "article"
+				? buildArticleCompletions(completions)
+				: fileKind === "template"
+					? buildTemplateCompletions()
+					: fileKind === "bibliography"
+						? buildBibliographyCompletions()
+						: buildTemplateCompletions();
+
+		view.dispatch({
+			effects: [
+				languageCompartment.reconfigure(languageExtension),
+				completionCompartment.reconfigure(
+					autocompletion({ override: [completionSource] }),
+				),
+			],
+		});
+	}, [completions, fileName]);
+
+	React.useEffect(() => {
 		const currentView = viewRef.current;
 		if (!currentView || currentView.hasFocus) return;
 
@@ -183,7 +220,7 @@ export function MdxEditor({
 			effects: EditorView.scrollIntoView(clampedOffset, { y: "center" }),
 		});
 		view.focus();
-	}, [jumpToOffset]);
+	}, [jumpToOffset, jumpToOffsetSignal]);
 
 	React.useEffect(() => {
 		return () => {

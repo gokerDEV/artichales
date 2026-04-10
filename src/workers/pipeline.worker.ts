@@ -100,6 +100,7 @@ self.onmessage = async (event: MessageEvent) => {
 			const result = runDocumentPipeline(event.data.files, event.data.target);
 			self.postMessage({
 				type: "PIPELINE_SUCCESS",
+				requestId: event.data.requestId,
 				payload: {
 					ast: result.ast, // make sure runDocumentPipeline produces an AST instead of/in addition to raw html!
 					content: result.content,
@@ -125,6 +126,7 @@ self.onmessage = async (event: MessageEvent) => {
 			const errorMessage = error instanceof Error ? error.message : "Unknown error";
 			self.postMessage({
 				type: "PIPELINE_ERROR",
+				requestId: event.data.requestId,
 				error: errorMessage,
 			});
 		}

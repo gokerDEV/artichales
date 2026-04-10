@@ -60,6 +60,9 @@ export type PipelineDiagnostic = {
 	stage?: PipelineStage;
 	fileName?: string;
 	pluginId?: string;
+	offset?: number;
+	line?: number;
+	column?: number;
 };
 
 export type PipelineResult = {
@@ -102,7 +105,7 @@ const ArticleFrontmatterSchema = z
 		keywords: z.array(z.string().trim().min(1)).optional(),
 		plugins: z.record(z.string(), z.unknown()).optional(),
 	})
-	.passthrough();
+	.strict();
 
 function getStageInfoMessage(
 	stage: PipelineStage,
@@ -125,6 +128,20 @@ function parseArticleContent(articleText: string): {
 	frontmatter: Record<string, unknown>;
 	diagnostics: PipelineDiagnostic[];
 } {
+	const atOffset = (offset: number) => {
+		const safeOffset = Math.max(0, Math.min(offset, articleText.length));
+		let line = 1;
+		let column = 1;
+		for (let index = 0; index < safeOffset; index++) {
+			if (articleText[index] === "\n") {
+				line++;
+				column = 1;
+				continue;
+			}
+			column++;
+		}
+		return { offset: safeOffset, line, column };
+	};
 	const match = articleText.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
 	if (!match) {
 		return {
@@ -138,6 +155,7 @@ function parseArticleContent(articleText: string): {
 					message:
 						"`article.mda` frontmatter is required. Preview is blocked until it is added.",
 					stage: "parse-article",
+					...atOffset(0),
 				},
 			],
 		};
@@ -165,6 +183,7 @@ function parseArticleContent(articleText: string): {
 						source: "parser",
 						message: `\`article.mda\` frontmatter schema is invalid: ${issueMessage}`,
 						stage: "parse-article",
+						...atOffset(0),
 					},
 				],
 			};
@@ -186,6 +205,7 @@ function parseArticleContent(articleText: string): {
 					message:
 						"`article.mda` frontmatter YAML is invalid. Preview is blocked until fixed.",
 					stage: "parse-article",
+					...atOffset(0),
 				},
 			],
 		};
@@ -198,6 +218,22 @@ function detectUnsupportedSourceConcepts(
 	const diagnostics: PipelineDiagnostic[] = [];
 	const hasFootnoteReference = /\[\^[^\]]+\]/.test(content);
 	const hasFootnoteDefinition = /^\[\^[^\]]+\]:/m.test(content);
+	const footnoteMatch =
+		content.match(/\[\^[^\]]+\]/) || content.match(/^\[\^[^\]]+\]:/m);
+	const location = (() => {
+		const offset = footnoteMatch?.index ?? 0;
+		let line = 1;
+		let column = 1;
+		for (let index = 0; index < offset; index++) {
+			if (content[index] === "\n") {
+				line++;
+				column = 1;
+				continue;
+			}
+			column++;
+		}
+		return { offset, line, column };
+	})();
 	if (hasFootnoteReference || hasFootnoteDefinition) {
 		diagnostics.push({
 			code: "article-footnote-unsupported",
@@ -206,6 +242,7 @@ function detectUnsupportedSourceConcepts(
 			stage: "parse-article",
 			message:
 				"Footnotes are out of scope for v1 and must be removed from `article.mda`.",
+			...location,
 		});
 	}
 	return diagnostics;

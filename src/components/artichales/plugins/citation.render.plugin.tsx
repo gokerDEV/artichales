@@ -63,6 +63,7 @@ export const CitationRender: Components["cite"] = ({
 	...rest
 }) => {
 	const { entries, style, citeClassName } = useCitations();
+	const restProps = rest as Record<string, unknown>;
 
 	// Safely retrieve IDs passed from the parser
 	const idsString =
@@ -70,6 +71,10 @@ export const CitationRender: Components["cite"] = ({
 		node?.properties?.["data-cite-id"] ||
 		node?.properties?.dataCiteIds ||
 		node?.properties?.["data-cite-ids"] ||
+		restProps.dataCiteId ||
+		restProps["data-cite-id"] ||
+		restProps.dataCiteIds ||
+		restProps["data-cite-ids"] ||
 		"";
 
 	const ids =

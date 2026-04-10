@@ -9,11 +9,15 @@ export type ArticleAnalysisDiagnostic = {
 		| "article-directive-identity-duplicate"
 		| "article-caption-identity-duplicate"
 		| "article-directive-invalid-data-file-segments"
+		| "article-directive-data-file-unsupported"
 		| "plugin-required-data-file-missing";
 	severity: DiagnosticSeverity;
 	message: string;
 	source: "parser" | "core" | "plugin";
 	pluginId?: string;
+	offset?: number;
+	line?: number;
+	column?: number;
 };
 
 export type ResolvedReference = {
@@ -63,6 +67,25 @@ function normalizeKey(value: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
+function offsetToLocation(content: string, offset: number): {
+	offset: number;
+	line: number;
+	column: number;
+} {
+	const safeOffset = Math.max(0, Math.min(offset, content.length));
+	let line = 1;
+	let column = 1;
+	for (let index = 0; index < safeOffset; index++) {
+		if (content[index] === "\n") {
+			line++;
+			column = 1;
+			continue;
+		}
+		column++;
+	}
+	return { offset: safeOffset, line, column };
+}
+
 function parseBracketSegments(input: string): string[] {
 	const segments: string[] = [];
 	const segmentRegex = /\[([^\]]*)\]/g;
@@ -85,7 +108,7 @@ function parseDirectiveTargets(content: string): {
 	const identityBySignature = new Set<string>();
 	const typeCounters = new Map<string, number>();
 
-	const directiveHeaderRegex = /^:::\s*([a-zA-Z][\w-]*)([^\n]*)$/gm;
+	const directiveHeaderRegex = /^:::[ \t]*([a-zA-Z][\w-]*)([^\n]*)$/gm;
 	let match: RegExpExecArray | null = null;
 	while (true) {
 		match = directiveHeaderRegex.exec(content);
@@ -102,10 +125,21 @@ function parseDirectiveTargets(content: string): {
 				severity: "error",
 				source: "parser",
 				message: `Directive "${pluginId}" can declare at most one data file segment.`,
+				...offsetToLocation(content, match.index),
 			});
 		}
 
 		const dataFile = dataSegments[0];
+
+		if (dataFile && !PLUGINS_REQUIRING_DATA_FILE.has(pluginId)) {
+			diagnostics.push({
+				code: "article-directive-data-file-unsupported",
+				severity: "error",
+				source: "core",
+				message: `Directive "${pluginId}" does not accept a data file segment.`,
+				...offsetToLocation(content, match.index),
+			});
+		}
 
 		if (PLUGINS_REQUIRING_DATA_FILE.has(pluginId) && !dataFile) {
 			diagnostics.push({
@@ -114,6 +148,7 @@ function parseDirectiveTargets(content: string): {
 				source: "plugin",
 				pluginId,
 				message: `Plugin "${pluginId}" requires a data file, but directive is unkeyed.`,
+				...offsetToLocation(content, match.index),
 			});
 		}
 
@@ -130,6 +165,7 @@ function parseDirectiveTargets(content: string): {
 				message: normalizedDataFile
 					? `Duplicate directive identity "${pluginId} + ${normalizedDataFile}" is not allowed.`
 					: `Duplicate directive identity "${pluginId}" is not allowed.`,
+				...offsetToLocation(content, match.index),
 			});
 		} else {
 			identityBySignature.add(identitySignature);
@@ -179,6 +215,7 @@ function parseCaptionTargets(
 				severity: "error",
 				source: "core",
 				message: `Duplicate caption identity "${identity}" is not allowed.`,
+				...offsetToLocation(content, match.index),
 			});
 			continue;
 		}
@@ -283,6 +320,7 @@ function buildReferenceResolution(
 							severity: "warning",
 							source: "core",
 							message: `Reference type "${type}" is not mapped in template labels. Falling back to "?".`,
+							...offsetToLocation(content, match.index),
 						});
 					}
 					resolvedReferences[selector] = {
@@ -297,6 +335,7 @@ function buildReferenceResolution(
 						severity: "error",
 						source: "core",
 						message: `Short reference "[ref:${type}]" requires exactly one unkeyed "${type}" target, but none were found.`,
+						...offsetToLocation(content, match.index),
 					};
 					diagnostics.push(diagnostic);
 					resolvedReferences[selector] = { label: "?", href: "#" };
@@ -307,6 +346,7 @@ function buildReferenceResolution(
 					severity: "error",
 					source: "core",
 					message: `Short reference "[ref:${type}]" is ambiguous because multiple unkeyed "${type}" targets exist.`,
+					...offsetToLocation(content, match.index),
 				};
 				diagnostics.push(diagnostic);
 				resolvedReferences[selector] = { label: "?", href: "#" };
@@ -321,6 +361,7 @@ function buildReferenceResolution(
 					severity: "warning",
 					source: "core",
 					message: `Reference target "[ref:${type}:${key}]" could not be resolved.`,
+					...offsetToLocation(content, match.index),
 				};
 				diagnostics.push(diagnostic);
 				resolvedReferences[selector] = { label: "?", href: "#" };
@@ -333,6 +374,7 @@ function buildReferenceResolution(
 					severity: "warning",
 					source: "core",
 					message: `Reference type "${type}" is not mapped in template labels. Falling back to "? ${resolved.number}".`,
+					...offsetToLocation(content, match.index),
 				});
 			}
 			resolvedReferences[selector] = {

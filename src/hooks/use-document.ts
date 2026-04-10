@@ -217,12 +217,24 @@ export function useDocument(
 	_files: Record<string, string>,
 	target: PreviewTarget,
 ): DocumentSource {
-	const pipeline = useWorkspaceStore();
+	const ast = useWorkspaceStore((state) => state.ast);
+	const content = useWorkspaceStore((state) => state.content);
+	const frontmatter = useWorkspaceStore((state) => state.frontmatter);
+	const citations = useWorkspaceStore((state) => state.citations);
+	const validatedBibEntries = useWorkspaceStore(
+		(state) => state.validatedBibEntries,
+	);
+	const plots = useWorkspaceStore((state) => state.plots);
+	const templateFile = useWorkspaceStore((state) => state.template);
+	const referenceRegistry = useWorkspaceStore((state) => state.referenceRegistry);
+	const referenceTargets = useWorkspaceStore((state) => state.referenceTargets);
+	const diagnostics = useWorkspaceStore((state) => state.diagnostics);
+	const activePluginIds = useWorkspaceStore((state) => state.activePluginIds);
 
 	const resolvedTemplateForTarget = React.useMemo(() => {
-		if (!pipeline.template) return {} as any;
-		return resolveTemplateForTarget(pipeline.template, target);
-	}, [pipeline.template, target]);
+		if (!templateFile) return {} as any;
+		return resolveTemplateForTarget(templateFile, target);
+	}, [target, templateFile]);
 
 	const citationStyle = React.useMemo(
 		() => resolvedTemplateForTarget.citationStyle || "numeric",
@@ -232,7 +244,7 @@ export function useDocument(
 	const blockingByFile = React.useMemo(() => {
 		const result: Partial<Record<string, string>> = {};
 		if (
-			pipeline.diagnostics.some(
+			diagnostics.some(
 				(diag: any) =>
 					diag.severity === "error" &&
 					typeof diag.code === "string" &&
@@ -243,7 +255,7 @@ export function useDocument(
 				"Fix template errors before switching away from `template.json`.";
 		}
 		if (
-			pipeline.diagnostics.some(
+			diagnostics.some(
 				(diag: any) =>
 					diag.severity === "error" &&
 					typeof diag.code === "string" &&
@@ -253,52 +265,73 @@ export function useDocument(
 			result[CORE_BIB_FILE] =
 				"Fix BibTeX errors before switching away from `references.bib`.";
 		}
-		if (pipeline.diagnostics.some((diag: any) => diag.severity === "error" && (diag.source === "parser" || diag.source === "plugin"))) {
+		if (
+			diagnostics.some(
+				(diag: any) =>
+					diag.severity === "error" &&
+					(diag.source === "parser" ||
+						diag.source === "plugin" ||
+						diag.source === "core"),
+			)
+		) {
 			result[CORE_ARTICLE_FILE] =
 				"Fix article parsing errors before switching away from `article.mda`.";
 		}
-		for (const diagnostic of pipeline.diagnostics) {
+		for (const diagnostic of diagnostics) {
 			if (diagnostic.code !== "asset-json-invalid" || !diagnostic.fileName) continue;
 			result[diagnostic.fileName] =
 				"Fix JSON asset syntax errors before switching away from this file.";
 		}
 		return result;
-	}, [pipeline.diagnostics]);
+	}, [diagnostics]);
 
 	const templateDiagnostics = React.useMemo(
 		() =>
-			pipeline.diagnostics.filter(
+			diagnostics.filter(
 				(d: any) => typeof d.code === "string" && d.code.startsWith("template-"),
 			) as any,
-		[pipeline.diagnostics],
+		[diagnostics],
 	);
 	const bibDiagnostics = React.useMemo(
 		() =>
-			pipeline.diagnostics.filter(
+			diagnostics.filter(
 				(d: any) => typeof d.code === "string" && d.code.startsWith("bibtex-"),
 			) as any,
-		[pipeline.diagnostics],
+		[diagnostics],
 	);
-	const assetDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.code === "asset-json-invalid") as any, [pipeline.diagnostics]);
-	const articleDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.source === "parser" || d.source === "plugin") as any, [pipeline.diagnostics]);
-	const pipelineDiagnostics = React.useMemo(() => pipeline.diagnostics.filter((d: any) => d.source === "pipeline") as any, [pipeline.diagnostics]);
+	const assetDiagnostics = React.useMemo(
+		() => diagnostics.filter((d: any) => d.code === "asset-json-invalid") as any,
+		[diagnostics],
+	);
+	const articleDiagnostics = React.useMemo(
+		() =>
+			diagnostics.filter(
+				(d: any) =>
+					d.source === "parser" || d.source === "plugin" || d.source === "core",
+			) as any,
+		[diagnostics],
+	);
+	const pipelineDiagnostics = React.useMemo(
+		() => diagnostics.filter((d: any) => d.source === "pipeline") as any,
+		[diagnostics],
+	);
 
 	return {
-		ast: pipeline.ast,
-		content: pipeline.content || "",
-		frontmatter: pipeline.frontmatter,
-		citations: pipeline.citations,
-		validatedBibEntries: pipeline.validatedBibEntries,
-		plots: pipeline.plots,
+		ast,
+		content: content || "",
+		frontmatter,
+		citations,
+		validatedBibEntries,
+		plots,
 		template: resolvedTemplateForTarget as any,
 		citationStyle,
 		templateDiagnostics,
 		bibDiagnostics,
 		assetDiagnostics,
 		articleDiagnostics,
-		resolvedReferences: pipeline.referenceRegistry,
-		referenceTargets: pipeline.referenceTargets,
-		activePluginIds: pipeline.activePluginIds,
+		resolvedReferences: referenceRegistry,
+		referenceTargets,
+		activePluginIds,
 		pipelineDiagnostics,
 		blockingByFile,
 		isBlockingActiveFile: (fileName) => Boolean(blockingByFile[fileName]),
