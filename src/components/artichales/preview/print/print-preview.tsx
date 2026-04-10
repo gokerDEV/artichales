@@ -1,6 +1,5 @@
 import * as React from "react";
-import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
-import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
+import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import {
 	buildPaginatedPageTree,
 	PAGE_LIMIT,
@@ -52,13 +51,27 @@ export function PrintPreview({
 	scale = 100,
 }: PrintPreviewProps) {
 	const { template, frontmatter } = document;
-	const enabledPluginIds = React.useMemo(
-		() =>
-			new Set([
-				...document.activePluginIds.core,
-				...document.activePluginIds.render,
-			]),
-		[document.activePluginIds.core, document.activePluginIds.render],
+	const coreRenderers = React.useMemo(() => {
+		const executionState = resolvePluginExecutionState(
+			document.activePluginIds.core.map((id) => ({ id, enabled: true })),
+		);
+		const renderedById = new Map<string, React.ReactNode>();
+		for (const plugin of executionState.core) {
+			const renderHook = plugin.hooks.coreRender;
+			if (!renderHook) continue;
+			renderedById.set(
+				plugin.id,
+				renderHook({
+					document,
+					target: "print",
+				}),
+			);
+		}
+		return renderedById;
+	}, [document, document.activePluginIds.core]);
+	const enabledCorePluginIds = React.useMemo(
+		() => new Set(document.activePluginIds.core),
+		[document.activePluginIds.core],
 	);
 	const paginatedTree = React.useMemo(
 		() =>
@@ -367,26 +380,20 @@ export function PrintPreview({
 													);
 
 													if (node.kind === "title") {
-														if (!enabledPluginIds.has("title-core"))
+														if (!enabledCorePluginIds.has("title-core"))
 															return null;
 														return (
 															<div key={node.id} className={flowClass}>
-																<TitleCorePlugin
-																	document={document}
-																	target="print"
-																/>
+																{coreRenderers.get("title-core") ?? null}
 															</div>
 														);
 													}
 													if (node.kind === "references") {
-														if (!enabledPluginIds.has("references-core"))
+														if (!enabledCorePluginIds.has("references-core"))
 															return null;
 														return (
 															<div key={node.id} className={flowClass}>
-																<ReferencesCorePlugin
-																	document={document}
-																	target="print"
-																/>
+																{coreRenderers.get("references-core") ?? null}
 															</div>
 														);
 													}

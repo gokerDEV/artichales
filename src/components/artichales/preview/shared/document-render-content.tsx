@@ -1,6 +1,5 @@
-import type React from "react";
-import { ReferencesCorePlugin } from "@/components/artichales/plugins/references.core.plugin";
-import { TitleCorePlugin } from "@/components/artichales/plugins/title.core.plugin";
+import * as React from "react";
+import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "./markdown-content";
@@ -46,12 +45,24 @@ export function DocumentRenderContent({
 	contentClassName,
 	articleClassName,
 }: DocumentRenderContentProps) {
-	const enabledPluginIds = new Set([
-		...document.activePluginIds.core,
-		...document.activePluginIds.render,
-	]);
-	const showTitle = enabledPluginIds.has("title-core");
-	const showReferences = enabledPluginIds.has("references-core");
+	const coreRenderers = React.useMemo(() => {
+		const executionState = resolvePluginExecutionState(
+			document.activePluginIds.core.map((id) => ({ id, enabled: true })),
+		);
+		const renderedById = new Map<string, React.ReactNode>();
+		for (const plugin of executionState.core) {
+			const renderHook = plugin.hooks.coreRender;
+			if (!renderHook) continue;
+			renderedById.set(
+				plugin.id,
+				renderHook({
+					document,
+					target,
+				}),
+			);
+		}
+		return renderedById;
+	}, [document, target]);
 
 	return (
 		<div
@@ -59,9 +70,7 @@ export function DocumentRenderContent({
 			className={cn(`artichales artichales--${target}`)}
 			style={buildTemplateCssVars(document)}
 		>
-			{showTitle ? (
-				<TitleCorePlugin document={document} target={target} />
-			) : null}
+			{coreRenderers.get("title-core") ?? null}
 			<article className={cn(contentClassName, articleClassName)}>
 				<MarkdownContent
 					content={document.content}
@@ -75,9 +84,7 @@ export function DocumentRenderContent({
 					utilityClasses={document.template.utilities}
 				/>
 			</article>
-			{showReferences ? (
-				<ReferencesCorePlugin document={document} target={target} />
-			) : null}
+			{coreRenderers.get("references-core") ?? null}
 		</div>
 	);
 }

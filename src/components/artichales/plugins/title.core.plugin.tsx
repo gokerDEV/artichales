@@ -1,13 +1,28 @@
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
 import { type Author, AuthorCorePlugin } from "./author.core.plugin";
-import type { PluginDefinition } from "./plugin.contract";
+import type {
+	CoreRenderHookContext,
+	PluginDefinition,
+} from "./plugin.contract";
+
+function renderTitleCore(context: CoreRenderHookContext) {
+	return (
+		<TitleCorePlugin
+			document={context.document}
+			target={context.target}
+			className={context.className}
+		/>
+	);
+}
 
 export const titleCorePlugin: PluginDefinition = {
 	id: "title-core",
 	category: "core",
 	name: "Title Core",
-	hooks: {},
+	hooks: {
+		coreRender: renderTitleCore,
+	},
 };
 
 export function TitleCorePlugin({

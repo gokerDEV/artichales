@@ -626,7 +626,14 @@ Completed in this session:
 - Updated render plugins (`abstract`, `citation`, `code`, `ref`, `plotty`) to provide runtime component mappings via render hooks.
 - Pipeline render-hook execution path was updated to call render hooks with minimal context during plugin-processing validation.
 
-Still open:
-- Core visual blocks (`title-core`, `references-core`) are still directly wired in surface components, not yet composed through a generic core hook renderer.
+## 14. Progress Update (2026-04-10, Session 7)
+
+Completed in this session:
+- Core visual blocks moved to hook-based composition with `hooks.coreRender(context)`.
+- `title-core` and `references-core` now render through plugin hook contract.
+- Direct core component wiring was removed from shared/print surfaces in favor of registry-driven composition.
+
+Remaining migration debt:
+- No critical open item remains from the previously tracked migration addendum.
 - Save failure explicit shadcn alert treatment remains pending.
 - Legacy localStorage read fallback remains pending cleanup.

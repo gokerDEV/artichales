@@ -1,12 +1,27 @@
 import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
-import type { PluginDefinition } from "./plugin.contract";
+import type {
+	CoreRenderHookContext,
+	PluginDefinition,
+} from "./plugin.contract";
+
+function renderReferencesCore(context: CoreRenderHookContext) {
+	return (
+		<ReferencesCorePlugin
+			document={context.document}
+			target={context.target}
+			className={context.className}
+		/>
+	);
+}
 
 export const referencesCorePlugin: PluginDefinition = {
 	id: "references-core",
 	category: "core",
 	name: "References Core",
-	hooks: {},
+	hooks: {
+		coreRender: renderReferencesCore,
+	},
 };
 
 export function ReferencesCorePlugin({

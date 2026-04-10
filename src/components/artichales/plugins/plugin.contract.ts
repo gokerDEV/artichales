@@ -1,7 +1,9 @@
 import type { Root } from "mdast";
+import type { ReactNode } from "react";
 import type { Components } from "react-markdown";
 import type { Plugin } from "unified";
 import type { ZodType } from "zod";
+import type { DocumentSource } from "@/hooks/use-document";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
 export type PluginCategory = "core" | "parser" | "render" | "editor";
@@ -37,11 +39,18 @@ export type RenderHookContext = {
 	utilityClasses?: Record<string, string>;
 };
 
+export type CoreRenderHookContext = {
+	document: DocumentSource;
+	target: "web" | "print";
+	className?: string;
+};
+
 export type PluginHooks = {
 	setup?: () => void;
 	parse?: Plugin<[], Root>;
 	process?: () => void;
 	render?: (context: RenderHookContext) => Partial<Components>;
+	coreRender?: (context: CoreRenderHookContext) => ReactNode;
 	editor?: () => void;
 };
 
