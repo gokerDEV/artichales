@@ -31,7 +31,7 @@ export function WebPreview({
 		<div className={cn("absolute inset-0 bg-background", className)}>
 			<ScrollArea className="h-full w-full">
 				<div
-					className="flex min-w-max justify-center p-4 transition-transform duration-200"
+					className="flex w-full justify-center p-4 transition-transform duration-200"
 					style={{
 						transform: `scale(${scale / 100})`,
 						transformOrigin: "top center",

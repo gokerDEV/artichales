@@ -26,7 +26,7 @@ describe("template merge behavior", () => {
 		const resolved = resolveTemplateFile(
 			JSON.stringify({
 				default: {
-					citationStyle: "author-year",
+					citationStyle: "mla",
 				},
 			}),
 		);

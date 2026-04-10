@@ -41,6 +41,7 @@ type WorkspaceUiState = {
 	activeFile?: string;
 	target?: PreviewTarget;
 	scale?: number;
+	panelSizes?: number[];
 };
 
 type UiDiagnostic = {
@@ -49,6 +50,19 @@ type UiDiagnostic = {
 	message: string;
 	details?: string;
 };
+
+function normalizePanelSizes(raw: unknown): number[] | null {
+	if (!Array.isArray(raw) || raw.length !== 3) return null;
+	const values = raw.map((value) =>
+		typeof value === "number" && Number.isFinite(value) ? value : Number.NaN,
+	);
+	if (values.some((value) => Number.isNaN(value))) return null;
+	const clamped = values.map((value) => Math.max(10, Math.min(80, value)));
+	const sum = clamped.reduce((acc, value) => acc + value, 0);
+	if (sum <= 0) return null;
+	const normalized = clamped.map((value) => (value / sum) * 100);
+	return normalized;
+}
 
 async function readAssetContent(file: File): Promise<string> {
 	const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
@@ -86,6 +100,9 @@ export function EditorPreviewSurface() {
 		offset: number;
 		nonce: number;
 	} | null>(null);
+	const [panelSizesOverride, setPanelSizesOverride] = React.useState<
+		number[] | null
+	>(null);
 	const pendingPdfExportRef = React.useRef(false);
 	const assetInputRef = React.useRef<HTMLInputElement | null>(null);
 	const previewShellRef = React.useRef<HTMLDivElement | null>(null);
@@ -111,6 +128,10 @@ export function EditorPreviewSurface() {
 					}
 					if (typeof state.scale === "number" && Number.isFinite(state.scale)) {
 						setScale(Math.max(50, Math.min(200, Math.round(state.scale))));
+					}
+					const normalizedPanelSizes = normalizePanelSizes(state.panelSizes);
+					if (normalizedPanelSizes) {
+						setPanelSizesOverride(normalizedPanelSizes);
 					}
 					if (
 						typeof state.activeFile === "string" &&
@@ -154,12 +175,20 @@ export function EditorPreviewSurface() {
 
 	React.useEffect(() => {
 		try {
-			const state: WorkspaceUiState = { activeFile, target, scale };
+			const state: WorkspaceUiState = {
+				activeFile,
+				target,
+				scale,
+				panelSizes:
+					panelSizesOverride && panelSizesOverride.length === 3
+						? panelSizesOverride
+						: undefined,
+			};
 			localStorage.setItem(WORKSPACE_UI_STATE_KEY, JSON.stringify(state));
 		} catch {
 			// Best-effort UI continuity state.
 		}
-	}, [activeFile, target, scale]);
+	}, [activeFile, panelSizesOverride, target, scale]);
 
 	const { settings, updateSettings, loading } = useSettings();
 	const docSource = useDocument(files, target);
@@ -287,13 +316,17 @@ export function EditorPreviewSurface() {
 		[activeFile],
 	);
 
-	const savedSizes = settings.ux?.editorPanelSizes || [15, 40, 45];
+	const savedSizes =
+		normalizePanelSizes(panelSizesOverride) ||
+		normalizePanelSizes(settings.ux?.editorPanelSizes) ||
+		[15, 40, 45];
 	const sizesRef = React.useRef<number[]>([...savedSizes]);
 
 	const handleResize = React.useCallback(
 		(index: number, size: unknown) => {
 			if (typeof size !== "number") return;
 			sizesRef.current[index] = size;
+			setPanelSizesOverride([...sizesRef.current]);
 			if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
 			layoutTimerRef.current = setTimeout(() => {
 				updateSettings({
@@ -454,9 +487,9 @@ export function EditorPreviewSurface() {
 
 	const runPdfExport = React.useCallback(() => {
 		globalThis.document.body.setAttribute("data-artichales-printing", "true");
-		window.requestAnimationFrame(() => {
+		window.setTimeout(() => {
 			window.print();
-		});
+		}, 60);
 	}, []);
 
 	const handleExportPdf = React.useCallback(() => {
@@ -617,27 +650,27 @@ export function EditorPreviewSurface() {
 				<ResizablePanel
 					defaultSize={savedSizes[1] || 40}
 					minSize={25}
-					className="flex flex-col border-border border-r bg-muted/30"
+					className="flex min-h-0 flex-col border-border border-r bg-muted/30"
 					onResize={(size) => handleResize(1, size)}
 				>
-						<MdxEditor
-							fileName={activeFile}
-							value={files[activeFile] || ""}
-							onChange={handleFileChange}
-							onBlur={() => {
-								workspaceRepository
-									.saveWorkspace(files)
-									.then(() => setSaveError(null))
-									.catch((error) => {
-										console.error("Failed to save workspace on blur:", error);
-										setSaveError(
-											"Failed to save workspace files. Your latest changes may not persist.",
-										);
-									});
-							}}
-							onCursorOffsetChange={(offset) => {
-								if (activeFile === CORE_ARTICLE_FILE) {
-									setEditorCursorOffset(offset);
+					<MdxEditor
+						fileName={activeFile}
+						value={files[activeFile] || ""}
+						onChange={handleFileChange}
+						onBlur={() => {
+							workspaceRepository
+								.saveWorkspace(files)
+								.then(() => setSaveError(null))
+								.catch((error) => {
+									console.error("Failed to save workspace on blur:", error);
+									setSaveError(
+										"Failed to save workspace files. Your latest changes may not persist.",
+									);
+								});
+						}}
+						onCursorOffsetChange={(offset) => {
+							if (activeFile === CORE_ARTICLE_FILE) {
+								setEditorCursorOffset(offset);
 							}
 						}}
 						jumpToOffset={editorJumpRequest?.offset ?? null}
@@ -646,9 +679,8 @@ export function EditorPreviewSurface() {
 						completions={editorCompletions}
 					/>
 				</ResizablePanel>
-				<div className="relative">
-					<ResizableHandle withHandle />
-					<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1">
+				<ResizableHandle withHandle className="z-20">
+					<div className="pointer-events-none absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
 						<Button
 							type="button"
 							size="icon"
@@ -656,6 +688,7 @@ export function EditorPreviewSurface() {
 							className="pointer-events-auto h-6 w-6"
 							title="Source to preview alignment"
 							aria-label="Source to preview alignment"
+							onPointerDown={(event) => event.stopPropagation()}
 							onClick={handleAlignSourceToPreview}
 						>
 							<ArrowRightToLine className="h-3.5 w-3.5" />
@@ -667,16 +700,17 @@ export function EditorPreviewSurface() {
 							className="pointer-events-auto h-6 w-6"
 							title="Preview to source alignment"
 							aria-label="Preview to source alignment"
+							onPointerDown={(event) => event.stopPropagation()}
 							onClick={handleAlignPreviewToSource}
 						>
 							<ArrowLeftToLine className="h-3.5 w-3.5" />
 						</Button>
 					</div>
-				</div>
+				</ResizableHandle>
 				<ResizablePanel
 					defaultSize={savedSizes[2] || 45}
 					minSize={30}
-					className="flex flex-col bg-muted/30"
+					className="flex min-h-0 flex-col bg-muted/30"
 					onResize={(size) => handleResize(2, size)}
 				>
 					<PreviewHeader

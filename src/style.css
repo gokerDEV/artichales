@@ -400,6 +400,23 @@
   }
 }
 
+.paged-print-content .pagedjs_pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.paged-print-content .pagedjs_page {
+  background: white;
+  box-shadow: 0 12px 24px rgb(0 0 0 / 0.08);
+  outline: 1px solid rgb(226 232 240);
+}
+
+.paged-print-content .pagedjs_pagebox {
+  overflow: hidden;
+}
+
 @media print {
   @page {
     margin: 0;
@@ -420,6 +437,11 @@
     visibility: visible !important;
   }
 
+  body[data-artichales-printing="true"] [data-artichales-pagedjs-preview="true"],
+  body[data-artichales-printing="true"] [data-artichales-pagedjs-preview="true"] * {
+    visibility: visible !important;
+  }
+
   body[data-artichales-printing="true"] [data-artichales-print-preview-shell="true"] {
     display: block !important;
     height: auto !important;
@@ -435,6 +457,7 @@
     box-shadow: none !important;
     margin: 0 auto !important;
     position: static !important;
+    width: auto !important;
     height: auto !important;
     min-height: 0 !important;
     overflow: visible !important;
@@ -443,6 +466,18 @@
   body[data-artichales-printing="true"] [data-artichales-print-page="true"] {
     break-after: page;
     page-break-after: always;
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  body[data-artichales-printing="true"] [data-artichales-pagedjs-preview="true"] .pagedjs_page {
+    break-after: page;
+    page-break-after: always;
+    box-shadow: none !important;
+    border: 0 !important;
+    margin: 0 auto !important;
   }
 
   body[data-artichales-printing="true"] [data-artichales-print-page="true"]:last-child {

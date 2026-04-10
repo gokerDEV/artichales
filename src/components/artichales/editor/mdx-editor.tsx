@@ -192,6 +192,9 @@ export function MdxEditor({
 		if (!host) return;
 
 		const previousFile = lastFileNameRef.current;
+		if (previousFile === fileName && viewRef.current) {
+			return;
+		}
 		if (previousFile !== fileName && viewRef.current) {
 			statesByFileRef.current.set(previousFile, viewRef.current.state);
 		}
@@ -265,7 +268,7 @@ export function MdxEditor({
 	}, []);
 
 	return (
-		<div className={cn("flex h-full flex-col gap-3", className)}>
+		<div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
 			<div className="flex h-[48px] w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
 				<Label
 					htmlFor={id}
@@ -274,11 +277,11 @@ export function MdxEditor({
 					{label}
 				</Label>
 			</div>
-			<div
-				id={id}
-				ref={editorHostRef}
-				className="h-full overflow-hidden rounded-none border-none bg-card font-mono text-sm [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-gutters]:border-border [&_.cm-gutters]:border-r [&_.cm-scroller]:font-mono"
-			/>
-		</div>
-	);
-}
+				<div
+					id={id}
+					ref={editorHostRef}
+					className="h-full min-h-0 overflow-hidden rounded-none border-none bg-card font-mono text-sm [&_.cm-content]:min-h-full [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-gutters]:border-border [&_.cm-gutters]:border-r [&_.cm-scroller]:h-full [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:font-mono"
+				/>
+			</div>
+		);
+	}

@@ -77,7 +77,9 @@ const DefaultTemplateSchema = z.object({
 		.optional(),
 	utilities: z.record(z.string(), z.string()).optional(),
 	referenceLabels: z.record(z.string(), z.string()).optional(),
-	citationStyle: z.enum(["numeric", "ieee", "apc"]).optional(),
+	citationStyle: z
+		.enum(["numeric", "ieee", "author-year", "apa"])
+		.optional(),
 });
 
 const PrintTemplateSchema = z.object({
@@ -202,7 +204,7 @@ export type TemplateFileResolved = {
 		};
 		utilities: Record<string, string>;
 		referenceLabels: Record<string, string>;
-		citationStyle: "numeric" | "ieee" | "apc";
+		citationStyle: "numeric" | "ieee" | "apc" | "author-year" | "apa";
 	};
 	print: {
 		page: {
