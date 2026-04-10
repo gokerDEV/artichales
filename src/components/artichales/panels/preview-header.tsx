@@ -1,4 +1,4 @@
-import { Download, FileArchive, Monitor, Printer } from "lucide-react";
+import { Download, FileArchive, Monitor, Printer, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -18,6 +18,7 @@ export type PreviewHeaderProps = {
 	onScaleChange: (scale: number) => void;
 	onExportPdf: () => void;
 	onDownloadSource: () => void;
+	onRefreshPreview?: () => void;
 };
 
 export function PreviewHeader({
@@ -27,6 +28,7 @@ export function PreviewHeader({
 	onScaleChange,
 	onExportPdf,
 	onDownloadSource,
+	onRefreshPreview,
 }: PreviewHeaderProps) {
 	return (
 		<div className="flex h-12 w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
@@ -53,6 +55,17 @@ export function PreviewHeader({
 			</div>
 
 			<div className="flex items-center gap-2">
+				{onRefreshPreview ? (
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 px-2 text-xs"
+						onClick={onRefreshPreview}
+					>
+						<RotateCw className="mr-1.5 h-3.5 w-3.5" />
+						Refresh
+					</Button>
+				) : null}
 				<Select
 					value={String(scale)}
 					onValueChange={(val) => onScaleChange(Number(val))}

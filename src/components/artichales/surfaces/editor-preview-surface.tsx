@@ -16,11 +16,13 @@ import { PrintPreview } from "@/components/artichales/preview/print/print-previe
 import { WebPreview } from "@/components/artichales/preview/web/web-preview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
@@ -64,6 +66,7 @@ const FILE_TREE_PANEL_ID = "workspace-file-tree";
 const EDITOR_PANEL_ID = "workspace-editor";
 const PREVIEW_PANEL_ID = "workspace-preview";
 const TEMPLATE_DIRECTIVE_NAMES = listTemplateDirectivePlugins();
+const WORKSPACE_PREVIEW_DEBOUNCE_KEY = "artichales:preview-debounce-enabled";
 
 function normalizePanelSizes(raw: unknown): number[] | null {
 	if (!Array.isArray(raw) || raw.length !== 3) return null;
@@ -127,9 +130,37 @@ export function EditorPreviewSurface() {
 	const isHydratingRef = React.useRef(true);
 	const workerRef = React.useRef<Worker | null>(null);
 	const pipelineRequestIdRef = React.useRef(0);
+	const latestFilesRef = React.useRef(files);
+	const [isPreviewDebounceEnabled, setIsPreviewDebounceEnabled] =
+		React.useState(true);
 
 	const setRawFiles = useWorkspaceStore((state) => state.setRawFiles);
 	const setPipelineResult = useWorkspaceStore((state) => state.setPipelineResult);
+
+	React.useEffect(() => {
+		latestFilesRef.current = files;
+	}, [files]);
+
+	React.useEffect(() => {
+		try {
+			const stored = localStorage.getItem(WORKSPACE_PREVIEW_DEBOUNCE_KEY);
+			if (stored === "0") setIsPreviewDebounceEnabled(false);
+			if (stored === "1") setIsPreviewDebounceEnabled(true);
+		} catch {
+			// ignore
+		}
+	}, []);
+
+	React.useEffect(() => {
+		try {
+			localStorage.setItem(
+				WORKSPACE_PREVIEW_DEBOUNCE_KEY,
+				isPreviewDebounceEnabled ? "1" : "0",
+			);
+		} catch {
+			// ignore
+		}
+	}, [isPreviewDebounceEnabled]);
 
 	React.useEffect(() => {
 		workerRef.current = new Worker(new URL("../../../workers/pipeline.worker", import.meta.url), { type: "module" });
@@ -149,23 +180,40 @@ export function EditorPreviewSurface() {
 		};
 	}, [setPipelineResult]);
 
+	const executePipeline = React.useCallback(
+		(filesSnapshot: Record<string, string>) => {
+			setRawFiles(filesSnapshot);
+			if (!workerRef.current) return;
+			const requestId = pipelineRequestIdRef.current + 1;
+			pipelineRequestIdRef.current = requestId;
+			useWorkspaceStore.setState({ isPipelineRunning: true });
+			workerRef.current.postMessage({
+				type: "EXECUTE_PIPELINE",
+				files: filesSnapshot,
+				target,
+				requestId,
+			});
+		},
+		[setRawFiles, target],
+	);
+
+	const triggerManualRender = React.useCallback(() => {
+		executePipeline(latestFilesRef.current);
+	}, [executePipeline]);
+
 	React.useEffect(() => {
-		const timeout = setTimeout(() => {
-			setRawFiles(files);
-			if (workerRef.current) {
-				const requestId = pipelineRequestIdRef.current + 1;
-				pipelineRequestIdRef.current = requestId;
-				useWorkspaceStore.setState({ isPipelineRunning: true });
-				workerRef.current.postMessage({
-					type: "EXECUTE_PIPELINE",
-					files,
-					target,
-					requestId,
-				});
-			}
+		if (!isPreviewDebounceEnabled) return;
+		const timeout = window.setTimeout(() => {
+			executePipeline(files);
 		}, 300);
-		return () => clearTimeout(timeout);
-	}, [files, target, setRawFiles]);
+		return () => window.clearTimeout(timeout);
+	}, [executePipeline, files, isPreviewDebounceEnabled]);
+
+	React.useEffect(() => {
+		if (isPreviewDebounceEnabled) return;
+		// In manual mode we still rerender on target changes (web/print) to avoid stale output.
+		executePipeline(latestFilesRef.current);
+	}, [executePipeline, isPreviewDebounceEnabled, target]);
 
 	React.useEffect(() => {
 		let cancelled = false;
@@ -802,11 +850,30 @@ export function EditorPreviewSurface() {
 						minSize={25}
 						className="flex min-h-0 flex-col overflow-hidden border-border border-r bg-muted/30"
 					>
+						<div className="flex h-12 shrink-0 items-center justify-between border-border border-b bg-card px-4">
+							<div className="truncate font-medium text-xs text-muted-foreground">
+								{activeFile}
+							</div>
+							<Label className="text-xs text-muted-foreground">
+								Live Preview
+								<Switch
+									size="sm"
+									checked={isPreviewDebounceEnabled}
+									onCheckedChange={(checked) =>
+										setIsPreviewDebounceEnabled(Boolean(checked))
+									}
+									aria-label="Debounced live preview"
+								/>
+							</Label>
+						</div>
 						<MdxEditor
 							fileName={activeFile}
 							value={files[activeFile] || ""}
 							onChange={handleFileChange}
 							onBlur={() => {
+								if (!isPreviewDebounceEnabled) {
+									triggerManualRender();
+								}
 								workspaceRepository
 									.saveWorkspace(files)
 									.then(() => setSaveError(null))
@@ -869,6 +936,7 @@ export function EditorPreviewSurface() {
 							onScaleChange={setScale}
 							onExportPdf={handleExportPdf}
 							onDownloadSource={handleDownloadSource}
+							onRefreshPreview={triggerManualRender}
 						/>
 						<div
 							ref={previewShellRef}
