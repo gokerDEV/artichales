@@ -1,5 +1,5 @@
-import * as React from "react";
 import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
+import * as React from "react";
 import { toast } from "sonner";
 import { MdxEditor } from "@/components/artichales/editor/mdx-editor";
 import { FileTree } from "@/components/artichales/panels/file-tree";
@@ -21,17 +21,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
 import {
+	collectAlignmentHeadings,
+	getHeadingIdForSourceOffset,
+	getSourceOffsetForHeadingId,
+} from "@/lib/alignment";
+import {
 	CORE_ARTICLE_FILE,
 	isCoreWorkspaceFile,
 	WORKSPACE_UI_STATE_KEY,
 } from "@/lib/workspace";
 import { DEFAULT_WORKSPACE_FILES } from "@/lib/workspace-default-files";
 import { createZipFromWorkspaceFiles } from "@/lib/zip";
-import {
-	collectAlignmentHeadings,
-	getHeadingIdForSourceOffset,
-	getSourceOffsetForHeadingId,
-} from "@/lib/alignment";
 import {
 	validateWorkspaceAsset,
 	workspaceRepository,
@@ -51,6 +51,10 @@ type UiDiagnostic = {
 	details?: string;
 };
 
+const FILE_TREE_PANEL_ID = "workspace-file-tree";
+const EDITOR_PANEL_ID = "workspace-editor";
+const PREVIEW_PANEL_ID = "workspace-preview";
+
 function normalizePanelSizes(raw: unknown): number[] | null {
 	if (!Array.isArray(raw) || raw.length !== 3) return null;
 	const values = raw.map((value) =>
@@ -62,6 +66,16 @@ function normalizePanelSizes(raw: unknown): number[] | null {
 	if (sum <= 0) return null;
 	const normalized = clamped.map((value) => (value / sum) * 100);
 	return normalized;
+}
+
+function normalizePanelLayout(raw: unknown): number[] | null {
+	if (typeof raw !== "object" || raw === null) return null;
+	const layout = raw as Record<string, unknown>;
+	return normalizePanelSizes([
+		layout[FILE_TREE_PANEL_ID],
+		layout[EDITOR_PANEL_ID],
+		layout[PREVIEW_PANEL_ID],
+	]);
 }
 
 async function readAssetContent(file: File): Promise<string> {
@@ -77,13 +91,6 @@ async function readAssetContent(file: File): Promise<string> {
 		reader.readAsDataURL(file);
 	});
 }
-
-const TypedResizableGroup = ResizablePanelGroup as unknown as React.FC<
-	React.ComponentProps<typeof ResizablePanelGroup> & {
-		direction: "horizontal" | "vertical";
-		onLayout?: (sizes: number[]) => void;
-	}
->;
 
 export function EditorPreviewSurface() {
 	const [files, setFiles] = React.useState<Record<string, string>>(
@@ -174,6 +181,7 @@ export function EditorPreviewSurface() {
 	}, [files]);
 
 	React.useEffect(() => {
+		if (!hasLoadedWorkspaceRef.current || isHydratingRef.current) return;
 		try {
 			const state: WorkspaceUiState = {
 				activeFile,
@@ -316,21 +324,26 @@ export function EditorPreviewSurface() {
 		[activeFile],
 	);
 
-	const savedSizes =
-		normalizePanelSizes(panelSizesOverride) ||
-		normalizePanelSizes(settings.ux?.editorPanelSizes) ||
-		[15, 40, 45];
-	const sizesRef = React.useRef<number[]>([...savedSizes]);
+	const savedSizes = normalizePanelSizes(panelSizesOverride) ||
+		normalizePanelSizes(settings.ux?.editorPanelSizes) || [15, 40, 45];
+	const defaultPanelLayout = React.useMemo(
+		() => ({
+			[FILE_TREE_PANEL_ID]: savedSizes[0] || 15,
+			[EDITOR_PANEL_ID]: savedSizes[1] || 40,
+			[PREVIEW_PANEL_ID]: savedSizes[2] || 45,
+		}),
+		[savedSizes],
+	);
 
-	const handleResize = React.useCallback(
-		(index: number, size: unknown) => {
-			if (typeof size !== "number") return;
-			sizesRef.current[index] = size;
-			setPanelSizesOverride([...sizesRef.current]);
+	const handleLayoutChanged = React.useCallback(
+		(layout: Record<string, number>) => {
+			const normalized = normalizePanelLayout(layout);
+			if (!normalized) return;
+			setPanelSizesOverride(normalized);
 			if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
 			layoutTimerRef.current = setTimeout(() => {
 				updateSettings({
-					ux: { ...settings.ux, editorPanelSizes: [...sizesRef.current] },
+					ux: { ...settings.ux, editorPanelSizes: normalized },
 				});
 			}, 300);
 		},
@@ -473,7 +486,10 @@ export function EditorPreviewSurface() {
 		const headingId = firstVisible.dataset.acHeadingId;
 		if (!headingId) return;
 
-		const sourceOffset = getSourceOffsetForHeadingId(articleHeadings, headingId);
+		const sourceOffset = getSourceOffsetForHeadingId(
+			articleHeadings,
+			headingId,
+		);
 		if (sourceOffset === null) {
 			toast.error("No mapped source block found for current preview heading.");
 			return;
@@ -567,7 +583,7 @@ export function EditorPreviewSurface() {
 
 	if (loading || workspaceLoading) {
 		return (
-			<div className="flex h-[calc(100vh-4rem)] items-center justify-center text-muted-foreground text-sm">
+			<div className="flex h-full min-h-0 items-center justify-center text-muted-foreground text-sm">
 				Loading workspace...
 			</div>
 		);
@@ -582,242 +598,249 @@ export function EditorPreviewSurface() {
 				citeClassName: docSource.template.utilities?.cite || "cite",
 			}}
 		>
-			<TypedResizableGroup
-				direction="horizontal"
-				className="h-[calc(100vh-4rem)] overflow-hidden"
-			>
-				<ResizablePanel
-					defaultSize={savedSizes[0] || 15}
-					minSize={10}
-					className="flex flex-col p-2"
-					onResize={(size) => handleResize(0, size)}
+			<div className="relative h-full min-h-0">
+				<ResizablePanelGroup
+					orientation="horizontal"
+					className="h-full min-h-0 overflow-hidden"
+					defaultLayout={defaultPanelLayout}
+					onLayoutChanged={handleLayoutChanged}
 				>
-					<input
-						ref={assetInputRef}
-						type="file"
-						multiple
-						accept=".json,.svg,.png,.jpg,.jpeg,.gif"
-						className="hidden"
-						onChange={handleAssetInputChange}
-					/>
-					{isFileSwitchLocked ? (
-						<div className="mb-2 rounded-md border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
-							{blockingReason}
-						</div>
-					) : null}
-					{saveError ? (
-						<Alert variant="destructive" className="mb-2">
-							<AlertTitle>Save failed</AlertTitle>
-							<AlertDescription>{saveError}</AlertDescription>
-						</Alert>
-					) : null}
-					<div className="mb-2 flex items-center gap-2">
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							className="h-7 px-2 text-xs"
-							onClick={handleAddAssetsClick}
-						>
-							Add Asset
-						</Button>
-						<span className="text-[11px] text-muted-foreground">
-							Drop files here
-						</span>
-					</div>
-					<section
-						aria-label="Workspace assets drop zone"
-						className={
-							isDraggingAssets
-								? "rounded-md border border-primary/50 border-dashed bg-primary/5"
-								: "rounded-md border border-transparent"
-						}
-						onDragOver={handleTreeDragOver}
-						onDragLeave={handleTreeDragLeave}
-						onDrop={handleTreeDrop}
+					<ResizablePanel
+						id={FILE_TREE_PANEL_ID}
+						defaultSize={savedSizes[0] || 15}
+						minSize={10}
+						className="flex min-h-0 flex-col overflow-hidden p-2"
 					>
-						<FileTree
-							activeFile={activeFile}
-							files={Object.keys(files)}
-							onSelectFile={handleSelectFile}
-							disableFileSwitch={isFileSwitchLocked}
-							onRenameAsset={handleRenameAsset}
-							onDeleteAsset={handleDeleteAsset}
+						<input
+							ref={assetInputRef}
+							type="file"
+							multiple
+							accept=".json,.svg,.png,.jpg,.jpeg,.gif"
+							className="hidden"
+							onChange={handleAssetInputChange}
 						/>
-					</section>
-				</ResizablePanel>
-				<ResizableHandle withHandle />
-				<ResizablePanel
-					defaultSize={savedSizes[1] || 40}
-					minSize={25}
-					className="flex min-h-0 flex-col border-border border-r bg-muted/30"
-					onResize={(size) => handleResize(1, size)}
-				>
-					<MdxEditor
-						fileName={activeFile}
-						value={files[activeFile] || ""}
-						onChange={handleFileChange}
-						onBlur={() => {
-							workspaceRepository
-								.saveWorkspace(files)
-								.then(() => setSaveError(null))
-								.catch((error) => {
-									console.error("Failed to save workspace on blur:", error);
-									setSaveError(
-										"Failed to save workspace files. Your latest changes may not persist.",
-									);
-								});
-						}}
-						onCursorOffsetChange={(offset) => {
-							if (activeFile === CORE_ARTICLE_FILE) {
-								setEditorCursorOffset(offset);
-							}
-						}}
-						jumpToOffset={editorJumpRequest?.offset ?? null}
-						jumpToOffsetSignal={editorJumpRequest?.nonce ?? 0}
-						label={activeFile}
-						completions={editorCompletions}
-					/>
-				</ResizablePanel>
-				<ResizableHandle withHandle className="z-20">
-					<div className="pointer-events-none absolute top-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
-						<Button
-							type="button"
-							size="icon"
-							variant="secondary"
-							className="pointer-events-auto h-6 w-6"
-							title="Source to preview alignment"
-							aria-label="Source to preview alignment"
-							onPointerDown={(event) => event.stopPropagation()}
-							onClick={handleAlignSourceToPreview}
-						>
-							<ArrowRightToLine className="h-3.5 w-3.5" />
-						</Button>
-						<Button
-							type="button"
-							size="icon"
-							variant="secondary"
-							className="pointer-events-auto h-6 w-6"
-							title="Preview to source alignment"
-							aria-label="Preview to source alignment"
-							onPointerDown={(event) => event.stopPropagation()}
-							onClick={handleAlignPreviewToSource}
-						>
-							<ArrowLeftToLine className="h-3.5 w-3.5" />
-						</Button>
-					</div>
-				</ResizableHandle>
-				<ResizablePanel
-					defaultSize={savedSizes[2] || 45}
-					minSize={30}
-					className="flex min-h-0 flex-col bg-muted/30"
-					onResize={(size) => handleResize(2, size)}
-				>
-					<PreviewHeader
-						target={target}
-						onTargetChange={setTarget}
-						scale={scale}
-						onScaleChange={setScale}
-						onExportPdf={handleExportPdf}
-						onDownloadSource={handleDownloadSource}
-					/>
-					<div ref={previewShellRef} className="relative grow overflow-hidden">
-						{hasDiagnostics ? (
-							<div className="border-border border-b bg-background p-2">
-								<Tabs defaultValue={diagnosticsInitialTab}>
-									<TabsList className="h-8">
-										<TabsTrigger value="errors" className="px-2 text-xs">
-											Errors ({diagnostics.errors.length})
-										</TabsTrigger>
-										<TabsTrigger value="warnings" className="px-2 text-xs">
-											Warnings ({diagnostics.warnings.length})
-										</TabsTrigger>
-										<TabsTrigger value="info" className="px-2 text-xs">
-											Info ({diagnostics.info.length})
-										</TabsTrigger>
-									</TabsList>
-									<TabsContent
-										value="errors"
-										className="mt-2 max-h-28 overflow-auto"
-									>
-										{diagnostics.errors.length === 0 ? (
-											<p className="px-1 text-muted-foreground text-xs">
-												No errors.
-											</p>
-										) : (
-											<ul className="space-y-1">
-												{diagnostics.errors.map((diag, index) => (
-													<li
-														key={`error-${diag.source}-${diag.message}-${index}`}
-														className="rounded border border-red-300 bg-red-50 px-2 py-1 text-red-700 text-xs"
-													>
-														[{diag.source}] {diag.message}
-														{diag.details ? ` ${diag.details}` : ""}
-													</li>
-												))}
-											</ul>
-										)}
-									</TabsContent>
-									<TabsContent
-										value="warnings"
-										className="mt-2 max-h-28 overflow-auto"
-									>
-										{diagnostics.warnings.length === 0 ? (
-											<p className="px-1 text-muted-foreground text-xs">
-												No warnings.
-											</p>
-										) : (
-											<ul className="space-y-1">
-												{diagnostics.warnings.map((diag, index) => (
-													<li
-														key={`warning-${diag.source}-${diag.message}-${index}`}
-														className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-700 text-xs"
-													>
-														[{diag.source}] {diag.message}
-														{diag.details ? ` ${diag.details}` : ""}
-													</li>
-												))}
-											</ul>
-										)}
-									</TabsContent>
-									<TabsContent
-										value="info"
-										className="mt-2 max-h-28 overflow-auto"
-									>
-										{diagnostics.info.length === 0 ? (
-											<p className="px-1 text-muted-foreground text-xs">
-												No info diagnostics.
-											</p>
-										) : (
-											<ul className="space-y-1">
-												{diagnostics.info.map((diag, index) => (
-													<li
-														key={`info-${diag.source}-${diag.message}-${index}`}
-														className="rounded border border-sky-300 bg-sky-50 px-2 py-1 text-sky-700 text-xs"
-													>
-														[{diag.source}] {diag.message}
-														{diag.details ? ` ${diag.details}` : ""}
-													</li>
-												))}
-											</ul>
-										)}
-									</TabsContent>
-								</Tabs>
+						{isFileSwitchLocked ? (
+							<div className="mb-2 rounded-md border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
+								{blockingReason}
 							</div>
 						) : null}
-						{docSource.hasBlockingError ? (
-							<div className="flex h-full items-center justify-center p-6 text-center text-muted-foreground text-sm">
-								Blocking diagnostics must be fixed before preview rendering can
-								continue.
-							</div>
-						) : target === "web" ? (
-							<WebPreview document={docSource} scale={scale} />
-						) : (
-							<PrintPreview document={docSource} scale={scale} />
-						)}
-					</div>
-				</ResizablePanel>
-			</TypedResizableGroup>
+						{saveError ? (
+							<Alert variant="destructive" className="mb-2">
+								<AlertTitle>Save failed</AlertTitle>
+								<AlertDescription>{saveError}</AlertDescription>
+							</Alert>
+						) : null}
+						<div className="mb-2 flex items-center gap-2">
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="h-7 px-2 text-xs"
+								onClick={handleAddAssetsClick}
+							>
+								Add Asset
+							</Button>
+							<span className="text-[11px] text-muted-foreground">
+								Drop files here
+							</span>
+						</div>
+						<section
+							aria-label="Workspace assets drop zone"
+							className={
+								isDraggingAssets
+									? "min-h-0 flex-1 overflow-y-auto rounded-md border border-primary/50 border-dashed bg-primary/5"
+									: "min-h-0 flex-1 overflow-y-auto rounded-md border border-transparent"
+							}
+							onDragOver={handleTreeDragOver}
+							onDragLeave={handleTreeDragLeave}
+							onDrop={handleTreeDrop}
+						>
+							<FileTree
+								activeFile={activeFile}
+								files={Object.keys(files)}
+								onSelectFile={handleSelectFile}
+								disableFileSwitch={isFileSwitchLocked}
+								onRenameAsset={handleRenameAsset}
+								onDeleteAsset={handleDeleteAsset}
+							/>
+						</section>
+					</ResizablePanel>
+					<ResizableHandle withHandle />
+					<ResizablePanel
+						id={EDITOR_PANEL_ID}
+						defaultSize={savedSizes[1] || 40}
+						minSize={25}
+						className="flex min-h-0 flex-col overflow-hidden border-border border-r bg-muted/30"
+					>
+						<MdxEditor
+							fileName={activeFile}
+							value={files[activeFile] || ""}
+							onChange={handleFileChange}
+							onBlur={() => {
+								workspaceRepository
+									.saveWorkspace(files)
+									.then(() => setSaveError(null))
+									.catch((error) => {
+										console.error("Failed to save workspace on blur:", error);
+										setSaveError(
+											"Failed to save workspace files. Your latest changes may not persist.",
+										);
+									});
+							}}
+							onCursorOffsetChange={(offset) => {
+								if (activeFile === CORE_ARTICLE_FILE) {
+									setEditorCursorOffset(offset);
+								}
+							}}
+							jumpToOffset={editorJumpRequest?.offset ?? null}
+							jumpToOffsetSignal={editorJumpRequest?.nonce ?? 0}
+							label={activeFile}
+							completions={editorCompletions}
+						/>
+					</ResizablePanel>
+					<ResizableHandle withHandle className="z-10">
+						<div className="pointer-events-none absolute -left-3 -mt-36 flex w-6 flex-col gap-2">
+							<Button
+								type="button"
+								size="icon"
+								variant="secondary"
+								className="pointer-events-auto h-6 w-6"
+								title="Source to preview alignment"
+								aria-label="Source to preview alignment"
+								onPointerDown={(event) => event.stopPropagation()}
+								onClick={handleAlignSourceToPreview}
+							>
+								<ArrowRightToLine className="h-3.5 w-3.5" />
+							</Button>
+							<Button
+								type="button"
+								size="icon"
+								variant="secondary"
+								className="pointer-events-auto h-6 w-6"
+								title="Preview to source alignment"
+								aria-label="Preview to source alignment"
+								onPointerDown={(event) => event.stopPropagation()}
+								onClick={handleAlignPreviewToSource}
+							>
+								<ArrowLeftToLine className="h-3.5 w-3.5" />
+							</Button>
+						</div>
+					</ResizableHandle>
+					<ResizablePanel
+						id={PREVIEW_PANEL_ID}
+						defaultSize={savedSizes[2] || 45}
+						minSize={30}
+						className="flex min-h-0 flex-col overflow-hidden bg-muted/30"
+					>
+						<PreviewHeader
+							target={target}
+							onTargetChange={setTarget}
+							scale={scale}
+							onScaleChange={setScale}
+							onExportPdf={handleExportPdf}
+							onDownloadSource={handleDownloadSource}
+						/>
+						<div
+							ref={previewShellRef}
+							className="relative grow overflow-hidden"
+						>
+							{hasDiagnostics ? (
+								<div className="border-border border-b bg-background p-2">
+									<Tabs defaultValue={diagnosticsInitialTab}>
+										<TabsList className="h-8">
+											<TabsTrigger value="errors" className="px-2 text-xs">
+												Errors ({diagnostics.errors.length})
+											</TabsTrigger>
+											<TabsTrigger value="warnings" className="px-2 text-xs">
+												Warnings ({diagnostics.warnings.length})
+											</TabsTrigger>
+											<TabsTrigger value="info" className="px-2 text-xs">
+												Info ({diagnostics.info.length})
+											</TabsTrigger>
+										</TabsList>
+										<TabsContent
+											value="errors"
+											className="mt-2 max-h-28 overflow-auto"
+										>
+											{diagnostics.errors.length === 0 ? (
+												<p className="px-1 text-muted-foreground text-xs">
+													No errors.
+												</p>
+											) : (
+												<ul className="space-y-1">
+													{diagnostics.errors.map((diag, index) => (
+														<li
+															key={`error-${diag.source}-${diag.message}-${index}`}
+															className="rounded border border-red-300 bg-red-50 px-2 py-1 text-red-700 text-xs"
+														>
+															[{diag.source}] {diag.message}
+															{diag.details ? ` ${diag.details}` : ""}
+														</li>
+													))}
+												</ul>
+											)}
+										</TabsContent>
+										<TabsContent
+											value="warnings"
+											className="mt-2 max-h-28 overflow-auto"
+										>
+											{diagnostics.warnings.length === 0 ? (
+												<p className="px-1 text-muted-foreground text-xs">
+													No warnings.
+												</p>
+											) : (
+												<ul className="space-y-1">
+													{diagnostics.warnings.map((diag, index) => (
+														<li
+															key={`warning-${diag.source}-${diag.message}-${index}`}
+															className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-700 text-xs"
+														>
+															[{diag.source}] {diag.message}
+															{diag.details ? ` ${diag.details}` : ""}
+														</li>
+													))}
+												</ul>
+											)}
+										</TabsContent>
+										<TabsContent
+											value="info"
+											className="mt-2 max-h-28 overflow-auto"
+										>
+											{diagnostics.info.length === 0 ? (
+												<p className="px-1 text-muted-foreground text-xs">
+													No info diagnostics.
+												</p>
+											) : (
+												<ul className="space-y-1">
+													{diagnostics.info.map((diag, index) => (
+														<li
+															key={`info-${diag.source}-${diag.message}-${index}`}
+															className="rounded border border-sky-300 bg-sky-50 px-2 py-1 text-sky-700 text-xs"
+														>
+															[{diag.source}] {diag.message}
+															{diag.details ? ` ${diag.details}` : ""}
+														</li>
+													))}
+												</ul>
+											)}
+										</TabsContent>
+									</Tabs>
+								</div>
+							) : null}
+							{docSource.hasBlockingError ? (
+								<div className="flex h-full items-center justify-center p-6 text-center text-muted-foreground text-sm">
+									Blocking diagnostics must be fixed before preview rendering
+									can continue.
+								</div>
+							) : target === "web" ? (
+								<WebPreview document={docSource} scale={scale} />
+							) : (
+								<PrintPreview document={docSource} scale={scale} />
+							)}
+						</div>
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			</div>
 		</CitationContext.Provider>
 	);
 }
