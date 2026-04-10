@@ -117,11 +117,25 @@ export function PrintPreview({
 		const runPagedPreview = async () => {
 			const sourceElement = pagedSourceRef.current;
 			const previewElement = pagedPreviewRef.current;
-			if (!sourceElement || !previewElement) return;
+			const previewShell = previewElement?.parentElement;
+			if (!sourceElement || !previewElement || !previewShell) return;
 			setPagedStatus("loading");
 			setPagedError(null);
 			setPagedWasTruncated(false);
-			previewElement.innerHTML = "";
+			const viewport = previewElement.closest(
+				"[data-radix-scroll-area-viewport]",
+			) as HTMLElement | null;
+			const previousScrollTop = viewport?.scrollTop ?? 0;
+			const previousScrollHeight = viewport?.scrollHeight ?? 0;
+			const stagingElement = globalThis.document.createElement("div");
+			stagingElement.className = "paged-print-content w-full";
+			stagingElement.setAttribute("aria-hidden", "true");
+			stagingElement.style.position = "absolute";
+			stagingElement.style.left = "-200vw";
+			stagingElement.style.top = "0";
+			stagingElement.style.visibility = "hidden";
+			stagingElement.style.pointerEvents = "none";
+			previewShell.appendChild(stagingElement);
 
 			try {
 				const pagedModule = await import("pagedjs");
@@ -131,18 +145,19 @@ export function PrintPreview({
 				}
 
 				const previewer = createPreviewer();
-				await previewer.preview(sourceElement.innerHTML, [], previewElement);
+				await previewer.preview(sourceElement.innerHTML, [], stagingElement);
 
 				if (
 					cancelled ||
 					currentSequence !== renderSequenceRef.current ||
 					!pagedPreviewRef.current
 				) {
+					stagingElement.remove();
 					return;
 				}
 
 				const renderedPages = Array.from(
-					previewElement.querySelectorAll(".pagedjs_page"),
+					stagingElement.querySelectorAll(".pagedjs_page"),
 				);
 				if (renderedPages.length > PAGE_LIMIT) {
 					for (const page of renderedPages.slice(PAGE_LIMIT)) {
@@ -150,10 +165,28 @@ export function PrintPreview({
 					}
 					setPagedWasTruncated(true);
 				}
+				const nextNodes = Array.from(stagingElement.childNodes);
+				pagedPreviewRef.current.replaceChildren(...nextNodes);
+				stagingElement.remove();
+				if (viewport) {
+					window.requestAnimationFrame(() => {
+						const nextScrollHeight = viewport.scrollHeight;
+						if (previousScrollHeight > 0 && nextScrollHeight > 0) {
+							viewport.scrollTop =
+								(previousScrollTop / previousScrollHeight) * nextScrollHeight;
+							return;
+						}
+						viewport.scrollTop = previousScrollTop;
+					});
+				}
 				setPagedStatus("ready");
 			} catch (error) {
 				console.error("Paged.js preview failed:", error);
+				stagingElement.remove();
 				if (cancelled || currentSequence !== renderSequenceRef.current) return;
+				if (viewport) {
+					viewport.scrollTop = previousScrollTop;
+				}
 				setPagedStatus("error");
 				setPagedError(
 					"Paged.js preview failed. Check browser console for details.",
@@ -161,8 +194,11 @@ export function PrintPreview({
 			}
 		};
 
-		runPagedPreview();
+		const timeout = window.setTimeout(() => {
+			void runPagedPreview();
+		}, 280);
 		return () => {
+			window.clearTimeout(timeout);
 			cancelled = true;
 		};
 	}, [pagedPreviewKey]);
