@@ -21,6 +21,9 @@ export type MdxEditorProps = {
 	fileName: string;
 	value: string;
 	onChange: (value: string) => void;
+	onCursorOffsetChange?: (offset: number) => void;
+	jumpToOffset?: number | null;
+	jumpToOffsetSignal?: number;
 	className?: string;
 	label?: string;
 	completions?: EditorCompletions;
@@ -106,6 +109,9 @@ function createEditorState(
 	content: string,
 	fileKind: EditorFileKind,
 	onChangeRef: React.MutableRefObject<(value: string) => void>,
+	onCursorOffsetChangeRef: React.MutableRefObject<
+		((offset: number) => void) | undefined
+	>,
 	completions: EditorCompletions,
 ): EditorState {
 	const languageByFileKind = {
@@ -135,6 +141,9 @@ function createEditorState(
 				if (update.docChanged) {
 					onChangeRef.current(update.state.doc.toString());
 				}
+				if (update.selectionSet || update.docChanged) {
+					onCursorOffsetChangeRef.current?.(update.state.selection.main.head);
+				}
 			}),
 		],
 	});
@@ -144,6 +153,9 @@ export function MdxEditor({
 	fileName,
 	value,
 	onChange,
+	onCursorOffsetChange,
+	jumpToOffset = null,
+	jumpToOffsetSignal = 0,
 	className,
 	label = "Source",
 	completions = { bibKeys: [], referenceSelectors: [] },
@@ -154,10 +166,15 @@ export function MdxEditor({
 	const statesByFileRef = React.useRef(new Map<string, EditorState>());
 	const lastFileNameRef = React.useRef(fileName);
 	const onChangeRef = React.useRef(onChange);
+	const onCursorOffsetChangeRef = React.useRef(onCursorOffsetChange);
 
 	React.useEffect(() => {
 		onChangeRef.current = onChange;
 	}, [onChange]);
+
+	React.useEffect(() => {
+		onCursorOffsetChangeRef.current = onCursorOffsetChange;
+	}, [onCursorOffsetChange]);
 
 	React.useEffect(() => {
 		const host = editorHostRef.current;
@@ -173,7 +190,13 @@ export function MdxEditor({
 		const existingState = statesByFileRef.current.get(fileName);
 		const nextState =
 			existingState ||
-			createEditorState(value, fileKind, onChangeRef, completions);
+			createEditorState(
+				value,
+				fileKind,
+				onChangeRef,
+				onCursorOffsetChangeRef,
+				completions,
+			);
 
 		if (!viewRef.current) {
 			const view = new EditorView({
@@ -182,11 +205,13 @@ export function MdxEditor({
 			});
 			viewRef.current = view;
 			statesByFileRef.current.set(fileName, nextState);
+			onCursorOffsetChangeRef.current?.(view.state.selection.main.head);
 			return;
 		}
 
 		viewRef.current.setState(nextState);
 		statesByFileRef.current.set(fileName, nextState);
+		onCursorOffsetChangeRef.current?.(viewRef.current.state.selection.main.head);
 	}, [completions, fileName, value]);
 
 	React.useEffect(() => {
@@ -198,6 +223,21 @@ export function MdxEditor({
 			changes: { from: 0, to: currentView.state.doc.length, insert: value },
 		});
 	}, [value]);
+
+	React.useEffect(() => {
+		if (typeof jumpToOffset !== "number") return;
+		const view = viewRef.current;
+		if (!view) return;
+		const clampedOffset = Math.max(
+			0,
+			Math.min(jumpToOffset, view.state.doc.length),
+		);
+		view.dispatch({
+			selection: { anchor: clampedOffset },
+			effects: EditorView.scrollIntoView(clampedOffset, { y: "center" }),
+		});
+		view.focus();
+	}, [jumpToOffset, jumpToOffsetSignal]);
 
 	React.useEffect(() => {
 		return () => {

@@ -1,12 +1,16 @@
 import * as React from "react";
+import type { Root } from "mdast";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
+import type { Plugin } from "unified";
+import { visit } from "unist-util-visit";
 import {
 	getParserRemarkPluginsFromExecutionState,
 	resolvePluginExecutionState,
 } from "@/components/artichales/plugins/plugin.runtime";
+import { buildAlignmentHeadingId } from "@/lib/alignment";
 import "katex/dist/katex.min.css";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
@@ -36,6 +40,46 @@ type MarkdownContentProps = {
 	};
 	referenceLabels?: Record<string, string>;
 	utilityClasses?: Record<string, string>;
+};
+
+type UnknownRecord = Record<string, unknown>;
+
+function extractNodeText(node: unknown): string {
+	if (!node || typeof node !== "object") return "";
+	const record = node as UnknownRecord;
+	const ownValue = typeof record.value === "string" ? record.value : "";
+	const children = Array.isArray(record.children) ? record.children : [];
+	return [ownValue, ...children.map((child) => extractNodeText(child))]
+		.join("")
+		.trim();
+}
+
+const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
+	return (tree) => {
+		const slugCounts = new Map<string, number>();
+		visit(tree, "heading", (node) => {
+			const heading = node as unknown as UnknownRecord;
+			const text = extractNodeText(heading) || "Heading";
+			const slug = text
+				.toLowerCase()
+				.trim()
+				.replace(/[^a-z0-9]+/g, "-")
+				.replace(/^-+|-+$/g, "") || "heading";
+			const occurrence = (slugCounts.get(slug) ?? 0) + 1;
+			slugCounts.set(slug, occurrence);
+			const headingId = buildAlignmentHeadingId(text, occurrence);
+
+			const data = (heading.data as UnknownRecord | undefined) || {};
+			const hProperties = (data.hProperties as UnknownRecord | undefined) || {};
+			heading.data = {
+				...data,
+				hProperties: {
+					...hProperties,
+					"data-ac-heading-id": headingId,
+				},
+			};
+		});
+	};
 };
 
 export function MarkdownContent({
@@ -148,7 +192,12 @@ export function MarkdownContent({
 
 	return (
 		<ReactMarkdown
-			remarkPlugins={[...parserPlugins, remarkGfm, remarkDirective]}
+			remarkPlugins={[
+				...parserPlugins,
+				remarkGfm,
+				remarkDirective,
+				remarkAlignmentHeadingAnchors,
+			]}
 			rehypePlugins={[rehypeKatex]}
 			components={markdownComponents}
 		>

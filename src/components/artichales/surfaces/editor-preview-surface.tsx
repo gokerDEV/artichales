@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
 import { toast } from "sonner";
 import { MdxEditor } from "@/components/artichales/editor/mdx-editor";
 import { FileTree } from "@/components/artichales/panels/file-tree";
@@ -26,6 +27,11 @@ import {
 } from "@/lib/workspace";
 import { DEFAULT_WORKSPACE_FILES } from "@/lib/workspace-default-files";
 import { createZipFromWorkspaceFiles } from "@/lib/zip";
+import {
+	collectAlignmentHeadings,
+	getHeadingIdForSourceOffset,
+	getSourceOffsetForHeadingId,
+} from "@/lib/alignment";
 import {
 	validateWorkspaceAsset,
 	workspaceRepository,
@@ -75,8 +81,14 @@ export function EditorPreviewSurface() {
 	const [workspaceLoading, setWorkspaceLoading] = React.useState(true);
 	const [saveError, setSaveError] = React.useState<string | null>(null);
 	const [isDraggingAssets, setIsDraggingAssets] = React.useState(false);
+	const [editorCursorOffset, setEditorCursorOffset] = React.useState(0);
+	const [editorJumpRequest, setEditorJumpRequest] = React.useState<{
+		offset: number;
+		nonce: number;
+	} | null>(null);
 	const pendingPdfExportRef = React.useRef(false);
 	const assetInputRef = React.useRef<HTMLInputElement | null>(null);
+	const previewShellRef = React.useRef<HTMLDivElement | null>(null);
 	const hasLoadedWorkspaceRef = React.useRef(false);
 	const isHydratingRef = React.useRef(true);
 
@@ -160,6 +172,10 @@ export function EditorPreviewSurface() {
 			setFiles((prev) => ({ ...prev, [activeFile]: content }));
 		},
 		[activeFile],
+	);
+	const articleHeadings = React.useMemo(
+		() => collectAlignmentHeadings(files[CORE_ARTICLE_FILE] || ""),
+		[files],
 	);
 
 	const maxAssetFileSize = docSource.template.assetMaxFileSize;
@@ -374,6 +390,66 @@ export function EditorPreviewSurface() {
 		[activeFile, isFileSwitchLocked],
 	);
 
+	const handleAlignSourceToPreview = React.useCallback(() => {
+		if (activeFile !== CORE_ARTICLE_FILE) {
+			setActiveFile(CORE_ARTICLE_FILE);
+		}
+		const headingId = getHeadingIdForSourceOffset(
+			articleHeadings,
+			editorCursorOffset,
+		);
+		if (!headingId) {
+			toast.error("No mapped source heading found for alignment.");
+			return;
+		}
+		const previewShell = previewShellRef.current;
+		if (!previewShell) return;
+		const headingElement = previewShell.querySelector<HTMLElement>(
+			`[data-ac-heading-id="${headingId}"]`,
+		);
+		if (!headingElement) {
+			toast.error("No mapped preview block found for current source heading.");
+			return;
+		}
+		headingElement.scrollIntoView({ behavior: "smooth", block: "center" });
+	}, [activeFile, articleHeadings, editorCursorOffset]);
+
+	const handleAlignPreviewToSource = React.useCallback(() => {
+		const previewShell = previewShellRef.current;
+		if (!previewShell) return;
+		const headingElements = Array.from(
+			previewShell.querySelectorAll<HTMLElement>("[data-ac-heading-id]"),
+		);
+		if (headingElements.length === 0) {
+			toast.error("No mapped preview heading found for alignment.");
+			return;
+		}
+
+		const viewport = previewShell.querySelector<HTMLElement>(
+			"[data-radix-scroll-area-viewport]",
+		);
+		const frame = viewport || previewShell;
+		const frameRect = frame.getBoundingClientRect();
+		const firstVisible =
+			headingElements.find((element) => {
+				const rect = element.getBoundingClientRect();
+				return rect.bottom > frameRect.top + 8 && rect.top < frameRect.bottom;
+			}) || headingElements[0];
+		const headingId = firstVisible.dataset.acHeadingId;
+		if (!headingId) return;
+
+		const sourceOffset = getSourceOffsetForHeadingId(articleHeadings, headingId);
+		if (sourceOffset === null) {
+			toast.error("No mapped source block found for current preview heading.");
+			return;
+		}
+		setActiveFile(CORE_ARTICLE_FILE);
+		setEditorJumpRequest({
+			offset: sourceOffset,
+			nonce: Date.now(),
+		});
+	}, [articleHeadings]);
+
 	const runPdfExport = React.useCallback(() => {
 		globalThis.document.body.setAttribute("data-artichales-printing", "true");
 		window.requestAnimationFrame(() => {
@@ -546,11 +622,44 @@ export function EditorPreviewSurface() {
 						fileName={activeFile}
 						value={files[activeFile] || ""}
 						onChange={handleFileChange}
+						onCursorOffsetChange={(offset) => {
+							if (activeFile === CORE_ARTICLE_FILE) {
+								setEditorCursorOffset(offset);
+							}
+						}}
+						jumpToOffset={editorJumpRequest?.offset ?? null}
+						jumpToOffsetSignal={editorJumpRequest?.nonce ?? 0}
 						label={activeFile}
 						completions={editorCompletions}
 					/>
 				</ResizablePanel>
-				<ResizableHandle withHandle />
+				<div className="relative">
+					<ResizableHandle withHandle />
+					<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1">
+						<Button
+							type="button"
+							size="icon"
+							variant="secondary"
+							className="pointer-events-auto h-6 w-6"
+							title="Source to preview alignment"
+							aria-label="Source to preview alignment"
+							onClick={handleAlignSourceToPreview}
+						>
+							<ArrowRightToLine className="h-3.5 w-3.5" />
+						</Button>
+						<Button
+							type="button"
+							size="icon"
+							variant="secondary"
+							className="pointer-events-auto h-6 w-6"
+							title="Preview to source alignment"
+							aria-label="Preview to source alignment"
+							onClick={handleAlignPreviewToSource}
+						>
+							<ArrowLeftToLine className="h-3.5 w-3.5" />
+						</Button>
+					</div>
+				</div>
 				<ResizablePanel
 					defaultSize={savedSizes[2] || 45}
 					minSize={30}
@@ -565,7 +674,7 @@ export function EditorPreviewSurface() {
 						onExportPdf={handleExportPdf}
 						onDownloadSource={handleDownloadSource}
 					/>
-					<div className="relative grow overflow-hidden">
+					<div ref={previewShellRef} className="relative grow overflow-hidden">
 						{hasDiagnostics ? (
 							<div className="border-border border-b bg-background p-2">
 								<Tabs defaultValue={diagnosticsInitialTab}>

@@ -12,7 +12,8 @@
 	},
 	"scripts": {
 		"dev": "vite",
-		"build": "tsc -b && vite build",
+		"build": "bun run validate:plugins && tsc -b && vite build",
+		"validate:plugins": "bun run scripts/validate-plugin-config.ts",
 		"lint": "biome check --fix src",
 		"format": "biome format --write src",
 		"preview": "vite preview",
