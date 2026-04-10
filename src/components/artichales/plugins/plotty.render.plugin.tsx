@@ -233,15 +233,15 @@ function PlottyChart({ plot, width, height }: PlottyChartProps) {
 	}, []);
 
 	React.useEffect(() => {
-		if (!plotly || !rootRef.current) return;
-		void plotly.react(rootRef.current, plot.data, plot.layout, {
+		const rootElement = rootRef.current;
+		if (!plotly || !rootElement) return;
+		void plotly.react(rootElement, plot.data, plot.layout, {
 			responsive: true,
 			displaylogo: false,
 			...plot.config,
 		});
 		return () => {
-			if (!rootRef.current) return;
-			plotly.purge(rootRef.current);
+			plotly.purge(rootElement);
 		};
 	}, [plot, plotly]);
 
@@ -272,6 +272,7 @@ function registerPlottyRenderRuntime(
 			context.datatableIndexById,
 			context.target,
 			context.templateDefaults,
+			context.referenceLabels,
 		),
 	};
 }
@@ -291,6 +292,7 @@ export function createDirectiveDivRender(
 	datatableIndexById: DatatableIndexMap,
 	target: "web" | "print",
 	componentDefaults?: ComponentTemplateDefaults,
+	referenceLabels?: Record<string, string>,
 ): Components["div"] {
 	return function DirectiveDivRender({
 		node,
@@ -339,6 +341,7 @@ export function createDirectiveDivRender(
 		const width = toNumber(resolvedLayout.width);
 		const height = toNumber(resolvedLayout.height);
 		const figureNo = plotIndexById[plotId];
+		const figureLabel = referenceLabels?.plotty || "?";
 		const titleFromLayout = asString(resolvedLayout.title);
 		const captionText = caption || titleFromLayout;
 
@@ -370,7 +373,7 @@ export function createDirectiveDivRender(
 				{captionText && captionPosition === "top" ? (
 					<p className="title mt-2 text-center text-xs italic">
 						{figureNo ? (
-							<span className="label">{`Figure ${figureNo}. `}</span>
+							<span className="label">{`${figureLabel} ${figureNo}. `}</span>
 						) : null}
 						{captionText}
 					</p>
@@ -379,7 +382,7 @@ export function createDirectiveDivRender(
 				{captionText && captionPosition === "bottom" ? (
 					<p className="title mt-2 text-center text-xs italic">
 						{figureNo ? (
-							<span className="label">{`Figure ${figureNo}. `}</span>
+							<span className="label">{`${figureLabel} ${figureNo}. `}</span>
 						) : null}
 						{captionText}
 					</p>
