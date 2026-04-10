@@ -4,8 +4,6 @@ import {
 	CORE_FILES,
 	CORE_TEMPLATE_FILE,
 	LEGACY_ARTICLE_FILE,
-	LEGACY_WORKSPACE_AUTOSAVE_KEY,
-	WORKSPACE_STORAGE_FALLBACK_KEY,
 } from "@/lib/workspace";
 
 type WorkspaceFiles = Record<string, string>;
@@ -85,28 +83,6 @@ async function writeWorkspaceToOpfs(files: WorkspaceFiles): Promise<boolean> {
 	return true;
 }
 
-function readWorkspaceFromFallbackStorage(): WorkspaceFiles | null {
-	try {
-		const stored = localStorage.getItem(WORKSPACE_STORAGE_FALLBACK_KEY);
-		if (!stored) return null;
-		const parsed = JSON.parse(stored) as WorkspaceFiles;
-		return typeof parsed === "object" && parsed !== null ? parsed : null;
-	} catch {
-		return null;
-	}
-}
-
-function readLegacyWorkspace(): WorkspaceFiles | null {
-	try {
-		const stored = localStorage.getItem(LEGACY_WORKSPACE_AUTOSAVE_KEY);
-		if (!stored) return null;
-		const parsed = JSON.parse(stored) as WorkspaceFiles;
-		return typeof parsed === "object" && parsed !== null ? parsed : null;
-	} catch {
-		return null;
-	}
-}
-
 function normalizeWorkspaceFiles(
 	files: WorkspaceFiles,
 	defaultFiles: WorkspaceFiles,
@@ -129,24 +105,11 @@ function normalizeWorkspaceFiles(
 	return normalized;
 }
 
-function clearLegacyWorkspaceStorage(): void {
-	try {
-		localStorage.removeItem(WORKSPACE_STORAGE_FALLBACK_KEY);
-		localStorage.removeItem(LEGACY_WORKSPACE_AUTOSAVE_KEY);
-	} catch {
-		// Best-effort cleanup only.
-	}
-}
-
 class WorkspaceRepository {
 	async loadWorkspace(defaultFiles: WorkspaceFiles): Promise<WorkspaceFiles> {
 		const opfsFiles = await readWorkspaceFromOpfs();
-		const fallbackFiles = readWorkspaceFromFallbackStorage();
-		const legacyFiles = readLegacyWorkspace();
 
-		const candidate = opfsFiles ??
-			fallbackFiles ??
-			legacyFiles ?? { ...defaultFiles };
+		const candidate = opfsFiles ?? { ...defaultFiles };
 		const normalized = normalizeWorkspaceFiles(candidate, defaultFiles);
 		try {
 			await this.saveWorkspace(normalized);
@@ -162,7 +125,6 @@ class WorkspaceRepository {
 		if (!savedToOpfs) {
 			throw new Error("OPFS is unavailable. Workspace save failed.");
 		}
-		clearLegacyWorkspaceStorage();
 	}
 }
 

@@ -607,3 +607,14 @@ Still open:
 - Render path remains partially component-wired instead of fully hook-owned end-to-end.
 - Save failure explicit shadcn alert treatment remains pending.
 - Legacy localStorage read fallback remains pending cleanup.
+
+## 12. Progress Update (2026-04-10, Session 5)
+
+Completed in this session:
+- Added explicit shadcn-style save failure alert component and wired it into workspace UI.
+- Save failure is now prominently displayed in editor surface through `Alert` (not only diagnostics/toast paths).
+- Removed workspace content read fallback from `localStorage`; workspace load now reads OPFS as authoritative source and falls back only to default seed files.
+- Kept one-time `article.mdx` to `article.mda` normalization behavior for loaded content.
+
+Still open:
+- Render path remains partially component-wired instead of fully hook-owned end-to-end.

@@ -9,6 +9,7 @@ import {
 import { CitationContext } from "@/components/artichales/plugins/citation.context";
 import { PrintPreview } from "@/components/artichales/preview/print/print-preview";
 import { WebPreview } from "@/components/artichales/preview/web/web-preview";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
 	ResizableHandle,
@@ -492,6 +493,12 @@ export function EditorPreviewSurface() {
 						<div className="mb-2 rounded-md border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
 							{blockingReason}
 						</div>
+					) : null}
+					{saveError ? (
+						<Alert variant="destructive" className="mb-2">
+							<AlertTitle>Save failed</AlertTitle>
+							<AlertDescription>{saveError}</AlertDescription>
+						</Alert>
 					) : null}
 					<div className="mb-2 flex items-center gap-2">
 						<Button
