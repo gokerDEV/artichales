@@ -1,4 +1,10 @@
-import { Download, FileArchive, Monitor, Printer, RotateCw } from "lucide-react";
+import {
+	Download,
+	FileArchive,
+	Monitor,
+	Printer,
+	RotateCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,

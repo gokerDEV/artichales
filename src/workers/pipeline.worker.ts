@@ -7,20 +7,24 @@ function decodeHtmlEntity(entity: string): string {
 	const numeric = entity.match(/^&#(\d+);$/);
 	if (numeric) {
 		const codePoint = Number.parseInt(numeric[1], 10);
-		return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
+		return Number.isFinite(codePoint)
+			? String.fromCodePoint(codePoint)
+			: entity;
 	}
 
 	const hex = entity.match(/^&#x([0-9a-fA-F]+);$/);
 	if (hex) {
 		const codePoint = Number.parseInt(hex[1], 16);
-		return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
+		return Number.isFinite(codePoint)
+			? String.fromCodePoint(codePoint)
+			: entity;
 	}
 
 	const named: Record<string, string> = {
 		"&amp;": "&",
 		"&lt;": "<",
 		"&gt;": ">",
-		"&quot;": "\"",
+		"&quot;": '"',
 		"&apos;": "'",
 		"&nbsp;": "\u00A0",
 	};
@@ -126,7 +130,8 @@ self.onmessage = async (event: MessageEvent) => {
 				payload,
 			});
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error";
 			self.postMessage({
 				type: "PIPELINE_ERROR",
 				requestId: event.data.requestId,

@@ -15,7 +15,6 @@ import type {
 } from "@/components/artichales/plugins/plugin.contract";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import { buildAlignmentHeadingId } from "@/lib/alignment";
-import { getDirectiveString } from "@/lib/directive.utils";
 import "katex/dist/katex.min.css";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
@@ -25,9 +24,6 @@ type MarkdownContentProps = {
 	target: "web" | "print";
 	printTitle?: string;
 	resolvedReferences: Record<string, ResolvedReference>;
-	activeParserPluginIds: string[];
-	activeRenderPluginIds: string[];
-	indexContent?: string;
 	directiveConfigs?: Record<DirectiveCategory, DirectiveConfig>;
 	utilityClasses?: Record<string, string>;
 };
@@ -50,24 +46,6 @@ function extractNodeText(node: unknown): string {
 	return [ownValue, ...children.map((child) => extractNodeText(child))]
 		.join("")
 		.trim();
-}
-
-function extractDirectiveProperty(node: unknown, propertyName: string): string {
-	if (!node || typeof node !== "object") return "";
-	const record = node as UnknownRecord;
-	const data =
-		record.data && typeof record.data === "object"
-			? (record.data as UnknownRecord)
-			: null;
-	const hProperties =
-		data?.hProperties && typeof data.hProperties === "object"
-			? (data.hProperties as UnknownRecord)
-			: null;
-	const directValue = hProperties?.[propertyName];
-	if (typeof directValue === "string" && directValue.trim() !== "") {
-		return directValue;
-	}
-	return "";
 }
 
 const remarkAlignmentHeadingAnchors: Plugin<[], Root> = () => {
@@ -147,56 +125,39 @@ function stripDuplicatePrintLeadBlocks(ast: Root, printTitle?: string): void {
 	walk(ast as unknown as TraversalNode);
 }
 
+function getDirectiveProperty(node: unknown, key: string): string {
+	if (!node || typeof node !== "object") return "";
+	const record = node as UnknownRecord;
+	const hProperties =
+		record.data &&
+		typeof record.data === "object" &&
+		(record.data as UnknownRecord).hProperties &&
+		typeof (record.data as UnknownRecord).hProperties === "object"
+			? ((record.data as UnknownRecord).hProperties as UnknownRecord)
+			: null;
+	const props =
+		record.properties && typeof record.properties === "object"
+			? (record.properties as UnknownRecord)
+			: null;
+	const value =
+		hProperties?.[key] ??
+		props?.[key] ??
+		props?.[key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())];
+	return typeof value === "string" && value.trim() !== "" ? value : "";
+}
+
 export function MarkdownContent({
 	ast,
 	content: _content,
 	target,
 	printTitle,
 	resolvedReferences,
-	activeParserPluginIds: _activeParserPluginIds,
-	activeRenderPluginIds,
 	directiveConfigs,
 	utilityClasses,
 }: MarkdownContentProps) {
-	const refIndexById = React.useMemo(() => {
-		const refMap: Record<
-			string,
-			{
-				kind: "plot" | "datatable";
-				index: number;
-			}
-		> = {};
-		let plotIdx = 1;
-		let datatableIdx = 1;
-
-		visit(ast, (node) => {
-			const uNode = node as unknown as UnknownRecord;
-			if (
-				uNode.type !== "containerDirective" &&
-				uNode.type !== "leafDirective"
-			) {
-				return;
-			}
-			const dataFile = extractDirectiveProperty(
-				node,
-				"data-directive-data-file",
-			).replace(/\.[^/.]+$/, "");
-			if (!dataFile) return;
-			if (uNode.name === "plotty" && refMap[dataFile] === undefined) {
-				refMap[dataFile] = { kind: "plot", index: plotIdx++ };
-				return;
-			}
-			if (uNode.name === "datatable" && refMap[dataFile] === undefined) {
-				refMap[dataFile] = { kind: "datatable", index: datatableIdx++ };
-			}
-		});
-
-		return refMap;
-	}, [ast]);
-
 	const markdownComponents = React.useMemo(() => {
 		const components: Partial<Components> = {};
-		const executionState = resolvePluginExecutionState(activeRenderPluginIds);
+		const executionState = resolvePluginExecutionState();
 		const directiveRenderers = new Map<string, DirectiveRendererDefinition>();
 		for (const plugin of executionState.render) {
 			const renderHook = plugin.hooks.render;
@@ -205,7 +166,6 @@ export function MarkdownContent({
 				Object.assign(
 					components,
 					renderHook({
-						refIndexById,
 						target,
 						resolvedReferences,
 						utilityClasses,
@@ -223,7 +183,6 @@ export function MarkdownContent({
 			if (!directiveRenderHook) continue;
 			try {
 				const result = directiveRenderHook({
-					refIndexById,
 					target,
 					resolvedReferences,
 					utilityClasses,
@@ -246,28 +205,15 @@ export function MarkdownContent({
 		const divRenderer = components.div as Components["div"] | undefined;
 		components.div = ((props) => {
 			const { node, children, ...rest } = props as ParagraphProps;
-			const directive = getDirectiveString(
-				node,
-				rest as UnknownRecord,
-				"data-directive",
-				"dataDirective",
-			);
+			const directive = getDirectiveProperty(node, "data-directive");
 			const directiveRenderer = directiveRenderers.get(directive);
 			if (directiveRenderer) {
 				return directiveRenderer.component({
 					...props,
 					directive,
-					raw: getDirectiveString(
-						node,
-						rest as UnknownRecord,
-						"data-directive-raw",
-					),
+					raw: getDirectiveProperty(node, "data-directive-raw"),
 					params: {
-						data_file: getDirectiveString(
-							node,
-							rest as UnknownRecord,
-							"data-directive-data-file",
-						),
+						data_file: getDirectiveProperty(node, "data-directive-data-file"),
 					},
 					config: directiveConfigs?.[directiveRenderer.category] || {},
 					target,
@@ -339,14 +285,7 @@ export function MarkdownContent({
 		}) as Components["p"];
 
 		return components;
-	}, [
-		activeRenderPluginIds,
-		refIndexById,
-		target,
-		resolvedReferences,
-		directiveConfigs,
-		utilityClasses,
-	]);
+	}, [target, resolvedReferences, directiveConfigs, utilityClasses]);
 
 	const renderedContent = React.useMemo(() => {
 		const astClone =

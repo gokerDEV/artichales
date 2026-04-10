@@ -8,4 +8,3 @@ export const getBaseExtensions = () => [
 	keymap.of([...defaultKeymap, ...historyKeymap]),
 	EditorView.lineWrapping,
 ];
-

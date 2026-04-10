@@ -1,12 +1,12 @@
 import { z } from "zod";
-import {
-	getDefaultTemplateDirectivePlugins,
-	listTemplateDirectivePlugins,
-} from "@/components/artichales/plugins/plugin.registry";
 import type {
 	DirectiveCategory,
 	DirectiveConfig,
 } from "@/components/artichales/plugins/plugin.contract";
+import {
+	getDefaultTemplateDirectivePlugins,
+	listTemplateDirectivePlugins,
+} from "@/components/artichales/plugins/plugin.registry";
 
 const SpanSchema = z.enum(["column", "page", "full"]).transform((value) => {
 	return value === "full" ? "page" : value;

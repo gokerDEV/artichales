@@ -26,7 +26,6 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocument } from "@/hooks/use-document";
 import { useSettings } from "@/hooks/use-settings";
-import { useWorkspaceStore } from "@/store/workspace.store";
 import {
 	collectAlignmentHeadings,
 	getHeadingIdForSourceOffset,
@@ -43,6 +42,7 @@ import {
 	validateWorkspaceAsset,
 	workspaceRepository,
 } from "@/services/workspace.repository";
+import { useWorkspaceStore } from "@/store/workspace.store";
 
 type WorkspaceUiState = {
 	activeFile?: string;
@@ -137,7 +137,9 @@ export function EditorPreviewSurface() {
 		React.useState(true);
 
 	const setRawFiles = useWorkspaceStore((state) => state.setRawFiles);
-	const setPipelineResult = useWorkspaceStore((state) => state.setPipelineResult);
+	const setPipelineResult = useWorkspaceStore(
+		(state) => state.setPipelineResult,
+	);
 
 	React.useEffect(() => {
 		latestFilesRef.current = files;
@@ -165,8 +167,11 @@ export function EditorPreviewSurface() {
 	}, [isPreviewDebounceEnabled]);
 
 	React.useEffect(() => {
-		workerRef.current = new Worker(new URL("../../../workers/pipeline.worker", import.meta.url), { type: "module" });
-		
+		workerRef.current = new Worker(
+			new URL("../../../workers/pipeline.worker", import.meta.url),
+			{ type: "module" },
+		);
+
 		workerRef.current.onmessage = (event) => {
 			if (event.data.type === "PIPELINE_SUCCESS") {
 				if (event.data.requestId !== pipelineRequestIdRef.current) return;
@@ -575,7 +580,11 @@ export function EditorPreviewSurface() {
 				docSource.activePluginIds.parser,
 			).filter((directive) => TEMPLATE_DIRECTIVE_NAMES.includes(directive)),
 		}),
-		[docSource.citations, docSource.referenceTargets, docSource.activePluginIds],
+		[
+			docSource.citations,
+			docSource.referenceTargets,
+			docSource.activePluginIds,
+		],
 	);
 
 	const handleSelectFile = React.useCallback(
@@ -650,7 +659,10 @@ export function EditorPreviewSurface() {
 	}, [articleHeadings]);
 
 	const handleDiagnosticClick = React.useCallback((diag: UiDiagnostic) => {
-		if (diag.fileName !== CORE_ARTICLE_FILE || typeof diag.offset !== "number") {
+		if (
+			diag.fileName !== CORE_ARTICLE_FILE ||
+			typeof diag.offset !== "number"
+		) {
 			return;
 		}
 		setActiveFile(CORE_ARTICLE_FILE);
@@ -801,29 +813,29 @@ export function EditorPreviewSurface() {
 								<AlertDescription>{saveError}</AlertDescription>
 							</Alert>
 						) : null}
-							<div className="mb-2 flex items-center gap-2">
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
+						<div className="mb-2 flex items-center gap-2">
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
 								className="h-7 px-2 text-xs"
 								onClick={handleAddAssetsClick}
-								>
-									Add Asset
-								</Button>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="h-7 px-2 text-xs"
-									onClick={handleResetWorkspace}
-								>
-									Reset
-								</Button>
-								<span className="text-[11px] text-muted-foreground">
-									Drop files here
-								</span>
-							</div>
+							>
+								Add Asset
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="h-7 px-2 text-xs"
+								onClick={handleResetWorkspace}
+							>
+								Reset
+							</Button>
+							<span className="text-[11px] text-muted-foreground">
+								Drop files here
+							</span>
+						</div>
 						<section
 							aria-label="Workspace assets drop zone"
 							className={
@@ -977,8 +989,7 @@ export function EditorPreviewSurface() {
 															[{diag.source}]
 															{formatDiagnosticLocation(diag)
 																? ` ${formatDiagnosticLocation(diag)}`
-																: ""}
-															{" "}
+																: ""}{" "}
 															{diag.message}
 															{diag.details ? ` ${diag.details}` : ""}
 														</li>
@@ -1005,8 +1016,7 @@ export function EditorPreviewSurface() {
 															[{diag.source}]
 															{formatDiagnosticLocation(diag)
 																? ` ${formatDiagnosticLocation(diag)}`
-																: ""}
-															{" "}
+																: ""}{" "}
 															{diag.message}
 															{diag.details ? ` ${diag.details}` : ""}
 														</li>
@@ -1033,8 +1043,7 @@ export function EditorPreviewSurface() {
 															[{diag.source}]
 															{formatDiagnosticLocation(diag)
 																? ` ${formatDiagnosticLocation(diag)}`
-																: ""}
-															{" "}
+																: ""}{" "}
 															{diag.message}
 															{diag.details ? ` ${diag.details}` : ""}
 														</li>

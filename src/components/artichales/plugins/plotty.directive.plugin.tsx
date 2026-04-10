@@ -1,5 +1,6 @@
 import * as React from "react";
-import { useDirectiveJsonData } from "@/components/artichales/plugins/directive-data-file";
+import { useWorkspaceJsonFile } from "@/hooks/use-workspace-json-file";
+import { isRecord } from "@/lib/artichales.utils";
 import type {
 	DirectiveComponentProps,
 	DirectiveRendererDefinition,
@@ -27,10 +28,6 @@ type PlotlyModule = {
 	purge: (root: HTMLElement) => void;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function toNumber(value: unknown): number | undefined {
 	return typeof value === "number" && Number.isFinite(value)
 		? value
@@ -57,10 +54,16 @@ function resolvePlotDefinition(
 	rawPlot: unknown,
 	raw: string,
 ): PlotDefinition | null {
-	if (!isRecord(rawPlot) || !Array.isArray(rawPlot.data)) {
-		return null;
+	if (!isRecord(rawPlot) || !Array.isArray(rawPlot.data)) return null;
+	let override: Record<string, unknown> = {};
+	if (raw.trim()) {
+		try {
+			const parsed = JSON.parse(raw);
+			if (isRecord(parsed)) override = parsed;
+		} catch {
+			// ignore malformed inline override
+		}
 	}
-	const override = raw.trim() ? safeParseRecord(raw) : {};
 	const baseLayout = isRecord(rawPlot.layout) ? rawPlot.layout : {};
 	return {
 		data: rawPlot.data.filter((item) => isRecord(item)) as PlotTrace[],
@@ -69,20 +72,7 @@ function resolvePlotDefinition(
 	};
 }
 
-function safeParseRecord(raw: string): Record<string, unknown> {
-	try {
-		const parsed = JSON.parse(raw);
-		return isRecord(parsed) ? parsed : {};
-	} catch {
-		return {};
-	}
-}
-
-function PlottyChart({
-	plot,
-}: {
-	plot: PlotDefinition;
-}) {
+function PlottyChart({ plot }: { plot: PlotDefinition }) {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [plotly, setPlotly] = React.useState<PlotlyModule | null>(null);
 	const width = toNumber(plot.layout?.width);
@@ -92,8 +82,7 @@ function PlottyChart({
 		let isMounted = true;
 		void import("plotly.js-dist-min").then((module) => {
 			if (!isMounted) return;
-			const loaded = (module.default ?? module) as PlotlyModule;
-			setPlotly(loaded);
+			setPlotly((module.default ?? module) as PlotlyModule);
 		});
 		return () => {
 			isMounted = false;
@@ -133,8 +122,7 @@ function PlottyDirectiveRender({
 	config,
 	...rest
 }: DirectiveComponentProps) {
-	const dataFile = params.data_file;
-	const { data } = useDirectiveJsonData<PlotDefinition>(dataFile);
+	const { data, lastUpdated } = useWorkspaceJsonFile(params.data_file ?? "");
 	const plot = React.useMemo(
 		() => resolvePlotDefinition(data, raw),
 		[data, raw],
@@ -147,7 +135,7 @@ function PlottyDirectiveRender({
 				className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs"
 			>
 				Plotty data file not found or invalid:{" "}
-				<strong>{dataFile || "(missing)"}</strong>
+				<strong>{params.data_file || "(missing)"}</strong>
 			</div>
 		);
 	}
@@ -162,7 +150,7 @@ function PlottyDirectiveRender({
 				marginBottom: config.spacingAfter,
 			}}
 		>
-			<MemoizedPlottyChart plot={plot} />
+			<MemoizedPlottyChart key={lastUpdated ?? undefined} plot={plot} />
 		</div>
 	);
 }
@@ -177,11 +165,10 @@ function registerPlottyRenderRuntime(
 	};
 }
 
-export const plottyRenderPlugin: PluginDefinition = {
-	id: "plotty-render",
-	category: "render",
-	directiveCategory: "figure",
-	name: "Plotty Render",
+export const plottyDirectivePlugin: PluginDefinition = {
+	id: "plotty",
+	category: "figure",
+	name: "Plotty",
 	hooks: {
 		directiveRender: registerPlottyRenderRuntime,
 	},

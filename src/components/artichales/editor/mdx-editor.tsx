@@ -159,7 +159,9 @@ export function MdxEditor({
 
 		viewRef.current.setState(nextState);
 		statesByFileRef.current.set(fileName, nextState);
-		onCursorOffsetChangeRef.current?.(viewRef.current.state.selection.main.head);
+		onCursorOffsetChangeRef.current?.(
+			viewRef.current.state.selection.main.head,
+		);
 	}, [completions, fileName, value]);
 
 	React.useEffect(() => {

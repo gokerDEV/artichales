@@ -46,7 +46,7 @@ function registerRefRenderRuntime(
 
 export const refRenderPlugin: PluginDefinition = {
 	id: "ref-render",
-	category: "render",
+	category: "ref",
 	name: "Ref Render",
 	hooks: {
 		render: registerRefRenderRuntime,

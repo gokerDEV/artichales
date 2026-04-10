@@ -6,15 +6,31 @@ import type { ZodType } from "zod";
 import type { DocumentSource } from "@/hooks/use-document";
 import type { ResolvedReference } from "@/lib/article-analysis";
 
-export type PluginCategory = "core" | "parser" | "render" | "editor";
-
-export type DirectiveCategory =
+/**
+ * Functional pipeline categories (parser, editor) + content-based render categories.
+ * Content categories map directly to template.json `components` config keys,
+ * enabling per-category styling and config from the template.
+ */
+export type PluginCategory =
+	// Functional
+	| "parser"
+	| "editor"
+	// Document structure
+	| "title"
+	| "author"
+	| "references"
+	// Inline content
+	| "cite"
+	| "ref"
+	// Block content
+	| "code"
+	| "math"
+	// Directives
 	| "abstract"
 	| "table"
 	| "figure"
 	| "map"
-	| "equation"
-	| "code";
+	| "equation";
 
 export type DirectiveConfig = {
 	captionPosition?: "top" | "bottom";
@@ -25,13 +41,6 @@ export type DirectiveConfig = {
 };
 
 export type RenderHookContext = {
-	refIndexById: Record<
-		string,
-		{
-			kind: "plot" | "datatable";
-			index: number;
-		}
-	>;
 	target: "web" | "print";
 	resolvedReferences: Record<string, ResolvedReference>;
 	utilityClasses?: Record<string, string>;
@@ -55,7 +64,7 @@ export type DirectiveComponentProps = {
 
 export type DirectiveRendererDefinition = {
 	directive: string;
-	category: DirectiveCategory;
+	category: PluginCategory;
 	component: (props: DirectiveComponentProps) => ReactNode;
 };
 
@@ -75,10 +84,8 @@ export type PluginDefinition = {
 	id: string;
 	name: string;
 	category: PluginCategory;
-	directiveCategory?: DirectiveCategory;
 	version?: string;
 	description?: string;
-	ownsSyntax?: string[];
 	configSchema?: ZodType<unknown>;
 	hooks: PluginHooks;
 };

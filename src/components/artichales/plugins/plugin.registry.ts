@@ -1,132 +1,85 @@
-import { abstractParserPlugin } from "./abstract.parser.plugin";
-import { abstractRenderPlugin } from "./abstract.render.plugin";
-import { citationCorePlugin } from "./citation.core.plugin";
+import { abstractDirectivePlugin } from "./abstract.directive.plugin";
 import { citationEditorPlugin } from "./citation.editor.plugin";
 import { citationParserPlugin } from "./citation.parser.plugin";
 import { citationRenderPlugin } from "./citation.render.plugin";
 import { codeRenderPlugin } from "./code.render.plugin";
-import { datatableParserPlugin } from "./datatable.parser.plugin";
-import { datatableRenderPlugin } from "./datatable.render.plugin";
+import { datatableDirectivePlugin } from "./datatable.directive.plugin";
 import { mathParserPlugin } from "./math.parser.plugin";
-import { plottyParserPlugin } from "./plotty.parser.plugin";
-import { plottyRenderPlugin } from "./plotty.render.plugin";
+import { plottyDirectivePlugin } from "./plotty.directive.plugin";
 import type { PluginCategory, PluginDefinition } from "./plugin.contract";
 import { refRenderPlugin } from "./ref.render.plugin";
 import { referencesCorePlugin } from "./references.core.plugin";
 import { titleCorePlugin } from "./title.core.plugin";
 
-const BUILTIN_PLUGINS: PluginDefinition[] = [
+// Core plugins always active regardless of template config.
+const CORE_PLUGINS: PluginDefinition[] = [
 	citationParserPlugin,
-	abstractParserPlugin,
-	plottyParserPlugin,
-	datatableParserPlugin,
 	mathParserPlugin,
-	citationCorePlugin,
-	referencesCorePlugin,
 	titleCorePlugin,
-	abstractRenderPlugin,
+	referencesCorePlugin,
 	citationRenderPlugin,
 	refRenderPlugin,
 	codeRenderPlugin,
-	datatableRenderPlugin,
-	plottyRenderPlugin,
 	citationEditorPlugin,
 ];
 
-const BUILTIN_BY_ID = new Map(
-	BUILTIN_PLUGINS.map((plugin) => [plugin.id, plugin]),
+// Directive plugins activated by template `plugins` field.
+// Plugin id matches the directive name it handles.
+const DIRECTIVE_PLUGINS: PluginDefinition[] = [
+	abstractDirectivePlugin,
+	datatableDirectivePlugin,
+	plottyDirectivePlugin,
+];
+
+const DIRECTIVE_PLUGINS_BY_ID = new Map(
+	DIRECTIVE_PLUGINS.map((plugin) => [plugin.id, plugin]),
 );
 
-const ALWAYS_ON_PLUGIN_IDS = [
-	"citation-parser",
-	"math-parser",
-	"citation-core",
-	"references-core",
-	"title-core",
-	"citation-render",
-	"ref-render",
-	"code-render",
-	"citation-editor",
-] as const;
+const ALL_PLUGINS = [...CORE_PLUGINS, ...DIRECTIVE_PLUGINS];
+const ALL_PLUGINS_BY_ID = new Map(
+	ALL_PLUGINS.map((plugin) => [plugin.id, plugin]),
+);
 
-const DIRECTIVE_PLUGIN_GROUPS: Record<string, string[]> = {
-	abstract: ["abstract-parser", "abstract-render"],
-	plotty: ["plotty-parser", "plotty-render"],
-	datatable: ["datatable-parser", "datatable-render"],
-};
-
-const DEFAULT_DIRECTIVE_PLUGINS = ["abstract", "plotty", "datatable"] as const;
-
-export function getDefaultTemplateDirectivePlugins(): string[] {
-	return [...DEFAULT_DIRECTIVE_PLUGINS];
-}
+const DEFAULT_DIRECTIVE_PLUGIN_IDS = DIRECTIVE_PLUGINS.map((p) => p.id);
 
 export function listTemplateDirectivePlugins(): string[] {
-	return Object.keys(DIRECTIVE_PLUGIN_GROUPS);
+	return DIRECTIVE_PLUGINS.map((p) => p.id);
 }
 
+export function getDefaultTemplateDirectivePlugins(): string[] {
+	return [...DEFAULT_DIRECTIVE_PLUGIN_IDS];
+}
+
+/**
+ * Resolves the full runtime plugin id list from template `plugins` field.
+ * Core plugins are always included. Directive plugins are added by their id.
+ */
 export function resolveRuntimePluginIdsFromTemplate(
-	templateDirectivePlugins?: string[],
+	templatePlugins?: string[],
 ): string[] {
-	const runtimeIds: string[] = [...ALWAYS_ON_PLUGIN_IDS];
-	const requestedDirectives =
-		Array.isArray(templateDirectivePlugins) &&
-		templateDirectivePlugins.length > 0
-			? templateDirectivePlugins
-			: [...DEFAULT_DIRECTIVE_PLUGINS];
+	const coreIds = CORE_PLUGINS.map((p) => p.id);
+	const directiveIds =
+		Array.isArray(templatePlugins) && templatePlugins.length > 0
+			? templatePlugins.filter((id) => DIRECTIVE_PLUGINS_BY_ID.has(id))
+			: [...DEFAULT_DIRECTIVE_PLUGIN_IDS];
 
-	for (const directive of requestedDirectives) {
-		for (const pluginId of DIRECTIVE_PLUGIN_GROUPS[directive] || []) {
-			runtimeIds.push(pluginId);
-		}
-	}
-
-	const deduped: string[] = [];
-	const seen = new Set<string>();
-	for (const id of runtimeIds) {
-		if (seen.has(id)) continue;
-		seen.add(id);
-		deduped.push(id);
-	}
-	return deduped;
-}
-
-export function getOwnedSyntaxByRuntimePluginIds(
-	runtimePluginIds?: string[],
-): string[] {
-	const syntax = new Set<string>();
-	for (const plugin of loadPluginRegistry(runtimePluginIds)) {
-		for (const owned of plugin.ownsSyntax || []) {
-			syntax.add(owned);
-		}
-	}
-	return [...syntax];
+	return [...new Set([...coreIds, ...directiveIds])];
 }
 
 export function loadPluginRegistry(
 	runtimePluginIds?: string[],
 ): PluginDefinition[] {
 	if (!runtimePluginIds || runtimePluginIds.length === 0) {
-		return [...BUILTIN_PLUGINS];
+		return [...ALL_PLUGINS];
 	}
-
-	const resolved: PluginDefinition[] = [];
-	const dedupedReversed: string[] = [];
 	const seen = new Set<string>();
-	for (let index = runtimePluginIds.length - 1; index >= 0; index--) {
-		const pluginId = runtimePluginIds[index];
-		if (seen.has(pluginId)) continue;
-		seen.add(pluginId);
-		dedupedReversed.push(pluginId);
+	const resolved: PluginDefinition[] = [];
+	for (const id of runtimePluginIds) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		const plugin = ALL_PLUGINS_BY_ID.get(id);
+		if (plugin) resolved.push(plugin);
 	}
-	const dedupedEntries = dedupedReversed.reverse();
-
-	for (const pluginId of dedupedEntries) {
-		const plugin = BUILTIN_BY_ID.get(pluginId);
-		if (!plugin) continue;
-		resolved.push(plugin);
-	}
-
 	return resolved;
 }
 

@@ -18,7 +18,7 @@ function renderTitleCore(context: CoreRenderHookContext) {
 
 export const titleCorePlugin: PluginDefinition = {
 	id: "title-core",
-	category: "core",
+	category: "title",
 	name: "Title Core",
 	hooks: {
 		coreRender: renderTitleCore,

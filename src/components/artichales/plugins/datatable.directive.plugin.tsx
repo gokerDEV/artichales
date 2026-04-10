@@ -1,6 +1,7 @@
 import * as React from "react";
-import { useDirectiveJsonData } from "@/components/artichales/plugins/directive-data-file";
 import { DataTable } from "@/components/ui/data-table";
+import { useWorkspaceJsonFile } from "@/hooks/use-workspace-json-file";
+import { isRecord } from "@/lib/artichales.utils";
 import type {
 	DirectiveComponentProps,
 	DirectiveRendererDefinition,
@@ -21,10 +22,6 @@ type DatatableDefinition = {
 type DatatableRow = Record<string, unknown> & {
 	__rowKey: string;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function toCellString(value: unknown): string {
 	if (value === null || value === undefined) return "";
@@ -66,10 +63,7 @@ function resolveDatatableDefinition(
 					label: typeof item.label === "string" ? item.label : String(item.key),
 				}))
 		: Object.keys(rows[0]).map((key) => ({ key, label: key }));
-	return {
-		columns,
-		rows,
-	};
+	return { columns, rows };
 }
 
 const DatatableVisual = React.memo(function DatatableVisual({
@@ -148,8 +142,7 @@ function DatatableDirectiveRender({
 	target,
 	...rest
 }: DirectiveComponentProps) {
-	const dataFile = params.data_file;
-	const { data } = useDirectiveJsonData<DatatableDefinition>(dataFile);
+	const { data, lastUpdated } = useWorkspaceJsonFile(params.data_file ?? "");
 	const definition = React.useMemo(
 		() => resolveDatatableDefinition(data),
 		[data],
@@ -162,7 +155,7 @@ function DatatableDirectiveRender({
 				className="rounded-md border border-red-300 bg-red-50 p-3 text-red-700 text-xs"
 			>
 				Datatable data file not found or invalid:{" "}
-				<strong>{dataFile || "(missing)"}</strong>
+				<strong>{params.data_file || "(missing)"}</strong>
 			</div>
 		);
 	}
@@ -177,7 +170,11 @@ function DatatableDirectiveRender({
 				marginBottom: config.spacingAfter,
 			}}
 		>
-			<DatatableVisual definition={definition} target={target} />
+			<DatatableVisual
+				key={lastUpdated ?? undefined}
+				definition={definition}
+				target={target}
+			/>
 		</div>
 	);
 }
@@ -192,11 +189,10 @@ function registerDatatableRenderRuntime(
 	};
 }
 
-export const datatableRenderPlugin: PluginDefinition = {
-	id: "datatable-render",
-	category: "render",
-	directiveCategory: "table",
-	name: "Datatable Render",
+export const datatableDirectivePlugin: PluginDefinition = {
+	id: "datatable",
+	category: "table",
+	name: "Datatable",
 	hooks: {
 		directiveRender: registerDatatableRenderRuntime,
 	},

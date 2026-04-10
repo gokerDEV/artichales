@@ -411,6 +411,8 @@ function validatePluginRuntimeAvailability(
 import type { Root } from "mdast";
 import { visit } from "unist-util-visit";
 
+import { remarkNormalizeDirectives } from "@/lib/artichales.utils";
+
 function executeParserHooks(
 	articleContent: string,
 	runtimePluginIds: string[] | undefined,
@@ -421,7 +423,8 @@ function executeParserHooks(
 	let processor = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
-		.use(remarkDirective);
+		.use(remarkDirective)
+		.use(remarkNormalizeDirectives);
 
 	for (const plugin of executionState.parser) {
 		const parseHook = plugin.hooks.parse as any;
@@ -550,7 +553,6 @@ function executeRenderHooks(
 ): PipelineDiagnostic[] {
 	const diagnostics: PipelineDiagnostic[] = [];
 	const context: RenderHookContext = {
-		refIndexById: {},
 		target,
 		resolvedReferences: {},
 		utilityClasses: {},

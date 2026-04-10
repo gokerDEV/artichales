@@ -67,7 +67,10 @@ function normalizeKey(value: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
-function offsetToLocation(content: string, offset: number): {
+function offsetToLocation(
+	content: string,
+	offset: number,
+): {
 	offset: number;
 	line: number;
 	column: number;

@@ -21,7 +21,7 @@ type PagedPreviewerInstance = {
 const PAGE_LIMIT = 40;
 
 function escapeCssContent(value: string): string {
-	return value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+	return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function resolvePagedPreviewerFactory(
@@ -100,7 +100,7 @@ export function PrintPreview({
 			escapeCssContent((value || "").replaceAll("{title}", printTitle));
 		const pageNumberToken = "counter(page)";
 		const resolvePageContent = (value?: string) => {
-			if (!value) return "\"\"";
+			if (!value) return '""';
 			const parts = value.split("{pageNumber}");
 			if (parts.length === 1) {
 				return `"${resolveTokenText(value)}"`;
@@ -135,7 +135,7 @@ export function PrintPreview({
 	@bottom-right { content: ${resolvePageContent(firstPageFooter?.right)}; }
 }`;
 
-			return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
+		return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
 .paged-print-content .artichales__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
 .paged-print-content .pagedjs_first_page .artichales__body { column-count: ${firstPageColumns}; }
 ${marginBoxes}`;

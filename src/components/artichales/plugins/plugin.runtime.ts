@@ -1,6 +1,6 @@
 import type { Root } from "mdast";
 import type { Plugin } from "unified";
-import { getPluginsByCategory } from "@/components/artichales/plugins/plugin.registry";
+import { loadPluginRegistry } from "@/components/artichales/plugins/plugin.registry";
 import type { PluginDefinition } from "./plugin.contract";
 
 export type PluginExecutionState = {
@@ -12,13 +12,20 @@ export type PluginExecutionState = {
 	missingRenderRuntimeIds: string[];
 };
 
+const PARSER_CATEGORIES = new Set(["parser"]);
+const EDITOR_CATEGORIES = new Set(["editor"]);
+
 export function resolvePluginExecutionState(
 	runtimePluginIds?: string[],
 ): PluginExecutionState {
-	const parser = getPluginsByCategory("parser", runtimePluginIds);
-	const core = getPluginsByCategory("core", runtimePluginIds);
-	const render = getPluginsByCategory("render", runtimePluginIds);
-	const editor = getPluginsByCategory("editor", runtimePluginIds);
+	const all = loadPluginRegistry(runtimePluginIds);
+
+	const parser = all.filter((p) => PARSER_CATEGORIES.has(p.category));
+	const editor = all.filter((p) => EDITOR_CATEGORIES.has(p.category));
+	const core = all.filter((p) => Boolean(p.hooks.coreRender));
+	const render = all.filter(
+		(p) => Boolean(p.hooks.render) || Boolean(p.hooks.directiveRender),
+	);
 
 	return {
 		parser,
@@ -26,11 +33,11 @@ export function resolvePluginExecutionState(
 		render,
 		editor,
 		missingParserRuntimeIds: parser
-			.filter((plugin) => !plugin.hooks.parse)
-			.map((plugin) => plugin.id),
+			.filter((p) => !p.hooks.parse)
+			.map((p) => p.id),
 		missingRenderRuntimeIds: render
-			.filter((plugin) => !plugin.hooks.render && !plugin.hooks.directiveRender)
-			.map((plugin) => plugin.id),
+			.filter((p) => !p.hooks.render && !p.hooks.directiveRender)
+			.map((p) => p.id),
 	};
 }
 

@@ -14,7 +14,7 @@ import type {
 	CitationEntry,
 	ValidatedBibEntry,
 } from "@/lib/bibtex";
-import { type PipelineDiagnostic } from "@/lib/document-pipeline";
+import type { PipelineDiagnostic } from "@/lib/document-pipeline";
 import type { TemplateDiagnostic, TemplateFileResolved } from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,

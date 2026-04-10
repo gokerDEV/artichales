@@ -10,7 +10,7 @@ function registerCodeRenderRuntime(_: RenderHookContext): Partial<Components> {
 
 export const codeRenderPlugin: PluginDefinition = {
 	id: "code-render",
-	category: "render",
+	category: "code",
 	name: "Code Render",
 	hooks: {
 		render: registerCodeRenderRuntime,

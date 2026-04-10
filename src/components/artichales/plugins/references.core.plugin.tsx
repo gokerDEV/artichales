@@ -17,7 +17,7 @@ function renderReferencesCore(context: CoreRenderHookContext) {
 
 export const referencesCorePlugin: PluginDefinition = {
 	id: "references-core",
-	category: "core",
+	category: "references",
 	name: "References Core",
 	hooks: {
 		coreRender: renderReferencesCore,

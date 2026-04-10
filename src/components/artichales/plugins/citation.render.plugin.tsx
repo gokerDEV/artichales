@@ -14,7 +14,7 @@ function registerCitationRenderRuntime(
 
 export const citationRenderPlugin: PluginDefinition = {
 	id: "citation-render",
-	category: "render",
+	category: "cite",
 	name: "Citation Render",
 	hooks: {
 		render: registerCitationRenderRuntime,

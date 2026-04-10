@@ -84,8 +84,6 @@ export function DocumentRenderContent({
 								: undefined
 						}
 						resolvedReferences={document.resolvedReferences}
-						activeParserPluginIds={document.activePluginIds.parser}
-						activeRenderPluginIds={document.activePluginIds.render}
 						directiveConfigs={document.template.directiveConfigs}
 						utilityClasses={document.template.utilities}
 					/>
