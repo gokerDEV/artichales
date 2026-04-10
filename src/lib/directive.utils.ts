@@ -1,5 +1,5 @@
 import { parse as parseYaml } from "yaml";
-import type { DirectivePrimitive } from "@/components/artichales/plugins/plugin.contract";
+import type { DirectiveCategory } from "@/components/artichales/plugins/plugin.contract";
 import { isRecord, type UnknownRecord } from "@/lib/artichales.utils";
 
 export type DirectiveFlow = {
@@ -139,7 +139,7 @@ export function getDirectiveString(
 
 export function resolveDirectiveLabelPrefix(
 	directive: string,
-	primitive: DirectivePrimitive,
+	primitive: DirectiveCategory,
 	referenceLabels?: Record<string, string>,
 ): string {
 	const directiveLabel = referenceLabels?.[directive];

@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { DirectiveCaptionProps } from "@/components/artichales/plugins/directive-caption";
-import type { DirectivePrimitive } from "@/components/artichales/plugins/plugin.contract";
+import type { DirectiveCategory } from "@/components/artichales/plugins/plugin.contract";
 import type { UnknownRecord } from "@/lib/artichales.utils";
 import {
 	type DirectiveOverride,
@@ -17,7 +17,7 @@ type DirectiveRenderDefaults = {
 
 type UseDirectiveFrameOptions = {
 	directive: string;
-	primitive: DirectivePrimitive;
+	primitive: DirectiveCategory;
 	bodyText: string;
 	defaults?: DirectiveRenderDefaults;
 	number?: number;

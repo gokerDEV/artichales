@@ -1,7 +1,7 @@
-import type { DirectivePrimitive } from "./plugin.contract";
+import type { DirectiveCategory } from "./plugin.contract";
 
 export type DirectiveCaptionProps = {
-	primitive: DirectivePrimitive;
+	primitive: DirectiveCategory;
 	caption: string;
 	number?: number;
 	labelPrefix?: string;
@@ -9,7 +9,7 @@ export type DirectiveCaptionProps = {
 };
 
 function getCaptionClasses(
-	primitive: DirectivePrimitive,
+	primitive: DirectiveCategory,
 	utilityClasses?: Record<string, string>,
 ) {
 	const prefix = primitive === "table" ? "table" : "figure";

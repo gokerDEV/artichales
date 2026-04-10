@@ -51,7 +51,7 @@ export type DirectiveComponentProps = {
 	directive: string;
 } & Omit<HTMLAttributes<HTMLDivElement>, "children">;
 
-export type DirectivePrimitive =
+export type DirectiveCategory =
 	| "abstract"
 	| "table"
 	| "figure"
@@ -61,7 +61,7 @@ export type DirectivePrimitive =
 
 export type DirectiveRendererDefinition = {
 	directive: string;
-	primitive: DirectivePrimitive;
+	primitive: DirectiveCategory;
 	component: (props: DirectiveComponentProps) => ReactNode;
 };
 
