@@ -238,55 +238,12 @@ export function MarkdownContent({
 			);
 		}) as Components["div"];
 
-		const paragraphRenderer = components.p as
-			| ((props: ParagraphProps) => React.ReactNode)
-			| undefined;
 		components.p = ((props: ParagraphProps) => {
-			const { children, node: _node, ...rest } = props;
-			const childNodes = React.Children.toArray(children);
-			const hasDirectiveBlock = childNodes.some((child) => {
-				if (!React.isValidElement(child)) return false;
-				const props = child.props as UnknownRecord;
-				const node = (props.node as UnknownRecord | undefined) || undefined;
-				const componentType = child.type as
-					| string
-					| { displayName?: string; name?: string };
-				const componentName =
-					typeof componentType === "string"
-						? componentType
-						: componentType.displayName || componentType.name || "";
-				const nodeTagName =
-					typeof node?.tagName === "string" ? node.tagName : undefined;
-				const nodeProperties =
-					(node?.properties as UnknownRecord | undefined) || undefined;
-				const nodeDirective =
-					nodeProperties?.["data-directive"] ?? nodeProperties?.dataDirective;
-				if (nodeDirective !== undefined || nodeTagName === "div") return true;
-				if (
-					componentName === "DirectiveDivRender" ||
-					componentName === "AbstractRender" ||
-					componentName === "DatatableRenderBlock"
-				) {
-					return true;
-				}
-				if (props["data-flow-span"] !== undefined) return true;
-				if (typeof child.type !== "string") return false;
-				if (child.type !== "div") return false;
-				return (
-					props["data-directive"] !== undefined ||
-					props.dataDirective !== undefined
-				);
-			});
-			if (hasDirectiveBlock) {
-				return <>{children}</>;
-			}
-			if (paragraphRenderer) {
-				return paragraphRenderer(props);
-			}
+			const { children, ...rest } = props;
 			return (
-				<p {...(rest as React.HTMLAttributes<HTMLParagraphElement>)}>
+				<div {...(rest as React.HTMLAttributes<HTMLDivElement>)}>
 					{children}
-				</p>
+				</div>
 			);
 		}) as Components["p"];
 
@@ -306,12 +263,24 @@ export function MarkdownContent({
 			.use(remarkAlignmentHeadingAnchors)
 			.use(remarkRehype, { allowDangerousHtml: true })
 			.use(rehypeKatex)
-			.use(rehypeReact as any, {
-				Fragment,
-				jsx,
-				jsxs,
-				components: markdownComponents,
-			});
+			.use(
+				rehypeReact as unknown as Plugin<
+					[
+						{
+							Fragment: typeof Fragment;
+							jsx: typeof jsx;
+							jsxs: typeof jsxs;
+							components: Partial<Components>;
+						},
+					]
+				>,
+				{
+					Fragment,
+					jsx,
+					jsxs,
+					components: markdownComponents,
+				},
+			);
 
 		const tree = processor.runSync(astClone);
 		return processor.stringify(tree) as React.ReactNode;

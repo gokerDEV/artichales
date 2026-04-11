@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+/* =========================================
+   ARTICHALES PRINT (PAGED.JS) BASE STYLES
+   ========================================= */
+
+/* --- 1. ROOT & TYPOGRAPHY --- */
+.art--print {
+    @apply max-w-none text-black text-justify;
+    font-family: var(--art-font-body);
+    font-size: var(--art-font-size-body);
+    line-height: var(--art-line-height);
+    orphans: 3;
+    widows: 3;
+}
+
+/* --- 2. RAW MARKDOWN HTML ELEMENTS --- */
+.art--print p {
+    @apply leading-7 my-4;
+}
+
+.art--print p > strong {
+    @apply font-semibold text-black;
+}
+
+.art--print h1,
+.art--print h2,
+.art--print h3,
+.art--print h4,
+.art--print h5,
+.art--print h6 {
+    font-family: var(--art-font-heading);
+    @apply text-black font-semibold tracking-tight;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+.art--print h1 {
+    @apply mt-6 mb-3 font-bold text-3xl;
+    font-size: var(--art-font-size-h1);
+}
+
+.art--print h2 {
+    @apply mt-5 mb-2.5 text-2xl;
+    font-size: var(--art-font-size-h2);
+}
+
+.art--print h3 {
+    @apply mt-4 mb-2 text-xl;
+    font-size: var(--art-font-size-h3);
+}
+
+.art--print h4,
+.art--print h5,
+.art--print h6 {
+    @apply mt-3 mb-1.5;
+}
+
+.art--print ul {
+    @apply list-disc pl-6 my-4;
+}
+
+.art--print ol {
+    @apply list-decimal pl-6 my-4;
+}
+
+.art--print li {
+    @apply my-1;
+}
+
+.art--print blockquote {
+    @apply border-l-2 border-neutral-400 bg-neutral-100 py-1 pr-3 pl-3 italic my-5;
+}
+
+.art--print hr {
+    @apply my-6 border-neutral-300;
+}
+
+.art--print a {
+    @apply text-black underline-offset-2;
+}
+
+.art--print pre {
+    @apply overflow-x-auto rounded border border-neutral-300 bg-neutral-50 p-3 my-5;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.art--print pre > code {
+    @apply bg-transparent p-0 text-[0.95em];
+    font-family: var(--art-font-mono);
+}
+
+.art--print code {
+    @apply rounded bg-neutral-100 px-1 py-0.5 text-[0.9em];
+    font-family: var(--art-font-mono);
+}
+
+/* Raw Markdown Tables */
+.art--print table {
+    @apply w-full border-collapse my-5;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.art--print th {
+    @apply border-b border-neutral-400 px-2.5 py-1.5 text-left font-semibold;
+}
+
+.art--print td {
+    @apply border-b border-neutral-300 px-2.5 py-1.5 align-top;
+}
+
+.art--print .katex-display {
+    @apply my-4 overflow-x-auto flex justify-center text-lg;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* --- 3. FRONTMATTER & PAGE STRUCTURE --- */
+.art-title {
+    font-family: var(--art-font-heading);
+    font-size: var(--art-font-size-h1);
+    @apply font-bold text-center mb-8 leading-snug;
+}
+
+.art-author {
+    @apply flex flex-wrap justify-center gap-6 text-gray-800 mb-12 text-sm;
+}
+
+.art-author-name {
+    @apply font-bold;
+}
+
+.art-author-affiliation {
+    @apply italic;
+}
+
+.art-header {
+    position: running(headerRunning);
+    @apply text-xs text-gray-500 uppercase tracking-widest text-center w-full;
+}
+
+.art-footer {
+    position: running(footerRunning);
+    @apply text-xs text-gray-500 text-center w-full;
+}
+
+.art-margin-left {
+    @apply text-xs leading-snug text-gray-600 mb-4 text-right;
+    float: left;
+    clear: left;
+    width: 25%;
+    margin-left: -30%;
+}
+
+.art-margin-right {
+    @apply text-xs leading-snug text-gray-600 mb-4 text-left;
+    float: right;
+    clear: right;
+    width: 25%;
+    margin-right: -30%;
+}
+
+/* --- 4. SEMANTIC COMPONENTS (Plugins) --- */
+.art-abstract {
+    @apply block border-y-2 border-black py-4 my-8 mx-auto w-[90%];
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.art-abstract-title {
+    @apply block font-bold mb-2 uppercase tracking-wide text-xs text-center;
+    font-family: var(--art-font-heading);
+}
+
+.art-table {
+    @apply my-6 w-full border-collapse border border-black;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.art-table th, .art-table td {
+    @apply border border-black p-2 text-sm;
+}
+
+.art-figure {
+    @apply my-6 border border-gray-400 flex justify-center flex-col items-center p-2;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.art-map {
+    @apply my-6 border border-gray-400 flex justify-center min-h-[250px];
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* --- 5. CAPTIONS & INLINE UTILITIES --- */
+.art-caption {
+    @apply block text-center text-sm text-gray-700 mt-2 mx-auto w-[90%];
+    page-break-before: avoid;
+    break-before: avoid;
+}
+
+.art-caption-label {
+    @apply font-bold mr-1;
+}
+
+.art-cite, .art-ref {
+    @apply text-black rounded-sm border-b border-black/60 px-0.5 no-underline font-semibold;
+}
+
+/* --- 6. REFERENCES --- */
+.art-references {
+    @apply mt-12 pt-6 border-t-2 border-black;
+    page-break-before: always;
+    break-before: page;
+}
+
+.art-references-title {
+    font-family: var(--art-font-heading);
+    font-size: var(--art-font-size-h2);
+    @apply font-bold mb-6;
+}
+
+.art-reference-item {
+    @apply mb-3 text-sm pl-5 -indent-5 text-justify;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}

@@ -1,12 +1,11 @@
-import * as React from "react";
-import type {
-	CoreRenderHookContext,
-	PluginDefinition,
-} from "./plugin.contract";
 import {
 	getFrontmatterString,
 	getFrontmatterStringOr,
 } from "./frontmatter.utils";
+import type {
+	CoreRenderHookContext,
+	PluginDefinition,
+} from "./plugin.contract";
 
 function HeaderRenderer({ context }: { context: CoreRenderHookContext }) {
 	if (context.target !== "print") return null;
@@ -35,10 +34,8 @@ function HeaderRenderer({ context }: { context: CoreRenderHookContext }) {
 				{issueInfo ? <span className="ml-2">({issueInfo})</span> : null}
 			</div>
 			<div>
-				{shortTitle ? (
-					<span className="italic">{shortTitle}</span>
-				) : null}
-				<span className="ac-page-counter ml-4 font-mono font-bold" />
+				{shortTitle ? <span className="italic">{shortTitle}</span> : null}
+				<span className="ac-page-counter ml-4 font-bold font-mono" />
 			</div>
 		</div>
 	);

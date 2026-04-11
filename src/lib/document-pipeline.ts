@@ -439,7 +439,7 @@ function executeParserHooks(
 			try {
 				const transformer = parseHook.call(this) as
 					| ((tree: Root, file: VFile) => void)
-					| void;
+					| undefined;
 				if (transformer) {
 					return (tree: Root, file: VFile) => {
 						try {

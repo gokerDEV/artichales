@@ -1,12 +1,11 @@
-import * as React from "react";
-import type {
-	CoreRenderHookContext,
-	PluginDefinition,
-} from "./plugin.contract";
 import {
 	getFrontmatterString,
 	getFrontmatterStringOr,
 } from "./frontmatter.utils";
+import type {
+	CoreRenderHookContext,
+	PluginDefinition,
+} from "./plugin.contract";
 
 function FooterRenderer({ context }: { context: CoreRenderHookContext }) {
 	if (context.target !== "print") return null;
@@ -21,7 +20,7 @@ function FooterRenderer({ context }: { context: CoreRenderHookContext }) {
 	const publishedAt = getFrontmatterString(frontmatter, "publishedAt");
 
 	return (
-		<div className="ac-running-footer flex w-full justify-between pt-2 border-t border-muted/30 text-[9pt] text-muted-foreground/80">
+		<div className="ac-running-footer flex w-full justify-between border-muted/30 border-t pt-2 text-[9pt] text-muted-foreground/80">
 			<div>
 				{license}
 				{publishedAt ? (
@@ -30,7 +29,7 @@ function FooterRenderer({ context }: { context: CoreRenderHookContext }) {
 			</div>
 			<div>
 				{doi ? `DOI: ${doi}` : ""}
-				<span className="ac-page-counter ml-4 font-mono font-bold" />
+				<span className="ac-page-counter ml-4 font-bold font-mono" />
 			</div>
 		</div>
 	);

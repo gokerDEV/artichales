@@ -4,6 +4,8 @@ import type { DocumentSource } from "@/hooks/use-document";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "./markdown-content";
 
+import "@/components/artichales/base/index.css";
+
 type RenderTarget = "web" | "print";
 
 type DocumentRenderContentProps = {
@@ -22,20 +24,20 @@ function buildTemplateCssVars(document: DocumentSource): CssVarStyle {
 	const utilities = document.template.utilities || {};
 
 	return {
-		"--ac-font-body": fontFamily?.body || "serif",
-		"--ac-font-heading": fontFamily?.heading || "sans-serif",
-		"--ac-font-mono": fontFamily?.mono || "monospace",
-		"--ac-font-size-body": fontSize?.body || "1rem",
-		"--ac-font-size-h1": fontSize?.h1 || "2rem",
-		"--ac-font-size-h2": fontSize?.h2 || "1.5rem",
-		"--ac-font-size-h3": fontSize?.h3 || "1.25rem",
-		"--ac-line-height": String(document.template.document?.lineHeight || 1.6),
-		"--ac-text-color": colors?.text || "#111111",
-		"--ac-muted-color": colors?.muted || "#666666",
-		"--ac-border-color": colors?.border || "#d1d5db",
-		"--ac-link-color": colors?.link || "#0f766e",
-		"--ac-cite-class": utilities.cite || "cite",
-		"--ac-ref-class": utilities.ref || "ref",
+		"--art-font-body": fontFamily?.body || "serif",
+		"--art-font-heading": fontFamily?.heading || "sans-serif",
+		"--art-font-mono": fontFamily?.mono || "monospace",
+		"--art-font-size-body": fontSize?.body || "1rem",
+		"--art-font-size-h1": fontSize?.h1 || "2rem",
+		"--art-font-size-h2": fontSize?.h2 || "1.5rem",
+		"--art-font-size-h3": fontSize?.h3 || "1.25rem",
+		"--art-line-height": String(document.template.document?.lineHeight || 1.6),
+		"--art-text-color": colors?.text || "#111111",
+		"--art-muted-color": colors?.muted || "#666666",
+		"--art-border-color": colors?.border || "#d1d5db",
+		"--art-link-color": colors?.link || "#0f766e",
+		"--art-cite-class": utilities.cite || "cite",
+		"--art-ref-class": utilities.ref || "ref",
 	};
 }
 
@@ -67,7 +69,7 @@ export function DocumentRenderContent({
 	return (
 		<div
 			id="artichales"
-			className={cn(`artichales artichales--${target}`)}
+			className={cn(`artichales art--${target}`)}
 			style={buildTemplateCssVars(document)}
 		>
 			{coreRenderers.get("title") ?? null}

@@ -21,6 +21,7 @@ import type {
 	TemplateDiagnostic,
 	TemplateFileResolved,
 } from "@/lib/template";
+import { DEFAULT_TEMPLATE_FILE } from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,
 	CORE_BIB_FILE,
@@ -216,7 +217,7 @@ export function useDocument(
 
 	const resolvedTemplateForTarget = React.useMemo(
 		() =>
-			templateFile ? resolveTemplateForTarget(templateFile, target) : null,
+			resolveTemplateForTarget(templateFile ?? DEFAULT_TEMPLATE_FILE, target),
 		[target, templateFile],
 	);
 
@@ -321,7 +322,7 @@ export function useDocument(
 		citations,
 		validatedBibEntries,
 		plots,
-		template: resolvedTemplateForTarget as DocumentTemplate,
+		template: resolvedTemplateForTarget,
 		citationStyle,
 		assetFiles,
 		templateDiagnostics,

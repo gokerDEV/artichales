@@ -27,7 +27,6 @@ export type MdxEditorProps = {
 	onBlur?: () => void;
 	onCursorOffsetChange?: (offset: number) => void;
 	jumpToOffset?: number | null;
-	jumpToOffsetSignal?: number;
 	className?: string;
 	label?: string;
 	completions?: EditorCompletions;
@@ -94,7 +93,6 @@ export function MdxEditor({
 	onBlur,
 	onCursorOffsetChange,
 	jumpToOffset = null,
-	jumpToOffsetSignal = 0,
 	className,
 	label = "Source",
 	completions = { bibKeys: [], referenceSelectors: [], directiveNames: [] },
@@ -222,7 +220,7 @@ export function MdxEditor({
 			effects: EditorView.scrollIntoView(clampedOffset, { y: "center" }),
 		});
 		view.focus();
-	}, [jumpToOffset, jumpToOffsetSignal]);
+	}, [jumpToOffset]);
 
 	React.useEffect(() => {
 		return () => {

@@ -44,7 +44,7 @@ export const ReferencesRenderPlugin = React.memo(
 		return (
 			<div
 				className={cn("mt-8 border-t pt-8", isPrint ? "pt-6" : "", className)}
-				style={{ borderColor: "var(--ac-border-color)" }}
+				style={{ borderColor: "var(--art-border-color)" }}
 			>
 				<h2
 					className={cn(
@@ -52,7 +52,7 @@ export const ReferencesRenderPlugin = React.memo(
 						isPrint ? "mb-4 text-sm" : "mb-6 text-xl",
 					)}
 					style={{
-						color: "var(--ac-text-color)",
+						color: "var(--art-text-color)",
 						fontFamily: docStyle.fontFamily?.heading,
 					}}
 				>
@@ -69,11 +69,11 @@ export const ReferencesRenderPlugin = React.memo(
 									? "text-[10px] leading-relaxed"
 									: "text-sm leading-relaxed",
 							)}
-							style={{ color: "var(--ac-muted-color)" }}
+							style={{ color: "var(--art-muted-color)" }}
 						>
 							<span
 								className="shrink-0 font-medium"
-								style={{ color: "var(--ac-text-color)" }}
+								style={{ color: "var(--art-text-color)" }}
 							>
 								[{idx + 1}]
 							</span>

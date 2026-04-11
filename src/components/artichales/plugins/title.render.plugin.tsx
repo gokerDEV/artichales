@@ -79,7 +79,7 @@ export const TitleCorePlugin = React.memo(
 						isPrint ? "text-2xl" : "text-3xl",
 					)}
 					style={{
-						color: "var(--ac-text-color)",
+						color: "var(--art-text-color)",
 						fontFamily: docStyle.fontFamily?.heading,
 						fontSize: docStyle.fontSize?.h1,
 					}}

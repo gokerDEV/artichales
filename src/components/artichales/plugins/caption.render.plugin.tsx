@@ -85,7 +85,7 @@ export function createCaptionRender(
 					className="caption-anchor my-2 block text-center text-xs italic"
 				>
 					{displayLabel && (
-						<span className="font-semibold not-italic text-[var(--ac-text-color)] mr-1">
+						<span className="mr-1 font-semibold text-[var(--art-text-color)] not-italic">
 							{displayLabel}
 						</span>
 					)}

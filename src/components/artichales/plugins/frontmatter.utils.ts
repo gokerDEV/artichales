@@ -18,9 +18,7 @@ function readKey(
 }
 
 /** Narrows an `unknown` value to `Record<string, unknown>` or returns `undefined`. */
-function asObject(
-	value: unknown,
-): Record<string, unknown> | undefined {
+function asObject(value: unknown): Record<string, unknown> | undefined {
 	if (typeof value === "object" && value !== null && !Array.isArray(value)) {
 		return value as Record<string, unknown>;
 	}

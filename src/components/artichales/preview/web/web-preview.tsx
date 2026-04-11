@@ -39,7 +39,7 @@ export function WebPreview({
 					}}
 				>
 					<Container
-						data-artichales-preview-render-root="true"
+						data-art-preview-render-root="true"
 						className={cn("w-full", containerClass, containerPaddingClass)}
 						style={{ maxWidth: containerWidth }}
 					>

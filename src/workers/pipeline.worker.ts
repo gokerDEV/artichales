@@ -32,30 +32,31 @@ function decodeHtmlEntity(entity: string): string {
 }
 
 function ensureWorkerDocumentPolyfill(): void {
-	const globalAny = globalThis as any;
+	const globalScope = globalThis as typeof globalThis & Record<string, unknown>;
 
-	if (typeof globalAny.$RefreshSig$ === "undefined") {
-		globalAny.$RefreshSig$ = () => (type: unknown) => type;
+	if (typeof globalScope.$RefreshSig$ === "undefined") {
+		globalScope.$RefreshSig$ = () => (type: unknown) => type;
 	}
-	if (typeof globalAny.$RefreshReg$ === "undefined") {
-		globalAny.$RefreshReg$ = () => undefined;
+	if (typeof globalScope.$RefreshReg$ === "undefined") {
+		globalScope.$RefreshReg$ = () => undefined;
 	}
 
-	if (typeof globalAny.window === "undefined") {
-		globalAny.window = globalAny;
+	if (typeof globalScope.window === "undefined") {
+		globalScope.window = globalScope;
 	}
-	if (typeof globalAny.self === "object" && globalAny.self) {
-		if (typeof globalAny.self.window === "undefined") {
-			globalAny.self.window = globalAny.window;
+	if (typeof globalScope.self === "object" && globalScope.self) {
+		const selfScope = globalScope.self as Record<string, unknown>;
+		if (typeof selfScope.window === "undefined") {
+			selfScope.window = globalScope.window;
 		}
 	}
-	if (typeof globalAny.location === "undefined") {
-		globalAny.location = { href: "worker://pipeline" };
+	if (typeof globalScope.location === "undefined") {
+		globalScope.location = { href: "worker://pipeline" };
 	}
-	if (typeof globalAny.navigator === "undefined") {
-		globalAny.navigator = { userAgent: "worker" };
+	if (typeof globalScope.navigator === "undefined") {
+		globalScope.navigator = { userAgent: "worker" };
 	}
-	if (typeof globalAny.document !== "undefined") return;
+	if (typeof globalScope.document !== "undefined") return;
 
 	const createStubElement = () => {
 		let textContent = "";
@@ -81,7 +82,7 @@ function ensureWorkerDocumentPolyfill(): void {
 		};
 	};
 
-	globalAny.document = {
+	globalScope.document = {
 		createElement: createStubElement,
 		createElementNS: createStubElement,
 		querySelector: () => null,

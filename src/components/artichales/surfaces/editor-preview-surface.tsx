@@ -217,7 +217,7 @@ export function EditorPreviewSurface() {
 		if (isPreviewDebounceEnabled) return;
 		// In manual mode we still rerender on target changes (web/print) to avoid stale output.
 		executePipeline(latestFilesRef.current);
-	}, [executePipeline, isPreviewDebounceEnabled, target]);
+	}, [executePipeline, isPreviewDebounceEnabled]);
 
 	React.useEffect(() => {
 		let cancelled = false;
@@ -575,11 +575,7 @@ export function EditorPreviewSurface() {
 			),
 			directiveNames: TEMPLATE_DIRECTIVE_NAMES,
 		}),
-		[
-			docSource.citations,
-			docSource.referenceTargets,
-			docSource.activePluginIds,
-		],
+		[docSource.citations, docSource.referenceTargets],
 	);
 
 	const handleSelectFile = React.useCallback(
@@ -680,7 +676,7 @@ export function EditorPreviewSurface() {
 	}, []);
 
 	const runPdfExport = React.useCallback(() => {
-		globalThis.document.body.setAttribute("data-artichales-printing", "true");
+		globalThis.document.body.setAttribute("data-art-printing", "true");
 		window.setTimeout(() => {
 			window.print();
 		}, 60);
@@ -739,7 +735,7 @@ export function EditorPreviewSurface() {
 
 	React.useEffect(() => {
 		const resetPrintState = () => {
-			globalThis.document.body.removeAttribute("data-artichales-printing");
+			globalThis.document.body.removeAttribute("data-art-printing");
 		};
 
 		window.addEventListener("afterprint", resetPrintState);
@@ -860,10 +856,10 @@ export function EditorPreviewSurface() {
 						className="flex min-h-0 flex-col overflow-hidden border-border border-r bg-muted/30"
 					>
 						<div className="flex h-12 shrink-0 items-center justify-between border-border border-b bg-card px-4">
-							<div className="truncate font-medium text-xs text-muted-foreground">
+							<div className="truncate font-medium text-muted-foreground text-xs">
 								{activeFile}
 							</div>
-							<Label className="text-xs text-muted-foreground">
+							<Label className="text-muted-foreground text-xs">
 								Live Preview
 								<Switch
 									size="sm"
@@ -899,7 +895,6 @@ export function EditorPreviewSurface() {
 								}
 							}}
 							jumpToOffset={editorJumpRequest?.offset ?? null}
-							jumpToOffsetSignal={editorJumpRequest?.nonce ?? 0}
 							label={activeFile}
 							completions={editorCompletions}
 						/>
@@ -978,15 +973,19 @@ export function EditorPreviewSurface() {
 													{diagnostics.errors.map((diag, index) => (
 														<li
 															key={`error-${diag.source}-${diag.message}-${index}`}
-															className="rounded border border-red-300 bg-red-50 px-2 py-1 text-red-700 text-xs"
-															onClick={() => handleDiagnosticClick(diag)}
 														>
-															[{diag.source}]
-															{formatDiagnosticLocation(diag)
-																? ` ${formatDiagnosticLocation(diag)}`
-																: ""}{" "}
-															{diag.message}
-															{diag.details ? ` ${diag.details}` : ""}
+															<button
+																type="button"
+																className="w-full rounded border border-red-300 bg-red-50 px-2 py-1 text-left text-red-700 text-xs"
+																onClick={() => handleDiagnosticClick(diag)}
+															>
+																[{diag.source}]
+																{formatDiagnosticLocation(diag)
+																	? ` ${formatDiagnosticLocation(diag)}`
+																	: ""}{" "}
+																{diag.message}
+																{diag.details ? ` ${diag.details}` : ""}
+															</button>
 														</li>
 													))}
 												</ul>
@@ -1005,15 +1004,19 @@ export function EditorPreviewSurface() {
 													{diagnostics.warnings.map((diag, index) => (
 														<li
 															key={`warning-${diag.source}-${diag.message}-${index}`}
-															className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-700 text-xs"
-															onClick={() => handleDiagnosticClick(diag)}
 														>
-															[{diag.source}]
-															{formatDiagnosticLocation(diag)
-																? ` ${formatDiagnosticLocation(diag)}`
-																: ""}{" "}
-															{diag.message}
-															{diag.details ? ` ${diag.details}` : ""}
+															<button
+																type="button"
+																className="w-full rounded border border-amber-300 bg-amber-50 px-2 py-1 text-left text-amber-700 text-xs"
+																onClick={() => handleDiagnosticClick(diag)}
+															>
+																[{diag.source}]
+																{formatDiagnosticLocation(diag)
+																	? ` ${formatDiagnosticLocation(diag)}`
+																	: ""}{" "}
+																{diag.message}
+																{diag.details ? ` ${diag.details}` : ""}
+															</button>
 														</li>
 													))}
 												</ul>
@@ -1032,15 +1035,19 @@ export function EditorPreviewSurface() {
 													{diagnostics.info.map((diag, index) => (
 														<li
 															key={`info-${diag.source}-${diag.message}-${index}`}
-															className="rounded border border-sky-300 bg-sky-50 px-2 py-1 text-sky-700 text-xs"
-															onClick={() => handleDiagnosticClick(diag)}
 														>
-															[{diag.source}]
-															{formatDiagnosticLocation(diag)
-																? ` ${formatDiagnosticLocation(diag)}`
-																: ""}{" "}
-															{diag.message}
-															{diag.details ? ` ${diag.details}` : ""}
+															<button
+																type="button"
+																className="w-full rounded border border-sky-300 bg-sky-50 px-2 py-1 text-left text-sky-700 text-xs"
+																onClick={() => handleDiagnosticClick(diag)}
+															>
+																[{diag.source}]
+																{formatDiagnosticLocation(diag)
+																	? ` ${formatDiagnosticLocation(diag)}`
+																	: ""}{" "}
+																{diag.message}
+																{diag.details ? ` ${diag.details}` : ""}
+															</button>
 														</li>
 													))}
 												</ul>

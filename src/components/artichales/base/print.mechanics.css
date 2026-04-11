@@ -1,0 +1,160 @@
+/* ==========================================================================
+   PAGED.JS PREVIEW CONTAINER STYLES & NATIVE PRINT MECHANICS
+   Strictly scoped to the Artichales printing domain.
+   ========================================================================== */
+
+.paged-print-content .pagedjs_pages {
+    @apply flex flex-col items-center gap-8;
+}
+
+.paged-print-content .pagedjs_page {
+    @apply bg-white shadow-xl ring-1 ring-gray-300 w-full  h-auto relative;
+}
+
+.paged-print-content .pagedjs_pagebox {
+    @apply overflow-hidden;
+}
+
+@media print {
+    @page {
+        margin: 0;
+    }
+
+    html,
+    body,
+    #root {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* Target only the Artichales printing state */
+    body[data-art-printing="true"] {
+        background: white !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    body[data-art-printing="true"] * {
+        visibility: hidden !important;
+    }
+
+    body[data-art-printing="true"] [data-art-print-root="true"],
+    body[data-art-printing="true"] [data-art-print-root="true"] * {
+        visibility: visible !important;
+    }
+
+    body[data-art-printing="true"] [data-art-pagedjs-preview="true"],
+    body[data-art-printing="true"] [data-art-pagedjs-preview="true"] * {
+        visibility: visible !important;
+    }
+
+    /* Reset positioning for the print container */
+    body[data-art-printing="true"] [data-art-print-container="true"] {
+        position: static !important;
+        inset: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        background: white !important;
+    }
+
+    body[data-art-printing="true"] [data-art-print-source="true"] {
+        display: none !important;
+    }
+
+    body[data-art-printing="true"] [data-art-print-scroll="true"],
+    body[data-art-printing="true"] [data-art-print-scroll="true"] [data-radix-scroll-area-viewport],
+    body[data-art-printing="true"] [data-art-print-scroll="true"] [data-radix-scroll-area-content] {
+        display: block !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body[data-art-printing="true"] [data-art-print-preview-shell="true"] {
+        display: block !important;
+        height: auto !important;
+        margin: 0 !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+    }
+
+    body[data-art-printing="true"] [data-art-print-root="true"] {
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 auto !important;
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    body[data-art-printing="true"] [data-art-print-page="true"] {
+        break-after: page;
+        page-break-after: always;
+        width: auto !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    body[data-art-printing="true"] [data-art-pagedjs-preview="true"] .pagedjs_page {
+        break-after: page;
+        page-break-after: always;
+        box-shadow: none !important;
+        border: 0 !important;
+        margin: 0 auto !important;
+    }
+
+    body[data-art-printing="true"] [data-art-pagedjs-preview="true"] .pagedjs_page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    body[data-art-printing="true"] [data-art-print-header="true"],
+    body[data-art-printing="true"] [data-art-print-footer="true"] {
+        position: absolute !important;
+        z-index: 20 !important;
+    }
+
+    /* Print flow rules */
+    body[data-art-printing="true"] .print-flow-span-page {
+        column-span: all;
+    }
+    body[data-art-printing="true"] .print-flow-span-column {
+        column-span: none;
+    }
+    body[data-art-printing="true"] .print-flow-break-before-page {
+        break-before: page;
+        page-break-before: always;
+    }
+    body[data-art-printing="true"] .print-flow-break-after-page {
+        break-after: page;
+        page-break-after: always;
+    }
+
+    body[data-art-printing="true"] [data-art-print-root="true"] h1,
+    body[data-art-printing="true"] [data-art-print-root="true"] h2,
+    body[data-art-printing="true"] [data-art-print-root="true"] h3,
+    body[data-art-printing="true"] [data-art-print-root="true"] figure,
+    body[data-art-printing="true"] [data-art-print-root="true"] table,
+    body[data-art-printing="true"] [data-art-print-root="true"] pre,
+    body[data-art-printing="true"] [data-art-print-root="true"] blockquote {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    body[data-art-printing="true"] [data-art-print-root="true"] .footnotes {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        break-before: avoid-page;
+    }
+
+    @supports (position: running(artichales-footnotes)) {
+        body[data-art-printing="true"] [data-art-print-root="true"] .footnotes {
+            position: running(artichales-footnotes);
+        }
+    }
+}

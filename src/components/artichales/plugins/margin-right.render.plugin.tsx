@@ -1,4 +1,3 @@
-import * as React from "react";
 import type {
 	CoreRenderHookContext,
 	PluginDefinition,
@@ -7,16 +6,31 @@ import type {
 function MarginRightRenderer({ context }: { context: CoreRenderHookContext }) {
 	if (context.target !== "print") return null;
 
-	const f = context.document.frontmatter as any;
-	const conferenceInfo = f.conference?.name || f.journal?.name;
+	const f = context.document.frontmatter;
+	const conference =
+		f.conference && typeof f.conference === "object"
+			? (f.conference as Record<string, unknown>)
+			: null;
+	const journal =
+		f.journal && typeof f.journal === "object"
+			? (f.journal as Record<string, unknown>)
+			: null;
+	const conferenceInfo =
+		(typeof conference?.name === "string" && conference.name.trim() !== ""
+			? conference.name
+			: undefined) ||
+		(typeof journal?.name === "string" && journal.name.trim() !== ""
+			? journal.name
+			: undefined) ||
+		"";
 
 	return (
 		<div
-			className="ac-running-right flex h-full flex-col justify-end text-[9pt] text-muted-foreground/60 tracking-widest uppercase pb-[24mm]"
+			className="ac-running-right flex h-full flex-col justify-end pb-[24mm] text-[9pt] text-muted-foreground/60 uppercase tracking-widest"
 			style={{ writingMode: "vertical-rl" }}
 		>
-			<span>{String(conferenceInfo)}</span>
-			<span className="ac-page-counter mt-8 font-mono font-bold" />
+			<span>{conferenceInfo}</span>
+			<span className="ac-page-counter mt-8 font-bold font-mono" />
 		</div>
 	);
 }

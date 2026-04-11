@@ -87,7 +87,7 @@ export const AuthorBlockRender = React.memo(
 		if (authors.length === 0 && keywords.length === 0) return null;
 
 		return (
-			<section className={cn("flex flex-col gap-4 mb-8", className)}>
+			<section className={cn("mb-8 flex flex-col gap-4", className)}>
 				{titleBlock.showAuthors !== false && authors.length > 0 && (
 					<div
 						className={cn("flex flex-wrap gap-x-6 gap-y-2", authorAlignClass)}
@@ -108,7 +108,7 @@ export const AuthorBlockRender = React.memo(
 					<div className={cn("mt-2 flex flex-wrap gap-2", authorAlignClass)}>
 						<span
 							className="font-semibold text-xs uppercase tracking-wider"
-							style={{ color: "var(--ac-muted-color)" }}
+							style={{ color: "var(--art-muted-color)" }}
 						>
 							Keywords:
 						</span>
@@ -116,7 +116,7 @@ export const AuthorBlockRender = React.memo(
 							<span
 								key={k}
 								className="font-medium text-xs italic"
-								style={{ color: "var(--ac-text-color)" }}
+								style={{ color: "var(--art-text-color)" }}
 							>
 								{String(k)}
 							</span>
@@ -162,7 +162,7 @@ export const AuthorNodeRender = React.memo(function AuthorNodeRender({
 			<span
 				className="font-medium"
 				style={{
-					color: "var(--ac-text-color)",
+					color: "var(--art-text-color)",
 					fontFamily: docStyle?.fontFamily?.body,
 				}}
 			>
@@ -173,7 +173,7 @@ export const AuthorNodeRender = React.memo(function AuthorNodeRender({
 						target="_blank"
 						rel="noreferrer"
 						className={cn("ml-1 hover:underline", isPrint ? "opacity-80" : "")}
-						style={{ color: "var(--ac-link-color)" }}
+						style={{ color: "var(--art-link-color)" }}
 					>
 						<span className="sr-only">ORCID</span>
 						<svg
@@ -193,7 +193,7 @@ export const AuthorNodeRender = React.memo(function AuthorNodeRender({
 				<span
 					className="whitespace-nowrap text-sm"
 					style={{
-						color: isPrint ? "var(--ac-text-color)" : "var(--ac-muted-color)",
+						color: isPrint ? "var(--art-text-color)" : "var(--art-muted-color)",
 						opacity: isPrint ? 0.8 : 1,
 					}}
 				>
@@ -204,7 +204,7 @@ export const AuthorNodeRender = React.memo(function AuthorNodeRender({
 				<a
 					href={`mailto:${author.email}`}
 					className="text-xs hover:underline"
-					style={{ color: "var(--ac-muted-color)" }}
+					style={{ color: "var(--art-muted-color)" }}
 				>
 					{author.email}
 				</a>

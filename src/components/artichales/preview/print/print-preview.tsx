@@ -147,8 +147,8 @@ ${createZoneCss(":left", "even", pageMargins?.footer, "bottom")}
 `;
 
 		return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
-.paged-print-content .artichales__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
-.paged-print-content .pagedjs_first_page .artichales__body { column-count: ${firstPageColumns}; }
+.paged-print-content .art__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
+.paged-print-content .pagedjs_first_page .art__body { column-count: ${firstPageColumns}; }
 ${marginBoxes}
 ${verticalMarginBoxes}`;
 	}, [
@@ -159,6 +159,7 @@ ${verticalMarginBoxes}`;
 		pageConfig?.size,
 		template.pageMargins,
 		template.layout,
+		document.frontmatter,
 	]);
 	const pagedPreviewKey = React.useMemo(
 		() =>
@@ -281,11 +282,11 @@ ${verticalMarginBoxes}`;
 	return (
 		<div
 			className={cn("absolute inset-0 bg-neutral-100", className)}
-			data-artichales-print-container="true"
+			data-art-print-container="true"
 		>
 			<div
 				className="pointer-events-none absolute top-0 -left-[200vw] opacity-0"
-				data-artichales-print-source="true"
+				data-art-print-source="true"
 			>
 				<div ref={pagedSourceRef}>
 					<style>{pagedCss}</style>
@@ -298,9 +299,9 @@ ${verticalMarginBoxes}`;
 					</div>
 				</div>
 			</div>
-			<ScrollArea className="h-full w-full" data-artichales-print-scroll="true">
+			<ScrollArea className="h-full w-full" data-art-print-scroll="true">
 				<div
-					data-artichales-print-preview-shell="true"
+					data-art-print-preview-shell="true"
 					className="flex w-full flex-col items-center gap-8 p-8 transition-transform duration-200"
 					style={{
 						transform: `scale(${scale / 100})`,
@@ -327,7 +328,7 @@ ${verticalMarginBoxes}`;
 					<div
 						ref={pagedPreviewRef}
 						className="paged-print-content w-full"
-						data-artichales-pagedjs-preview="true"
+						data-art-pagedjs-preview="true"
 					/>
 				</div>
 			</ScrollArea>
