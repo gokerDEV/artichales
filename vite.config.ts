@@ -27,6 +27,7 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				app: "app.html",
+				print: "print.html",
 			},
 		},
 	},

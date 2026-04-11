@@ -116,27 +116,48 @@
 			"showKeywords": true,
 			"spacingAfter": "12mm"
 		},
-		"headerFooter": {
-			"enabled": true,
-			"firstPage": {
-				"header": {
+		"pageMargins": {
+			"header": {
+				"enabled": true,
+				"first": {
 					"left": "",
 					"center": "",
 					"right": "{title}"
 				},
-				"footer": {
+				"last": {
+					"left": "",
+					"center": "",
+					"right": "{title}"
+				},
+				"odd": {
+					"left": "",
+					"center": "",
+					"right": "{title}"
+				},
+				"even": {
+					"left": "",
+					"center": "",
+					"right": "{title}"
+				}
+			},
+			"footer": {
+				"enabled": true,
+				"first": {
 					"left": "",
 					"center": "{pageNumber}",
 					"right": ""
-				}
-			},
-			"defaultPage": {
-				"header": {
-					"left": "",
-					"center": "",
-					"right": "{title}"
 				},
-				"footer": {
+				"last": {
+					"left": "",
+					"center": "{pageNumber}",
+					"right": ""
+				},
+				"odd": {
+					"left": "",
+					"center": "{pageNumber}",
+					"right": ""
+				},
+				"even": {
 					"left": "",
 					"center": "{pageNumber}",
 					"right": ""

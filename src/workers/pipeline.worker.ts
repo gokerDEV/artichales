@@ -103,10 +103,12 @@ async function getPipelineModule(): Promise<PipelineModule> {
 self.onmessage = async (event: MessageEvent) => {
 	if (event.data.type === "EXECUTE_PIPELINE") {
 		try {
-			const { runDocumentPipeline } = await getPipelineModule();
-			const result = runDocumentPipeline(event.data.files, event.data.target);
+			const { buildDocumentModel, enrichDocumentModelForTarget } =
+				await getPipelineModule();
+			const model = buildDocumentModel(event.data.files);
+			const result = enrichDocumentModelForTarget(model, event.data.target);
 			const payload: PipelineResultPayload = {
-				ast: result.ast, // make sure runDocumentPipeline produces an AST instead of/in addition to raw html!
+				ast: result.ast,
 				content: result.content,
 				frontmatter: result.frontmatter,
 				citations: result.citations,
@@ -115,6 +117,7 @@ self.onmessage = async (event: MessageEvent) => {
 				template: result.template,
 				citationStyle: result.template?.default?.citationStyle || "numeric",
 				referenceRegistry: result.resolvedReferences,
+				captions: result.captions,
 				referenceTargets: result.referenceTargets,
 				diagnostics: [
 					...result.templateDiagnostics,

@@ -1,37 +1,32 @@
 import * as React from "react";
 import { runPagedPreview } from "@/components/artichales/preview/print/paged-preview-engine";
 import { DocumentRenderContent } from "@/components/artichales/preview/shared/document-render-content";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { DocumentSource } from "@/hooks/use-document";
 import type { ResolvedMarginConfig } from "@/lib/template";
 import { cn } from "@/lib/utils";
 
-export type PrintPreviewProps = {
+export type PrintDocumentRendererProps = {
 	document: DocumentSource;
 	className?: string;
-	scale?: number;
+	onReadyToPrint?: () => void;
 };
 
-const PAGE_LIMIT = 40;
-
-export function PrintPreviewPane({
+export function PrintDocumentRenderer({
 	document,
 	className,
-	scale = 100,
-}: PrintPreviewProps) {
-	const { template } = document;
-	const pagedSourceRef = React.useRef<HTMLDivElement | null>(null);
-	const pagedPreviewRef = React.useRef<HTMLDivElement | null>(null);
+	onReadyToPrint,
+}: PrintDocumentRendererProps) {
+	const sourceRef = React.useRef<HTMLDivElement | null>(null);
+	const outputRef = React.useRef<HTMLDivElement | null>(null);
 	const renderSequenceRef = React.useRef(0);
-	const [pagedStatus, setPagedStatus] = React.useState<
+	const [status, setStatus] = React.useState<
 		"idle" | "loading" | "ready" | "error"
 	>("idle");
-	const [pagedError, setPagedError] = React.useState<string | null>(null);
-	const [pagedWasTruncated, setPagedWasTruncated] = React.useState(false);
+	const [error, setError] = React.useState<string | null>(null);
+	const { template } = document;
 
 	const pageConfig = template?.page;
 	const margins = pageConfig?.margin;
-	const pageHeightPx = pageConfig?.orientation === "landscape" ? 794 : 1123;
 	const columnGap = template.layout?.columnGap || "7mm";
 	const pagedCss = React.useMemo(() => {
 		const orientation =
@@ -57,8 +52,8 @@ export function PrintPreviewPane({
 			if (!str) return "none";
 			const tokens = str.split(/(\{.*?\})/g).filter(Boolean);
 			const cssTokens = tokens.map((token) => {
-				if (token === "{pageNumber}") return `counter(page)`;
-				if (token === "{totalPages}") return `counter(pages)`;
+				if (token === "{pageNumber}") return "counter(page)";
+				if (token === "{totalPages}") return "counter(pages)";
 				if (token.startsWith("{") && token.endsWith("}")) {
 					const path = token.slice(1, -1).trim().split(".");
 					let value: unknown = document.frontmatter;
@@ -74,7 +69,6 @@ export function PrintPreviewPane({
 		};
 
 		const pageMargins = template.pageMargins;
-
 		const createZoneCss = (
 			pageSelector: string,
 			state: "first" | "odd" | "even",
@@ -101,8 +95,6 @@ ${createZoneCss(":left", "even", pageMargins?.header, "top")}
 ${createZoneCss(":left", "even", pageMargins?.footer, "bottom")}
 `;
 
-		// NOTE: vertical margins left/right are usually injected globally or rotated.
-		// For simplicity we will handle left/right with simple text content vertically.
 		const verticalMarginBoxes = `
 @page :first {
 	@left-middle { content: ${formatContent(pageMargins?.left?.first?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
@@ -124,16 +116,16 @@ ${createZoneCss(":left", "even", pageMargins?.footer, "bottom")}
 ${marginBoxes}
 ${verticalMarginBoxes}`;
 	}, [
-		document.frontmatter.title,
 		columnGap,
+		document.frontmatter,
 		margins,
 		pageConfig?.orientation,
 		pageConfig?.size,
-		template.pageMargins,
 		template.layout,
-		document.frontmatter,
+		template.pageMargins,
 	]);
-	const pagedPreviewKey = React.useMemo(
+
+	const renderKey = React.useMemo(
 		() =>
 			JSON.stringify({
 				content: document.content,
@@ -154,83 +146,59 @@ ${verticalMarginBoxes}`;
 	);
 
 	React.useEffect(() => {
-		void pagedPreviewKey;
+		void renderKey;
 		let cancelled = false;
 		const currentSequence = ++renderSequenceRef.current;
-		const renderPagedPreview = async () => {
-			const sourceElement = pagedSourceRef.current;
-			const previewElement = pagedPreviewRef.current;
-			const previewShell = previewElement?.parentElement;
-			if (!sourceElement || !previewElement || !previewShell) return;
-			setPagedStatus("loading");
-			setPagedError(null);
-			setPagedWasTruncated(false);
-			const viewport = previewElement.closest(
-				"[data-radix-scroll-area-viewport]",
-			) as HTMLElement | null;
-			const previousScrollTop = viewport?.scrollTop ?? 0;
-			const previousScrollHeight = viewport?.scrollHeight ?? 0;
+		const run = async () => {
+			const sourceElement = sourceRef.current;
+			const outputElement = outputRef.current;
+			const stagingHost = outputElement?.parentElement;
+			if (!sourceElement || !outputElement || !stagingHost) return;
 
+			setStatus("loading");
+			setError(null);
 			try {
-				const { wasTruncated } = await runPagedPreview({
+				await runPagedPreview({
 					sourceHtml: sourceElement.innerHTML,
-					stagingHost: previewShell,
-					mountRoot: previewElement,
-					pageLimit: PAGE_LIMIT,
+					stagingHost,
+					mountRoot: outputElement,
 				});
-
-				if (
-					cancelled ||
-					currentSequence !== renderSequenceRef.current ||
-					!pagedPreviewRef.current
-				) {
-					return;
-				}
-				setPagedWasTruncated(wasTruncated);
-				if (viewport) {
+				if (cancelled || currentSequence !== renderSequenceRef.current) return;
+				setStatus("ready");
+				if (onReadyToPrint) {
 					window.requestAnimationFrame(() => {
-						const nextScrollHeight = viewport.scrollHeight;
-						if (previousScrollHeight > 0 && nextScrollHeight > 0) {
-							viewport.scrollTop =
-								(previousScrollTop / previousScrollHeight) * nextScrollHeight;
+						if (cancelled || currentSequence !== renderSequenceRef.current) {
 							return;
 						}
-						viewport.scrollTop = previousScrollTop;
+						window.setTimeout(() => {
+							if (cancelled || currentSequence !== renderSequenceRef.current) {
+								return;
+							}
+							onReadyToPrint();
+						}, 0);
 					});
 				}
-				setPagedStatus("ready");
-			} catch (error) {
-				console.error("Paged.js preview failed:", error);
+			} catch (err) {
+				console.error("Print document rendering failed:", err);
 				if (cancelled || currentSequence !== renderSequenceRef.current) return;
-				if (viewport) {
-					viewport.scrollTop = previousScrollTop;
-				}
-				setPagedStatus("error");
-				setPagedError(
-					"Paged.js preview failed. Check browser console for details.",
-				);
+				setStatus("error");
+				setError("Failed to render print document with Paged.js.");
 			}
 		};
 
-		const timeout = window.setTimeout(() => {
-			void renderPagedPreview();
-		}, 280);
+		void run();
 		return () => {
-			window.clearTimeout(timeout);
 			cancelled = true;
 		};
-	}, [pagedPreviewKey]);
+	}, [onReadyToPrint, renderKey]);
 
 	return (
 		<div
-			className={cn("absolute inset-0 bg-neutral-100", className)}
-			data-art-print-container="true"
+			className={cn("art-print-document relative mx-auto w-full", className)}
+			data-art-print-document="true"
 		>
-			<div
-				className="pointer-events-none absolute top-0 -left-[200vw] opacity-0"
-				data-art-print-source="true"
-			>
-				<div ref={pagedSourceRef}>
+			<div className="pointer-events-none absolute top-0 -left-[200vw] opacity-0">
+				<div ref={sourceRef}>
 					<style>{pagedCss}</style>
 					<div className="paged-print-content">
 						<DocumentRenderContent
@@ -241,42 +209,14 @@ ${verticalMarginBoxes}`;
 					</div>
 				</div>
 			</div>
-			<ScrollArea className="h-full w-full" data-art-print-scroll="true">
-				<div
-					data-art-print-preview-shell="true"
-					className="flex w-full flex-col items-center gap-8 p-8 transition-transform duration-200"
-					style={{
-						transform: `scale(${scale / 100})`,
-						transformOrigin: "top center",
-						backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${pageHeightPx - 24}px, rgb(226 232 240) ${pageHeightPx - 24}px, rgb(226 232 240) ${pageHeightPx}px)`,
-					}}
-				>
-					{pagedStatus === "loading" || pagedStatus === "idle" ? (
-						<div className="w-full max-w-[210mm] border border-muted bg-background p-4 text-muted-foreground text-sm">
-							Preparing Paged.js print preview...
-						</div>
-					) : null}
-					{pagedError ? (
-						<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
-							{pagedError}
-						</div>
-					) : null}
-					{pagedWasTruncated ? (
-						<div className="w-full max-w-[210mm] border border-amber-300 bg-amber-50 p-3 text-amber-800 text-sm">
-							Print preview was limited to {PAGE_LIMIT} pages. Reduce content or
-							adjust layout to view all pages.
-						</div>
-					) : null}
-					<div
-						ref={pagedPreviewRef}
-						className="paged-print-content w-full"
-						data-art-pagedjs-preview="true"
-					/>
+			{status !== "ready" ? (
+				<div className="mx-auto my-4 w-full max-w-[210mm] border border-slate-300 bg-white p-3 text-slate-600 text-sm">
+					{status === "error"
+						? error || "Print rendering failed."
+						: "Preparing print document..."}
 				</div>
-			</ScrollArea>
+			) : null}
+			<div ref={outputRef} className="paged-print-content w-full" />
 		</div>
 	);
 }
-
-// Backward-compatible alias during migration.
-export const PrintPreview = PrintPreviewPane;

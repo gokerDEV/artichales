@@ -1,3 +1,4 @@
 @import "./base.template.web.css";
 @import "./base.template.print.css";
 @import "./print.mechanics.css";
+@import "./print.document.css";

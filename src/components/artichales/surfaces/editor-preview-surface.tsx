@@ -9,7 +9,8 @@ import {
 } from "@/components/artichales/panels/preview-header";
 import { CitationContext } from "@/components/artichales/plugins/citation.context";
 import { listTemplateDirectivePlugins } from "@/components/artichales/plugins/plugin.registry";
-import { PrintPreview } from "@/components/artichales/preview/print/print-preview";
+import { launchPrintExport } from "@/components/artichales/preview/print/launch-print-export";
+import { PrintPreviewPane } from "@/components/artichales/preview/print/print-preview-pane";
 import { WebPreview } from "@/components/artichales/preview/web/web-preview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,6 @@ export function EditorPreviewSurface() {
 	const [panelSizesOverride, setPanelSizesOverride] = React.useState<
 		number[] | null
 	>(null);
-	const pendingPdfExportRef = React.useRef(false);
 	const assetInputRef = React.useRef<HTMLInputElement | null>(null);
 	const previewShellRef = React.useRef<HTMLDivElement | null>(null);
 	const hasLoadedWorkspaceRef = React.useRef(false);
@@ -675,21 +675,12 @@ export function EditorPreviewSurface() {
 		return null;
 	}, []);
 
-	const runPdfExport = React.useCallback(() => {
-		globalThis.document.body.setAttribute("data-art-printing", "true");
-		window.setTimeout(() => {
-			window.print();
-		}, 60);
-	}, []);
-
 	const handleExportPdf = React.useCallback(() => {
-		if (target === "print") {
-			runPdfExport();
-			return;
-		}
-		pendingPdfExportRef.current = true;
-		setTarget("print");
-	}, [target, runPdfExport]);
+		void launchPrintExport(files).catch((error) => {
+			console.error(error);
+			toast.error("Failed to open isolated print export.");
+		});
+	}, [files]);
 
 	const handleDownloadSource = React.useCallback(() => {
 		try {
@@ -732,28 +723,6 @@ export function EditorPreviewSurface() {
 		},
 		[addAssetsToWorkspace],
 	);
-
-	React.useEffect(() => {
-		const resetPrintState = () => {
-			globalThis.document.body.removeAttribute("data-art-printing");
-		};
-
-		window.addEventListener("afterprint", resetPrintState);
-		return () => {
-			window.removeEventListener("afterprint", resetPrintState);
-		};
-	}, []);
-
-	React.useEffect(() => {
-		if (target !== "print" || !pendingPdfExportRef.current) return;
-		pendingPdfExportRef.current = false;
-
-		const timeout = window.setTimeout(() => {
-			runPdfExport();
-		}, 50);
-
-		return () => window.clearTimeout(timeout);
-	}, [target, runPdfExport]);
 
 	if (loading || workspaceLoading) {
 		return (
@@ -1064,7 +1033,7 @@ export function EditorPreviewSurface() {
 							) : target === "web" ? (
 								<WebPreview document={docSource} scale={scale} />
 							) : (
-								<PrintPreview document={docSource} scale={scale} />
+								<PrintPreviewPane document={docSource} scale={scale} />
 							)}
 						</div>
 					</ResizablePanel>

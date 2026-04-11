@@ -92,6 +92,31 @@ export type PipelineResult = {
 	pipelineDiagnostics: PipelineDiagnostic[];
 };
 
+export type DocumentModel = {
+	ast: Root | null;
+	content: string;
+	frontmatter: Record<string, unknown>;
+	citations: Record<string, CitationEntry>;
+	validatedBibEntries: Record<string, ValidatedBibEntry>;
+	plots: Record<string, unknown>;
+	template: TemplateFileResolved;
+	templateDiagnostics: TemplateDiagnostic[];
+	bibDiagnostics: BibtexDiagnostic[];
+	assetDiagnostics: PipelineDiagnostic[];
+	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
+	resolvedReferences: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
+	referenceTargets: ReferenceSelectorTarget[];
+	activePluginIds: {
+		parser: string[];
+		core: string[];
+		render: string[];
+		editor: string[];
+	};
+	runtimePluginIds: string[] | undefined;
+	pipelineDiagnostics: PipelineDiagnostic[];
+};
+
 // Unified diagnostic type for UI/state layers.
 export type AppDiagnostic =
 	| TemplateDiagnostic
@@ -116,28 +141,76 @@ export type PipelineResultPayload = {
 	activePluginIds: PipelineResult["activePluginIds"];
 };
 
+const FrontmatterOptionalString = z.union([z.string(), z.null()]).optional();
+
+const FrontmatterPersonSchema = z
+	.object({
+		name: z.string().trim().min(1),
+		affiliation: FrontmatterOptionalString,
+		orcid: FrontmatterOptionalString,
+		email: z.union([z.string(), z.array(z.string()), z.null()]).optional(),
+		address: z.union([z.string(), z.array(z.string()), z.null()]).optional(),
+		corresponding: z.boolean().optional(),
+	})
+	.passthrough();
+
+const FrontmatterLicenseSchema = z
+	.object({
+		name: FrontmatterOptionalString,
+		text: FrontmatterOptionalString,
+		url: FrontmatterOptionalString,
+	})
+	.passthrough();
+
+const FrontmatterJournalSchema = z
+	.object({
+		name: FrontmatterOptionalString,
+		issn: FrontmatterOptionalString,
+		eissn: FrontmatterOptionalString,
+		volume: z.union([z.string(), z.number(), z.null()]).optional(),
+		issue: z.union([z.string(), z.number(), z.null()]).optional(),
+		pages: FrontmatterOptionalString,
+	})
+	.passthrough();
+
+const FrontmatterConferenceSchema = z
+	.object({
+		name: FrontmatterOptionalString,
+		location: FrontmatterOptionalString,
+		date: FrontmatterOptionalString,
+		proceedings: FrontmatterOptionalString,
+		pages: FrontmatterOptionalString,
+	})
+	.passthrough();
+
 const ArticleFrontmatterSchema = z
 	.object({
 		title: z.string().trim().min(1),
+		shortTitle: FrontmatterOptionalString,
 		authors: z
 			.union([
 				z.string().trim().min(1),
-				z.array(
-					z.union([
-						z.string().trim().min(1),
-						z.object({ name: z.string().trim().min(1) }).passthrough(),
-					]),
-				),
+				z.array(z.union([z.string().trim().min(1), FrontmatterPersonSchema])),
 			])
 			.optional(),
 		keywords: z.array(z.string().trim().min(1)).optional(),
+		doi: FrontmatterOptionalString,
+		receivedAt: FrontmatterOptionalString,
+		acceptedAt: FrontmatterOptionalString,
+		publishedAt: FrontmatterOptionalString,
+		versionDate: FrontmatterOptionalString,
+		type: FrontmatterOptionalString,
+		license: FrontmatterLicenseSchema.optional(),
+		journal: FrontmatterJournalSchema.optional(),
+		conference: FrontmatterConferenceSchema.optional(),
+		editors: z.array(FrontmatterPersonSchema).optional(),
 		plugins: z.record(z.string(), z.unknown()).optional(),
 	})
-	.strict();
+	.passthrough();
 
 function getStageInfoMessage(
 	stage: PipelineStage,
-	target: "web" | "print",
+	target: "web" | "print" = "web",
 ): string {
 	const labels: Record<PipelineStage, string> = {
 		"validate-template": "Template validation stage completed.",
@@ -246,10 +319,10 @@ function detectUnsupportedSourceConcepts(
 	content: string,
 ): PipelineDiagnostic[] {
 	const diagnostics: PipelineDiagnostic[] = [];
-	const hasFootnoteReference = /\[\^[^\]]+\]/.test(content);
-	const hasFootnoteDefinition = /^\[\^[^\]]+\]:/m.test(content);
+	const hasFootnoteReference = /\[\^[^]]+\]/.test(content);
+	const hasFootnoteDefinition = /^\[\^[^]]+\]:/m.test(content);
 	const footnoteMatch =
-		content.match(/\[\^[^\]]+\]/) || content.match(/^\[\^[^\]]+\]:/m);
+		content.match(/\[\^[^]]+\]/) || content.match(/^\[\^[^]]+\]:/m);
 	const location = (() => {
 		const offset = footnoteMatch?.index ?? 0;
 		let line = 1;
@@ -589,7 +662,6 @@ function executeRenderHooks(
 
 function executePluginHooks(
 	articleContent: string,
-	target: "web" | "print",
 	runtimePluginIds: string[] | undefined,
 ): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
 	const executionState = resolvePluginExecutionState(runtimePluginIds);
@@ -599,9 +671,16 @@ function executePluginHooks(
 		diagnostics: [
 			...parserResult.diagnostics,
 			...executeVoidHooks(executionState.core, "plugin-processing"),
-			...executeRenderHooks(executionState.render, target),
 		],
 	};
+}
+
+function executeTargetRenderHooks(
+	target: "web" | "print",
+	runtimePluginIds: string[] | undefined,
+): PipelineDiagnostic[] {
+	const executionState = resolvePluginExecutionState(runtimePluginIds);
+	return executeRenderHooks(executionState.render, target);
 }
 
 function emitPluginTrace(
@@ -623,10 +702,9 @@ function emitPluginTrace(
 	console.groupEnd();
 }
 
-export function runDocumentPipeline(
+export function buildDocumentModel(
 	files: Record<string, string>,
-	target: "web" | "print",
-): PipelineResult {
+): DocumentModel {
 	const stageDiagnostics: PipelineDiagnostic[] = [];
 	const shouldEmitStageInfo = import.meta.env.DEV;
 	const pushStage = (stage: PipelineStage) => {
@@ -635,7 +713,7 @@ export function runDocumentPipeline(
 			code: "pipeline-stage-complete",
 			severity: "info",
 			source: "pipeline",
-			message: getStageInfoMessage(stage, target),
+			message: getStageInfoMessage(stage),
 			stage,
 		});
 	};
@@ -673,7 +751,6 @@ export function runDocumentPipeline(
 		validatePluginRuntimeAvailability(runtimePluginIds);
 	const pluginHooksResult = executePluginHooks(
 		articleResult.content,
-		target,
 		runtimePluginIds,
 	);
 	emitPluginTrace(runtimePluginIds, [
@@ -682,7 +759,6 @@ export function runDocumentPipeline(
 		...pluginHooksResult.diagnostics,
 	]);
 	pushStage("plugin-processing");
-	pushStage("render-active-target");
 
 	return {
 		ast: pluginHooksResult.ast,
@@ -708,6 +784,54 @@ export function runDocumentPipeline(
 		resolvedReferences: articleAnalysis.resolvedReferences,
 		captions: articleAnalysis.captions,
 		activePluginIds: pluginRuntimeResult.activePluginIds,
+		runtimePluginIds,
 		pipelineDiagnostics: stageDiagnostics,
 	};
+}
+
+export function enrichDocumentModelForTarget(
+	model: DocumentModel,
+	target: "web" | "print",
+): PipelineResult {
+	const renderDiagnostics = executeTargetRenderHooks(
+		target,
+		model.runtimePluginIds,
+	);
+	const pipelineDiagnostics = [...model.pipelineDiagnostics];
+	if (import.meta.env.DEV) {
+		pipelineDiagnostics.push({
+			code: "pipeline-stage-complete",
+			severity: "info",
+			source: "pipeline",
+			message: getStageInfoMessage("render-active-target", target),
+			stage: "render-active-target",
+		});
+	}
+
+	return {
+		ast: model.ast,
+		content: model.content,
+		frontmatter: model.frontmatter,
+		citations: model.citations,
+		validatedBibEntries: model.validatedBibEntries,
+		plots: model.plots,
+		template: model.template,
+		templateDiagnostics: model.templateDiagnostics,
+		bibDiagnostics: model.bibDiagnostics,
+		assetDiagnostics: model.assetDiagnostics,
+		articleDiagnostics: [...model.articleDiagnostics, ...renderDiagnostics],
+		resolvedReferences: model.resolvedReferences,
+		captions: model.captions,
+		referenceTargets: model.referenceTargets,
+		activePluginIds: model.activePluginIds,
+		pipelineDiagnostics,
+	};
+}
+
+export function runDocumentPipeline(
+	files: Record<string, string>,
+	target: "web" | "print",
+): PipelineResult {
+	const model = buildDocumentModel(files);
+	return enrichDocumentModelForTarget(model, target);
 }

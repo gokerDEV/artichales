@@ -144,7 +144,7 @@ export interface DocumentSource {
 	hasBlockingError: boolean;
 }
 
-function resolveTemplateForTarget(
+export function resolveTemplateForTarget(
 	templateFile: TemplateFileResolved,
 	target: PreviewTarget,
 ): DocumentTemplate {

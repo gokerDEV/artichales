@@ -129,6 +129,24 @@ const PrintTemplateSectionSchema = z.object({
 			right: MarginConfigSchema.optional().default({}),
 		})
 		.optional(),
+	// Legacy shape (v1 templates) kept for backward compatibility.
+	headerFooter: z
+		.object({
+			enabled: z.boolean().optional(),
+			firstPage: z
+				.object({
+					header: MarginSegmentSchema.optional(),
+					footer: MarginSegmentSchema.optional(),
+				})
+				.optional(),
+			defaultPage: z
+				.object({
+					header: MarginSegmentSchema.optional(),
+					footer: MarginSegmentSchema.optional(),
+				})
+				.optional(),
+		})
+		.optional(),
 	titleBlock: z
 		.object({
 			enabled: z.boolean().optional(),
@@ -320,6 +338,22 @@ const DEFAULT_MARGIN_CONFIG: ResolvedMarginConfig = {
 	even: DEFAULT_MARGIN_SEGMENT,
 };
 
+const DEFAULT_HEADER_MARGIN_CONFIG: ResolvedMarginConfig = {
+	enabled: true,
+	first: { left: "", center: "", right: "{title}" },
+	last: { left: "", center: "", right: "{title}" },
+	odd: { left: "", center: "", right: "{title}" },
+	even: { left: "", center: "", right: "{title}" },
+};
+
+const DEFAULT_FOOTER_MARGIN_CONFIG: ResolvedMarginConfig = {
+	enabled: true,
+	first: { left: "", center: "{pageNumber}", right: "" },
+	last: { left: "", center: "{pageNumber}", right: "" },
+	odd: { left: "", center: "{pageNumber}", right: "" },
+	even: { left: "", center: "{pageNumber}", right: "" },
+};
+
 export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 	version: 1,
 	publisher: { id: "default", name: "Default Publisher" },
@@ -382,8 +416,8 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			columnGap: "7mm",
 		},
 		pageMargins: {
-			header: { ...DEFAULT_MARGIN_CONFIG },
-			footer: { ...DEFAULT_MARGIN_CONFIG },
+			header: { ...DEFAULT_HEADER_MARGIN_CONFIG },
+			footer: { ...DEFAULT_FOOTER_MARGIN_CONFIG },
 			left: { ...DEFAULT_MARGIN_CONFIG },
 			right: { ...DEFAULT_MARGIN_CONFIG },
 		},
@@ -443,6 +477,50 @@ function resolveComponentConfig(
 	return { ...fallback, ...override };
 }
 
+function resolveLegacyHeaderFooterPageMargins(
+	headerFooter:
+		| {
+				enabled?: boolean;
+				firstPage?: {
+					header?: { left?: string; center?: string; right?: string };
+					footer?: { left?: string; center?: string; right?: string };
+				};
+				defaultPage?: {
+					header?: { left?: string; center?: string; right?: string };
+					footer?: { left?: string; center?: string; right?: string };
+				};
+		  }
+		| undefined,
+): Pick<
+	TemplateFileResolved["print"]["pageMargins"],
+	"header" | "footer"
+> | null {
+	if (!headerFooter) return null;
+
+	const enabled = headerFooter.enabled ?? true;
+	const firstHeader = resolveMarginSegment(headerFooter.firstPage?.header);
+	const defaultHeader = resolveMarginSegment(headerFooter.defaultPage?.header);
+	const firstFooter = resolveMarginSegment(headerFooter.firstPage?.footer);
+	const defaultFooter = resolveMarginSegment(headerFooter.defaultPage?.footer);
+
+	return {
+		header: {
+			enabled,
+			first: firstHeader,
+			last: defaultHeader,
+			odd: defaultHeader,
+			even: defaultHeader,
+		},
+		footer: {
+			enabled,
+			first: firstFooter,
+			last: defaultFooter,
+			odd: defaultFooter,
+			even: defaultFooter,
+		},
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Merge parsed template with defaults
 // ---------------------------------------------------------------------------
@@ -450,6 +528,9 @@ function resolveComponentConfig(
 function mergeTemplateWithDefaults(parsed: TemplateFile): TemplateFileResolved {
 	const def = DEFAULT_TEMPLATE_FILE;
 	const o = parsed;
+	const legacyPageMargins = resolveLegacyHeaderFooterPageMargins(
+		o.print?.headerFooter,
+	);
 
 	return {
 		version: o.version ?? def.version,
@@ -558,11 +639,11 @@ function mergeTemplateWithDefaults(parsed: TemplateFile): TemplateFileResolved {
 			},
 			pageMargins: {
 				header: resolveMarginConfig(
-					o.print?.pageMargins?.header,
+					o.print?.pageMargins?.header ?? legacyPageMargins?.header,
 					def.print.pageMargins.header,
 				),
 				footer: resolveMarginConfig(
-					o.print?.pageMargins?.footer,
+					o.print?.pageMargins?.footer ?? legacyPageMargins?.footer,
 					def.print.pageMargins.footer,
 				),
 				left: resolveMarginConfig(
