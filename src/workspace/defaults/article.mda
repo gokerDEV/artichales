@@ -1,13 +1,43 @@
 ---
 title: "Artichales Markdown Showcase"
+shortTitle: "Artichales"
 authors:
   - name: "Goker Cebeci"
     affiliation: "KODKAFA"
     orcid: "0000-0002-1825-0097"
+    email: [EMAIL_ADDRESS]
+    address: [ADDRESS]
+    corresponding: true
 keywords:
   - markdown
   - scientific-writing
   - reproducibility
+doi:
+receivedAt:
+acceptedAt:
+publishedAt:
+versionDate:
+type: research-article 
+license:
+  name: CC-BY-4.0
+  text: "2026 The Authors. This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 License."
+  url: https://creativecommons.org/licenses/by/4.0/
+journal:
+  name: "Artichales Journal"
+  issn: "1234-5678"
+  eissn: "1234-5678"
+  volume: 1
+  issue: 1
+  pages: 1-10 
+conference:
+  name: "Artichales Conference"
+  location: "Istanbul, Turkey"
+  date: "2026-01-01"
+  proceedings: "Artichales Proceedings"
+  pages: 1-10 
+editors:
+  - name: "John Doe"
+    orcid: "0000-0002-1825-0097"
 ---
 
 :::abstract

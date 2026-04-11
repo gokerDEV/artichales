@@ -1,12 +1,10 @@
 import type { JSX } from "react";
 import * as React from "react";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
-import type {
-	DirectiveCategory,
-	DirectiveConfig,
-} from "@/components/artichales/plugins/plugin.contract";
+import type { PluginConfig } from "@/components/artichales/plugins/plugin.contract";
 import type {
 	ArticleAnalysisDiagnostic,
+	ResolvedCaption,
 	ResolvedReference,
 } from "@/lib/article-analysis";
 import type {
@@ -14,8 +12,15 @@ import type {
 	CitationEntry,
 	ValidatedBibEntry,
 } from "@/lib/bibtex";
-import type { PipelineDiagnostic } from "@/lib/document-pipeline";
-import type { TemplateDiagnostic, TemplateFileResolved } from "@/lib/template";
+import type {
+	AppDiagnostic,
+	PipelineDiagnostic,
+} from "@/lib/document-pipeline";
+import type {
+	ResolvedMarginConfig,
+	TemplateDiagnostic,
+	TemplateFileResolved,
+} from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,
 	CORE_BIB_FILE,
@@ -68,23 +73,18 @@ export type DocumentTemplate = {
 		align?: "left" | "right" | "center";
 		spacingAfter?: string;
 	};
-	headerFooter?: {
-		enabled?: boolean;
-		firstPage?: {
-			header?: { left?: string; center?: string; right?: string };
-			footer?: { left?: string; center?: string; right?: string };
-		};
-		defaultPage?: {
-			header?: { left?: string; center?: string; right?: string };
-			footer?: { left?: string; center?: string; right?: string };
-		};
+	pageMargins: {
+		header: ResolvedMarginConfig;
+		footer: ResolvedMarginConfig;
+		left: ResolvedMarginConfig;
+		right: ResolvedMarginConfig;
 	};
 	layout?: {
 		firstPageColumns?: number;
 		defaultPageColumns?: number;
 		columnGap?: string;
 	};
-	directiveConfigs?: Record<DirectiveCategory, DirectiveConfig>;
+	pluginConfigs?: Record<string, PluginConfig>;
 	webLayout?: {
 		containerWidth?: string;
 		containerClass?: string;
@@ -122,27 +122,10 @@ export interface DocumentSource {
 	}>;
 	templateDiagnostics: TemplateDiagnostic[];
 	bibDiagnostics: BibtexDiagnostic[];
-	assetDiagnostics: Array<{
-		code: "asset-json-invalid";
-		severity: "error";
-		source: "parser";
-		fileName: string;
-		message: string;
-	}>;
-	articleDiagnostics: Array<
-		| {
-				code:
-					| "article-frontmatter-missing"
-					| "article-frontmatter-invalid"
-					| "article-frontmatter-schema-invalid"
-					| "article-footnote-unsupported";
-				severity: "error";
-				message: string;
-				source: "parser";
-		  }
-		| ArticleAnalysisDiagnostic
-	>;
+	assetDiagnostics: PipelineDiagnostic[];
+	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
 	referenceTargets: Array<{
 		selector: string;
 		mode: "full" | "partial";
@@ -185,13 +168,13 @@ function resolveTemplateForTarget(
 			margin: print.page.margin,
 		},
 		titleBlock: print.titleBlock,
-		headerFooter: print.headerFooter,
+		pageMargins: print.pageMargins,
 		layout: {
 			firstPageColumns: print.layout.firstPageColumns,
 			defaultPageColumns: print.layout.defaultPageColumns,
 			columnGap: print.layout.columnGap,
 		},
-		directiveConfigs: defaults.components,
+		pluginConfigs: defaults.components,
 		webLayout: web.layout,
 		utilities: defaults.utilities,
 		referenceLabels: defaults.referenceLabels,
@@ -225,29 +208,31 @@ export function useDocument(
 	const referenceRegistry = useWorkspaceStore(
 		(state) => state.referenceRegistry,
 	);
+	const captions = useWorkspaceStore((state) => state.captions);
 	const referenceTargets = useWorkspaceStore((state) => state.referenceTargets);
 	const diagnostics = useWorkspaceStore((state) => state.diagnostics);
 	const activePluginIds = useWorkspaceStore((state) => state.activePluginIds);
 	const assetFiles = useWorkspaceStore((state) => state.assetFiles);
 
-	const resolvedTemplateForTarget = React.useMemo(() => {
-		if (!templateFile) return {} as any;
-		return resolveTemplateForTarget(templateFile, target);
-	}, [target, templateFile]);
+	const resolvedTemplateForTarget = React.useMemo(
+		() =>
+			templateFile ? resolveTemplateForTarget(templateFile, target) : null,
+		[target, templateFile],
+	);
 
 	const citationStyle = React.useMemo(
-		() => resolvedTemplateForTarget.citationStyle || "numeric",
-		[resolvedTemplateForTarget.citationStyle],
+		() => resolvedTemplateForTarget?.citationStyle ?? "numeric",
+		[resolvedTemplateForTarget?.citationStyle],
 	);
 
 	const blockingByFile = React.useMemo(() => {
 		const result: Partial<Record<string, string>> = {};
+
+		const isError = (diag: AppDiagnostic) => diag.severity === "error";
+
 		if (
 			diagnostics.some(
-				(diag: any) =>
-					diag.severity === "error" &&
-					typeof diag.code === "string" &&
-					diag.code.startsWith("template-"),
+				(diag) => isError(diag) && diag.code.startsWith("template-"),
 			)
 		) {
 			result[CORE_TEMPLATE_FILE] =
@@ -255,10 +240,7 @@ export function useDocument(
 		}
 		if (
 			diagnostics.some(
-				(diag: any) =>
-					diag.severity === "error" &&
-					typeof diag.code === "string" &&
-					diag.code.startsWith("bibtex-"),
+				(diag) => isError(diag) && diag.code.startsWith("bibtex-"),
 			)
 		) {
 			result[CORE_BIB_FILE] =
@@ -266,8 +248,9 @@ export function useDocument(
 		}
 		if (
 			diagnostics.some(
-				(diag: any) =>
-					diag.severity === "error" &&
+				(diag): diag is PipelineDiagnostic =>
+					"source" in diag &&
+					isError(diag) &&
 					(diag.source === "parser" ||
 						diag.source === "plugin" ||
 						diag.source === "core"),
@@ -277,44 +260,57 @@ export function useDocument(
 				"Fix article parsing errors before switching away from `article.mda`.";
 		}
 		for (const diagnostic of diagnostics) {
-			if (diagnostic.code !== "asset-json-invalid" || !diagnostic.fileName)
+			if (
+				diagnostic.code !== "asset-json-invalid" ||
+				!("fileName" in diagnostic)
+			)
 				continue;
-			result[diagnostic.fileName] =
+			const pipelineDiag = diagnostic as PipelineDiagnostic;
+			if (!pipelineDiag.fileName) continue;
+			result[pipelineDiag.fileName] =
 				"Fix JSON asset syntax errors before switching away from this file.";
 		}
 		return result;
 	}, [diagnostics]);
 
 	const templateDiagnostics = React.useMemo(
-		() =>
-			diagnostics.filter(
-				(d: any) =>
-					typeof d.code === "string" && d.code.startsWith("template-"),
-			) as any,
+		(): TemplateDiagnostic[] =>
+			diagnostics.filter((d): d is TemplateDiagnostic =>
+				d.code.startsWith("template-"),
+			),
 		[diagnostics],
 	);
 	const bibDiagnostics = React.useMemo(
-		() =>
-			diagnostics.filter(
-				(d: any) => typeof d.code === "string" && d.code.startsWith("bibtex-"),
-			) as any,
+		(): BibtexDiagnostic[] =>
+			diagnostics.filter((d): d is BibtexDiagnostic =>
+				d.code.startsWith("bibtex-"),
+			),
 		[diagnostics],
 	);
 	const assetDiagnostics = React.useMemo(
-		() =>
-			diagnostics.filter((d: any) => d.code === "asset-json-invalid") as any,
+		(): PipelineDiagnostic[] =>
+			diagnostics.filter(
+				(d): d is PipelineDiagnostic => d.code === "asset-json-invalid",
+			),
 		[diagnostics],
 	);
 	const articleDiagnostics = React.useMemo(
-		() =>
+		(): PipelineDiagnostic[] =>
 			diagnostics.filter(
-				(d: any) =>
-					d.source === "parser" || d.source === "plugin" || d.source === "core",
-			) as any,
+				(d): d is PipelineDiagnostic =>
+					"source" in d &&
+					(d.source === "parser" ||
+						d.source === "plugin" ||
+						d.source === "core"),
+			),
 		[diagnostics],
 	);
 	const pipelineDiagnostics = React.useMemo(
-		() => diagnostics.filter((d: any) => d.source === "pipeline") as any,
+		(): PipelineDiagnostic[] =>
+			diagnostics.filter(
+				(d): d is PipelineDiagnostic =>
+					"source" in d && d.source === "pipeline",
+			),
 		[diagnostics],
 	);
 
@@ -325,7 +321,7 @@ export function useDocument(
 		citations,
 		validatedBibEntries,
 		plots,
-		template: resolvedTemplateForTarget as any,
+		template: resolvedTemplateForTarget as DocumentTemplate,
 		citationStyle,
 		assetFiles,
 		templateDiagnostics,
@@ -333,18 +329,19 @@ export function useDocument(
 		assetDiagnostics,
 		articleDiagnostics,
 		resolvedReferences: referenceRegistry,
+		captions,
 		referenceTargets,
 		activePluginIds,
 		pipelineDiagnostics,
 		blockingByFile,
 		isBlockingActiveFile: (fileName) => Boolean(blockingByFile[fileName]),
 		hasTemplateError: templateDiagnostics.some(
-			(diag: any) => diag.severity === "error",
+			(diag) => diag.severity === "error",
 		),
 		hasBlockingError:
-			templateDiagnostics.some((diag: any) => diag.severity === "error") ||
-			bibDiagnostics.some((diag: any) => diag.severity === "error") ||
-			assetDiagnostics.some((diag: any) => diag.severity === "error") ||
-			articleDiagnostics.some((diag: any) => diag.severity === "error"),
+			templateDiagnostics.some((diag) => diag.severity === "error") ||
+			bibDiagnostics.some((diag) => diag.severity === "error") ||
+			assetDiagnostics.some((diag) => diag.severity === "error") ||
+			articleDiagnostics.some((diag) => diag.severity === "error"),
 	};
 }

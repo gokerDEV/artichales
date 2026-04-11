@@ -26,6 +26,14 @@ export type ResolvedReference = {
 	diagnostic?: ArticleAnalysisDiagnostic;
 };
 
+export type ResolvedCaption = {
+	type: string;
+	key: string;
+	number: string;
+	href: string;
+	label: string;
+};
+
 export type ReferenceSelectorTarget = {
 	selector: string;
 	mode: "full" | "partial";
@@ -34,7 +42,7 @@ export type ReferenceSelectorTarget = {
 type ReferenceTarget = {
 	type: string;
 	key?: string;
-	number: number;
+	number: string;
 	source: "directive" | "caption";
 };
 
@@ -181,7 +189,7 @@ function parseDirectiveTargets(content: string): {
 		targets.push({
 			type: pluginId,
 			key: normalizedDataFile ? normalizeKey(normalizedDataFile) : undefined,
-			number: nextCount,
+			number: String(nextCount),
 			source: "directive",
 		});
 	}
@@ -199,10 +207,12 @@ function parseCaptionTargets(
 	const diagnostics: ArticleAnalysisDiagnostic[] = [];
 	const targets: ReferenceTarget[] = [];
 	const captionIdentitySet = new Set<string>();
-	const counters = new Map(initialTypeCounters);
+	const counters = new Map(initialTypeCounters); // Dedicated counters for captions
+
+	const headingCounters = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
 
 	const captionRegex =
-		/\[caption\s*:\s*([a-zA-Z][\w-]*)\s*:\s*([^\]\s][^\]]*)\](?:\([^)]+\))?/gi;
+		/\[caption\s*:\s*([#a-zA-Z][\w#-]*)\s*:\s*([^\]\s][^\]]*)\](?:\([^)]+\))?/gi;
 	let match: RegExpExecArray | null = null;
 	while (true) {
 		match = captionRegex.exec(content);
@@ -224,13 +234,30 @@ function parseCaptionTargets(
 		}
 		captionIdentitySet.add(identity);
 
-		const currentCount = counters.get(type) || 0;
-		const nextCount = currentCount + 1;
-		counters.set(type, nextCount);
+		let displayedNumber = "";
+		if (type.startsWith("#")) {
+			const level = Math.min(6, Math.max(1, type.split("#").length - 1));
+			headingCounters[level as keyof typeof headingCounters]++;
+			for (let i = level + 1; i <= 6; i++) {
+				headingCounters[i as keyof typeof headingCounters] = 0;
+			}
+
+			const parts: number[] = [];
+			for (let i = 1; i <= level; i++) {
+				parts.push(headingCounters[i as keyof typeof headingCounters]);
+			}
+			displayedNumber = parts.join(".");
+		} else {
+			const currentCount = counters.get(type) || 0;
+			const nextCount = currentCount + 1;
+			counters.set(type, nextCount);
+			displayedNumber = String(nextCount);
+		}
+
 		targets.push({
 			type,
 			key,
-			number: nextCount,
+			number: displayedNumber,
 			source: "caption",
 		});
 	}
@@ -281,10 +308,12 @@ function buildReferenceResolution(
 	referenceLabels: Record<string, string>,
 ): {
 	resolvedReferences: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
 	diagnostics: ArticleAnalysisDiagnostic[];
 } {
 	const diagnostics: ArticleAnalysisDiagnostic[] = [];
 	const resolvedReferences: Record<string, ResolvedReference> = {};
+	const captions: Record<string, ResolvedCaption> = {};
 
 	const keyedTargetMap = new Map<string, ReferenceTarget>();
 	const unkeyedTargetMap = new Map<string, ReferenceTarget[]>();
@@ -292,7 +321,32 @@ function buildReferenceResolution(
 	for (const target of targets) {
 		const type = normalizeToken(target.type);
 		if (target.key) {
-			keyedTargetMap.set(`${type}:${normalizeKey(target.key)}`, target);
+			const normalizedKey = normalizeKey(target.key);
+			keyedTargetMap.set(`${type}:${normalizedKey}`, target);
+
+			// Eagerly insert into resolvedReferences so cross-references work
+			const config = getReferenceTypeConfig(type, referenceLabels);
+			const labelStr = type.startsWith("#")
+				? target.number
+				: `${config.label} ${target.number}`.trim();
+			const hrefStr =
+				target.source === "caption"
+					? `#caption-${type}-${normalizedKey}`
+					: `#${config.anchorPrefix}-${normalizedKey}`;
+			resolvedReferences[`${type}:${normalizedKey}`] = {
+				label: labelStr,
+				href: hrefStr,
+			};
+
+			if (target.source === "caption") {
+				captions[`${type}:${normalizedKey}`] = {
+					type,
+					key: normalizedKey,
+					number: target.number,
+					href: hrefStr,
+					label: labelStr,
+				};
+			}
 		} else {
 			const existing = unkeyedTargetMap.get(type) || [];
 			existing.push(target);
@@ -390,7 +444,7 @@ function buildReferenceResolution(
 		}
 	}
 
-	return { resolvedReferences, diagnostics };
+	return { resolvedReferences, captions, diagnostics };
 }
 
 export function analyzeArticleSource(
@@ -399,6 +453,7 @@ export function analyzeArticleSource(
 ): {
 	diagnostics: ArticleAnalysisDiagnostic[];
 	resolvedReferences: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
 	referenceTargets: ReferenceSelectorTarget[];
 } {
 	const directiveResult = parseDirectiveTargets(content);
@@ -406,7 +461,10 @@ export function analyzeArticleSource(
 	for (const target of directiveResult.targets) {
 		counters.set(
 			target.type,
-			Math.max(counters.get(target.type) || 0, target.number),
+			Math.max(
+				counters.get(target.type) || 0,
+				parseInt(target.number, 10) || 0,
+			),
 		);
 	}
 	const captionResult = parseCaptionTargets(content, counters);
@@ -446,6 +504,7 @@ export function analyzeArticleSource(
 			...resolutionResult.diagnostics,
 		],
 		resolvedReferences: resolutionResult.resolvedReferences,
+		captions: resolutionResult.captions,
 		referenceTargets,
 	};
 }

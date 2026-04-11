@@ -2,6 +2,7 @@ import * as React from "react";
 import { DocumentRenderContent } from "@/components/artichales/preview/shared/document-render-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { DocumentSource } from "@/hooks/use-document";
+import type { ResolvedMarginConfig } from "@/lib/template";
 import { cn } from "@/lib/utils";
 
 export type PrintPreviewProps = {
@@ -19,10 +20,6 @@ type PagedPreviewerInstance = {
 };
 
 const PAGE_LIMIT = 40;
-
-function escapeCssContent(value: string): string {
-	return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
-}
 
 function resolvePagedPreviewerFactory(
 	module: unknown,
@@ -83,69 +80,84 @@ export function PrintPreview({
 			1,
 			template.layout?.firstPageColumns || 1,
 		);
-		const printTitle =
-			typeof document.frontmatter.title === "string"
-				? document.frontmatter.title
-				: "";
-		const headerFooter = template.headerFooter;
-		const firstPageHeader =
-			headerFooter?.firstPage?.header || headerFooter?.defaultPage?.header;
-		const firstPageFooter =
-			headerFooter?.firstPage?.footer || headerFooter?.defaultPage?.footer;
-		const defaultPageHeader =
-			headerFooter?.defaultPage?.header || headerFooter?.firstPage?.header;
-		const defaultPageFooter =
-			headerFooter?.defaultPage?.footer || headerFooter?.firstPage?.footer;
-		const resolveTokenText = (value?: string) =>
-			escapeCssContent((value || "").replaceAll("{title}", printTitle));
-		const pageNumberToken = "counter(page)";
-		const resolvePageContent = (value?: string) => {
-			if (!value) return '""';
-			const parts = value.split("{pageNumber}");
-			if (parts.length === 1) {
-				return `"${resolveTokenText(value)}"`;
-			}
-			return parts
-				.map((part, index) => {
-					const contentPart = `"${resolveTokenText(part)}"`;
-					return index === parts.length - 1
-						? contentPart
-						: `${contentPart} ${pageNumberToken} `;
-				})
-				.join("");
+
+		const formatContent = (str: string | undefined) => {
+			if (!str) return "none";
+			const tokens = str.split(/(\{.*?\})/g).filter(Boolean);
+			const cssTokens = tokens.map((token) => {
+				if (token === "{pageNumber}") return `counter(page)`;
+				if (token === "{totalPages}") return `counter(pages)`;
+				if (token.startsWith("{") && token.endsWith("}")) {
+					const path = token.slice(1, -1).trim().split(".");
+					let value: unknown = document.frontmatter;
+					for (const key of path) {
+						if (value == null || typeof value !== "object") break;
+						value = (value as Record<string, unknown>)[key];
+					}
+					return `"${String(value ?? "").replaceAll('"', '\\"')}"`;
+				}
+				return `"${token.replaceAll('"', '\\"')}"`;
+			});
+			return cssTokens.join(" ");
 		};
-		const marginBoxes =
-			headerFooter?.enabled === false
-				? ""
-				: `
-@page {
-	@top-left { content: ${resolvePageContent(defaultPageHeader?.left)}; }
-	@top-center { content: ${resolvePageContent(defaultPageHeader?.center)}; }
-	@top-right { content: ${resolvePageContent(defaultPageHeader?.right)}; }
-	@bottom-left { content: ${resolvePageContent(defaultPageFooter?.left)}; }
-	@bottom-center { content: ${resolvePageContent(defaultPageFooter?.center)}; }
-	@bottom-right { content: ${resolvePageContent(defaultPageFooter?.right)}; }
-}
-@page :first {
-	@top-left { content: ${resolvePageContent(firstPageHeader?.left)}; }
-	@top-center { content: ${resolvePageContent(firstPageHeader?.center)}; }
-	@top-right { content: ${resolvePageContent(firstPageHeader?.right)}; }
-	@bottom-left { content: ${resolvePageContent(firstPageFooter?.left)}; }
-	@bottom-center { content: ${resolvePageContent(firstPageFooter?.center)}; }
-	@bottom-right { content: ${resolvePageContent(firstPageFooter?.right)}; }
+
+		const pageMargins = template.pageMargins;
+
+		const createZoneCss = (
+			pageSelector: string,
+			state: "first" | "odd" | "even",
+			config: ResolvedMarginConfig | undefined,
+			baseStr: string,
+		) => {
+			if (!config?.enabled) return "";
+			const segs = config[state];
+			if (!segs) return "";
+			return `
+@page ${pageSelector} {
+	@${baseStr}-left { content: ${formatContent(segs.left)}; text-align: left; }
+	@${baseStr}-center { content: ${formatContent(segs.center)}; text-align: center; }
+	@${baseStr}-right { content: ${formatContent(segs.right)}; text-align: right; }
 }`;
+		};
+
+		const marginBoxes = `
+${createZoneCss(":first", "first", pageMargins?.header, "top")}
+${createZoneCss(":first", "first", pageMargins?.footer, "bottom")}
+${createZoneCss(":right", "odd", pageMargins?.header, "top")}
+${createZoneCss(":right", "odd", pageMargins?.footer, "bottom")}
+${createZoneCss(":left", "even", pageMargins?.header, "top")}
+${createZoneCss(":left", "even", pageMargins?.footer, "bottom")}
+`;
+
+		// NOTE: vertical margins left/right are usually injected globally or rotated.
+		// For simplicity we will handle left/right with simple text content vertically.
+		const verticalMarginBoxes = `
+@page :first {
+	@left-middle { content: ${formatContent(pageMargins?.left?.first?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
+	@right-middle { content: ${formatContent(pageMargins?.right?.first?.center)}; writing-mode: vertical-rl; }
+}
+@page :right {
+	@left-middle { content: ${formatContent(pageMargins?.left?.odd?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
+	@right-middle { content: ${formatContent(pageMargins?.right?.odd?.center)}; writing-mode: vertical-rl; }
+}
+@page :left {
+	@left-middle { content: ${formatContent(pageMargins?.left?.even?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
+	@right-middle { content: ${formatContent(pageMargins?.right?.even?.center)}; writing-mode: vertical-rl; }
+}
+`;
 
 		return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
 .paged-print-content .artichales__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
 .paged-print-content .pagedjs_first_page .artichales__body { column-count: ${firstPageColumns}; }
-${marginBoxes}`;
+${marginBoxes}
+${verticalMarginBoxes}`;
 	}, [
 		document.frontmatter.title,
 		columnGap,
 		margins,
 		pageConfig?.orientation,
 		pageConfig?.size,
-		template.headerFooter,
+		template.pageMargins,
 		template.layout,
 	]);
 	const pagedPreviewKey = React.useMemo(

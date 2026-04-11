@@ -9,14 +9,16 @@ import type { Plugin } from "unified";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import type {
-	DirectiveCategory,
-	DirectiveConfig,
 	DirectiveRendererDefinition,
+	PluginConfig,
 } from "@/components/artichales/plugins/plugin.contract";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import { buildAlignmentHeadingId } from "@/lib/alignment";
 import "katex/dist/katex.min.css";
-import type { ResolvedReference } from "@/lib/article-analysis";
+import type {
+	ResolvedCaption,
+	ResolvedReference,
+} from "@/lib/article-analysis";
 
 type MarkdownContentProps = {
 	ast: Root;
@@ -24,7 +26,8 @@ type MarkdownContentProps = {
 	target: "web" | "print";
 	printTitle?: string;
 	resolvedReferences: Record<string, ResolvedReference>;
-	directiveConfigs?: Record<DirectiveCategory, DirectiveConfig>;
+	captions: Record<string, ResolvedCaption>;
+	pluginConfigs?: Record<string, PluginConfig>;
 	utilityClasses?: Record<string, string>;
 };
 
@@ -152,7 +155,8 @@ export function MarkdownContent({
 	target,
 	printTitle,
 	resolvedReferences,
-	directiveConfigs,
+	captions,
+	pluginConfigs,
 	utilityClasses,
 }: MarkdownContentProps) {
 	const markdownComponents = React.useMemo(() => {
@@ -168,6 +172,7 @@ export function MarkdownContent({
 					renderHook({
 						target,
 						resolvedReferences,
+						captions,
 						utilityClasses,
 					}),
 				);
@@ -185,6 +190,7 @@ export function MarkdownContent({
 				const result = directiveRenderHook({
 					target,
 					resolvedReferences,
+					captions,
 					utilityClasses,
 				});
 				const definitions = Array.isArray(result)
@@ -215,7 +221,7 @@ export function MarkdownContent({
 					params: {
 						data_file: getDirectiveProperty(node, "data-directive-data-file"),
 					},
-					config: directiveConfigs?.[directiveRenderer.category] || {},
+					config: pluginConfigs?.[directiveRenderer.category] || {},
 					target,
 				});
 			}
@@ -285,7 +291,7 @@ export function MarkdownContent({
 		}) as Components["p"];
 
 		return components;
-	}, [target, resolvedReferences, directiveConfigs, utilityClasses]);
+	}, [target, resolvedReferences, captions, pluginConfigs, utilityClasses]);
 
 	const renderedContent = React.useMemo(() => {
 		const astClone =

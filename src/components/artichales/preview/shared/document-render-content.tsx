@@ -70,7 +70,8 @@ export function DocumentRenderContent({
 			className={cn(`artichales artichales--${target}`)}
 			style={buildTemplateCssVars(document)}
 		>
-			{coreRenderers.get("title-core") ?? null}
+			{coreRenderers.get("title") ?? null}
+			{coreRenderers.get("author") ?? null}
 			<article className={cn(contentClassName, articleClassName)}>
 				{document.ast ? (
 					<MarkdownContent
@@ -84,12 +85,13 @@ export function DocumentRenderContent({
 								: undefined
 						}
 						resolvedReferences={document.resolvedReferences}
-						directiveConfigs={document.template.directiveConfigs}
+						captions={document.captions}
+						pluginConfigs={document.template.pluginConfigs}
 						utilityClasses={document.template.utilities}
 					/>
 				) : null}
 			</article>
-			{coreRenderers.get("references-core") ?? null}
+			{coreRenderers.get("references") ?? null}
 		</div>
 	);
 }

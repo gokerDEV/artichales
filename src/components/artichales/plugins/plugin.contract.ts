@@ -4,7 +4,10 @@ import type { Components } from "react-markdown";
 import type { Plugin } from "unified";
 import type { ZodType } from "zod";
 import type { DocumentSource } from "@/hooks/use-document";
-import type { ResolvedReference } from "@/lib/article-analysis";
+import type {
+	ResolvedCaption,
+	ResolvedReference,
+} from "@/lib/article-analysis";
 
 /**
  * Functional pipeline categories (parser, editor) + content-based render categories.
@@ -15,6 +18,7 @@ export type PluginCategory =
 	// Functional
 	| "parser"
 	| "editor"
+	| "document"
 	// Document structure
 	| "title"
 	| "author"
@@ -29,11 +33,12 @@ export type PluginCategory =
 	| "abstract"
 	| "table"
 	| "figure"
+	| "caption"
 	| "map"
 	| "equation";
 
-export type DirectiveConfig = {
-	captionPosition?: "top" | "bottom";
+export type PluginConfig = {
+	captionPosition?: "top" | "bottom"; // deprecated
 	defaultSpan?: "column" | "page";
 	spacingBefore?: string;
 	spacingAfter?: string;
@@ -43,6 +48,7 @@ export type DirectiveConfig = {
 export type RenderHookContext = {
 	target: "web" | "print";
 	resolvedReferences: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
 	utilityClasses?: Record<string, string>;
 };
 
@@ -58,7 +64,7 @@ export type DirectiveComponentProps = {
 	directive: string;
 	raw: string;
 	params: Record<string, string>;
-	config: DirectiveConfig;
+	config: PluginConfig;
 	target: "web" | "print";
 } & Omit<HTMLAttributes<HTMLDivElement>, "children">;
 

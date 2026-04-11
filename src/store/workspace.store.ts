@@ -2,6 +2,7 @@ import type { Root } from "mdast";
 import { create } from "zustand";
 import type {
 	ReferenceSelectorTarget,
+	ResolvedCaption,
 	ResolvedReference,
 } from "@/lib/article-analysis";
 import type { CitationEntry, ValidatedBibEntry } from "@/lib/bibtex";
@@ -78,6 +79,7 @@ interface WorkspaceState {
 
 	// Slice 3: Reactive Numbering (Read exclusively by Tier 1 Plugin Containers)
 	referenceRegistry: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
 	referenceTargets: ReferenceSelectorTarget[];
 
 	// Slice 4: Diagnostics & UI (Read exclusively by diagnostic panels / specific UI logic)
@@ -122,6 +124,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	citationStyle: "numeric",
 
 	referenceRegistry: {},
+	captions: {},
 	referenceTargets: [],
 
 	diagnostics: [],
@@ -144,6 +147,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 			template: result.template,
 			citationStyle: result.citationStyle,
 			referenceRegistry: result.referenceRegistry,
+			captions: result.captions,
 			referenceTargets: result.referenceTargets,
 			diagnostics: result.diagnostics,
 			activePluginIds: result.activePluginIds,

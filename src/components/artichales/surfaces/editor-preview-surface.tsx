@@ -8,10 +8,7 @@ import {
 	type PreviewTarget,
 } from "@/components/artichales/panels/preview-header";
 import { CitationContext } from "@/components/artichales/plugins/citation.context";
-import {
-	getOwnedSyntaxByRuntimePluginIds,
-	listTemplateDirectivePlugins,
-} from "@/components/artichales/plugins/plugin.registry";
+import { listTemplateDirectivePlugins } from "@/components/artichales/plugins/plugin.registry";
 import { PrintPreview } from "@/components/artichales/preview/print/print-preview";
 import { WebPreview } from "@/components/artichales/preview/web/web-preview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -576,9 +573,7 @@ export function EditorPreviewSurface() {
 			referenceSelectors: docSource.referenceTargets.map(
 				(target) => target.selector,
 			),
-			directiveNames: getOwnedSyntaxByRuntimePluginIds(
-				docSource.activePluginIds.parser,
-			).filter((directive) => TEMPLATE_DIRECTIVE_NAMES.includes(directive)),
+			directiveNames: TEMPLATE_DIRECTIVE_NAMES,
 		}),
 		[
 			docSource.citations,

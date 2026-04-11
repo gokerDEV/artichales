@@ -1,22 +1,32 @@
 import { abstractDirectivePlugin } from "./abstract.directive.plugin";
+import { authorRenderPlugin } from "./author.render.plugin";
 import { citationEditorPlugin } from "./citation.editor.plugin";
 import { citationParserPlugin } from "./citation.parser.plugin";
 import { citationRenderPlugin } from "./citation.render.plugin";
 import { codeRenderPlugin } from "./code.render.plugin";
 import { datatableDirectivePlugin } from "./datatable.directive.plugin";
+import { footerRenderPlugin } from "./footer.render.plugin";
+import { headerRenderPlugin } from "./header.render.plugin";
+import { marginLeftRenderPlugin } from "./margin-left.render.plugin";
+import { marginRightRenderPlugin } from "./margin-right.render.plugin";
 import { mathParserPlugin } from "./math.parser.plugin";
 import { plottyDirectivePlugin } from "./plotty.directive.plugin";
 import type { PluginCategory, PluginDefinition } from "./plugin.contract";
 import { refRenderPlugin } from "./ref.render.plugin";
-import { referencesCorePlugin } from "./references.core.plugin";
-import { titleCorePlugin } from "./title.core.plugin";
+import { referencesRenderPlugin } from "./references.render.plugin";
+import { titleRenderPlugin } from "./title.render.plugin";
 
 // Core plugins always active regardless of template config.
 const CORE_PLUGINS: PluginDefinition[] = [
 	citationParserPlugin,
 	mathParserPlugin,
-	titleCorePlugin,
-	referencesCorePlugin,
+	titleRenderPlugin,
+	headerRenderPlugin,
+	footerRenderPlugin,
+	marginLeftRenderPlugin,
+	marginRightRenderPlugin,
+	authorRenderPlugin,
+	referencesRenderPlugin,
 	citationRenderPlugin,
 	refRenderPlugin,
 	codeRenderPlugin,

@@ -1,7 +1,9 @@
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
+import type { Processor } from "unified";
 import { unified } from "unified";
+import type { VFile } from "vfile";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import type { RenderHookContext } from "@/components/artichales/plugins/plugin.contract";
@@ -14,6 +16,7 @@ import {
 	type ArticleAnalysisDiagnostic,
 	analyzeArticleSource,
 	type ReferenceSelectorTarget,
+	type ResolvedCaption,
 	type ResolvedReference,
 } from "@/lib/article-analysis";
 import type {
@@ -78,6 +81,7 @@ export type PipelineResult = {
 	assetDiagnostics: PipelineDiagnostic[];
 	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
 	resolvedReferences: Record<string, ResolvedReference>;
+	captions: Record<string, ResolvedCaption>;
 	referenceTargets: ReferenceSelectorTarget[];
 	activePluginIds: {
 		parser: string[];
@@ -106,6 +110,7 @@ export type PipelineResultPayload = {
 	template: PipelineResult["template"];
 	citationStyle: string;
 	referenceRegistry: PipelineResult["resolvedReferences"];
+	captions: PipelineResult["captions"];
 	referenceTargets: PipelineResult["referenceTargets"];
 	diagnostics: AppDiagnostic[];
 	activePluginIds: PipelineResult["activePluginIds"];
@@ -427,16 +432,16 @@ function executeParserHooks(
 		.use(remarkNormalizeDirectives);
 
 	for (const plugin of executionState.parser) {
-		const parseHook = plugin.hooks.parse as any;
+		const parseHook = plugin.hooks.parse;
 		if (!parseHook) continue;
 
-		processor = processor.use(function (this: any) {
+		processor = processor.use(function (this: Processor) {
 			try {
 				const transformer = parseHook.call(this) as
-					| ((tree: Root, file: any) => void)
+					| ((tree: Root, file: VFile) => void)
 					| void;
 				if (transformer) {
-					return (tree: Root, file: any) => {
+					return (tree: Root, file: VFile) => {
 						try {
 							transformer(tree, file);
 						} catch (error) {
@@ -481,10 +486,13 @@ function executeParserHooks(
 				"table",
 			],
 			(node) => {
-				const dataNode = node as any;
+				type MdastNodeWithData = typeof node & {
+					data?: { hProperties?: Record<string, unknown> };
+				};
+				const dataNode = node as MdastNodeWithData;
 				if (node.position?.start?.offset != null) {
-					if (!dataNode.data) dataNode.data = {};
-					if (!dataNode.data.hProperties) dataNode.data.hProperties = {};
+					dataNode.data ??= {};
+					dataNode.data.hProperties ??= {};
 					dataNode.data.hProperties["data-source-offset"] =
 						node.position.start.offset;
 				}
@@ -555,6 +563,7 @@ function executeRenderHooks(
 	const context: RenderHookContext = {
 		target,
 		resolvedReferences: {},
+		captions: {},
 		utilityClasses: {},
 	};
 
@@ -695,8 +704,9 @@ export function runDocumentPipeline(
 			...pluginRuntimeResult.diagnostics,
 			...pluginHooksResult.diagnostics,
 		],
-		resolvedReferences: articleAnalysis.resolvedReferences,
 		referenceTargets: articleAnalysis.referenceTargets,
+		resolvedReferences: articleAnalysis.resolvedReferences,
+		captions: articleAnalysis.captions,
 		activePluginIds: pluginRuntimeResult.activePluginIds,
 		pipelineDiagnostics: stageDiagnostics,
 	};

@@ -1,20 +1,29 @@
 import { z } from "zod";
-import type {
-	DirectiveCategory,
-	DirectiveConfig,
-} from "@/components/artichales/plugins/plugin.contract";
+import type { PluginConfig } from "@/components/artichales/plugins/plugin.contract";
 import {
 	getDefaultTemplateDirectivePlugins,
 	listTemplateDirectivePlugins,
 } from "@/components/artichales/plugins/plugin.registry";
 
-const SpanSchema = z.enum(["column", "page", "full"]).transform((value) => {
-	return value === "full" ? "page" : value;
-});
+// ---------------------------------------------------------------------------
+// Primitive schemas
+// ---------------------------------------------------------------------------
+
+const SpanSchema = z
+	.enum(["column", "page", "full"])
+	.transform((value) => (value === "full" ? "page" : value));
+
 const CaptionPositionSchema = z.enum(["top", "bottom"]);
 const OrientationSchema = z.enum(["portrait", "landscape"]);
 const TextAlignSchema = z.enum(["left", "right", "center", "justify"]);
-const DirectiveConfigSchema = z.object({
+const CitationStyleSchema = z.enum(["numeric", "ieee", "author-year", "apa"]);
+const TitleBlockAlignSchema = z.enum(["left", "center", "right"]);
+
+// ---------------------------------------------------------------------------
+// Shared schemas
+// ---------------------------------------------------------------------------
+
+const PluginConfigSchema: z.ZodType<PluginConfig> = z.object({
 	captionPosition: CaptionPositionSchema.optional(),
 	defaultSpan: SpanSchema.optional(),
 	spacingBefore: z.string().optional(),
@@ -22,10 +31,18 @@ const DirectiveConfigSchema = z.object({
 	label: z.string().optional(),
 });
 
-const HeaderFooterTokensSchema = z.object({
-	left: z.string().optional(),
-	center: z.string().optional(),
-	right: z.string().optional(),
+const MarginSegmentSchema = z.object({
+	left: z.string().optional().default(""),
+	center: z.string().optional().default(""),
+	right: z.string().optional().default(""),
+});
+
+const MarginConfigSchema = z.object({
+	enabled: z.boolean().optional().default(true),
+	first: MarginSegmentSchema.optional().default({}),
+	last: MarginSegmentSchema.optional().default({}),
+	odd: MarginSegmentSchema.optional().default({}),
+	even: MarginSegmentSchema.optional().default({}),
 });
 
 const MarginSchema = z.object({
@@ -62,7 +79,20 @@ const TypographySchema = z.object({
 	textAlign: TextAlignSchema.optional(),
 });
 
-const DefaultTemplateSchema = z.object({
+const ComponentsSchema = z.object({
+	abstract: PluginConfigSchema.optional(),
+	table: PluginConfigSchema.optional(),
+	figure: PluginConfigSchema.optional(),
+	map: PluginConfigSchema.optional(),
+	equation: PluginConfigSchema.optional(),
+	code: PluginConfigSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Section schemas
+// ---------------------------------------------------------------------------
+
+const DefaultTemplateSectionSchema = z.object({
 	typography: TypographySchema.optional(),
 	colors: ColorsSchema.optional(),
 	assets: z
@@ -70,22 +100,13 @@ const DefaultTemplateSchema = z.object({
 			maxFileSize: z.number().int().positive().optional(),
 		})
 		.optional(),
-	components: z
-		.object({
-			abstract: DirectiveConfigSchema.optional(),
-			table: DirectiveConfigSchema.optional(),
-			figure: DirectiveConfigSchema.optional(),
-			map: DirectiveConfigSchema.optional(),
-			equation: DirectiveConfigSchema.optional(),
-			code: DirectiveConfigSchema.optional(),
-		})
-		.optional(),
+	components: ComponentsSchema.optional(),
 	utilities: z.record(z.string(), z.string()).optional(),
 	referenceLabels: z.record(z.string(), z.string()).optional(),
-	citationStyle: z.enum(["numeric", "ieee", "author-year", "apa"]).optional(),
+	citationStyle: CitationStyleSchema.optional(),
 });
 
-const PrintTemplateSchema = z.object({
+const PrintTemplateSectionSchema = z.object({
 	page: z
 		.object({
 			size: z.string().optional(),
@@ -100,27 +121,18 @@ const PrintTemplateSchema = z.object({
 			columnGap: z.string().optional(),
 		})
 		.optional(),
-	headerFooter: z
+	pageMargins: z
 		.object({
-			enabled: z.boolean().optional(),
-			firstPage: z
-				.object({
-					header: HeaderFooterTokensSchema.optional(),
-					footer: HeaderFooterTokensSchema.optional(),
-				})
-				.optional(),
-			defaultPage: z
-				.object({
-					header: HeaderFooterTokensSchema.optional(),
-					footer: HeaderFooterTokensSchema.optional(),
-				})
-				.optional(),
+			header: MarginConfigSchema.optional().default({}),
+			footer: MarginConfigSchema.optional().default({}),
+			left: MarginConfigSchema.optional().default({}),
+			right: MarginConfigSchema.optional().default({}),
 		})
 		.optional(),
 	titleBlock: z
 		.object({
 			enabled: z.boolean().optional(),
-			align: z.enum(["left", "center", "right"]).optional(),
+			align: TitleBlockAlignSchema.optional(),
 			showAuthors: z.boolean().optional(),
 			showAffiliations: z.boolean().optional(),
 			showKeywords: z.boolean().optional(),
@@ -129,7 +141,7 @@ const PrintTemplateSchema = z.object({
 		.optional(),
 });
 
-const WebTemplateSchema = z.object({
+const WebTemplateSectionSchema = z.object({
 	layout: z
 		.object({
 			containerWidth: z.string().optional(),
@@ -148,6 +160,10 @@ const TemplateDirectivePluginSchema = z
 		message: `Directive plugin must be one of: ${listTemplateDirectivePlugins().join(", ")}`,
 	});
 
+// ---------------------------------------------------------------------------
+// Root file schema  (incoming / partial — all optional fields)
+// ---------------------------------------------------------------------------
+
 export const TemplateFileSchema = z.object({
 	version: z.number().int().optional(),
 	publisher: z
@@ -155,27 +171,56 @@ export const TemplateFileSchema = z.object({
 			id: z.string().optional(),
 			name: z.string().optional(),
 		})
-		.optional(),
-	default: DefaultTemplateSchema.optional(),
-	print: PrintTemplateSchema.optional(),
-	web: WebTemplateSchema.optional(),
-	plugins: z.array(TemplateDirectivePluginSchema).optional(),
+		.optional()
+		.default({}),
+	default: DefaultTemplateSectionSchema.optional().default({}),
+	print: PrintTemplateSectionSchema.optional().default({}),
+	web: WebTemplateSectionSchema.optional().default({}),
+	plugins: z
+		.array(TemplateDirectivePluginSchema)
+		.optional()
+		.default(getDefaultTemplateDirectivePlugins())
+		.transform((plugins) =>
+			[...new Set(plugins.map((p) => p.trim()))].filter(Boolean),
+		),
 });
 
+/** Shape of an incoming (un-merged) template file after Zod parsing. */
 export type TemplateFile = z.infer<typeof TemplateFileSchema>;
-export type TemplateDiagnostic = {
-	code:
-		| "template-missing"
-		| "template-json-invalid"
-		| "template-schema-invalid";
-	severity: "error" | "warning";
-	message: string;
-	details?: string;
+
+// ---------------------------------------------------------------------------
+// Resolved type — all fields are required after merging with defaults
+// ---------------------------------------------------------------------------
+
+export type ResolvedMarginSegment = {
+	left: string;
+	center: string;
+	right: string;
+};
+
+export type ResolvedMarginConfig = {
+	enabled: boolean;
+	first: ResolvedMarginSegment;
+	last: ResolvedMarginSegment;
+	odd: ResolvedMarginSegment;
+	even: ResolvedMarginSegment;
+};
+
+export type ResolvedComponents = {
+	abstract: PluginConfig;
+	table: PluginConfig;
+	figure: PluginConfig;
+	map: PluginConfig;
+	equation: PluginConfig;
+	code: PluginConfig;
 };
 
 export type TemplateFileResolved = {
 	version: number;
-	publisher: { id: string; name: string };
+	publisher: {
+		id: string;
+		name: string;
+	};
 	default: {
 		typography: {
 			fontFamily: { body: string; heading: string; mono: string };
@@ -183,14 +228,19 @@ export type TemplateFileResolved = {
 			lineHeight: number;
 			textAlign: "left" | "right" | "center" | "justify";
 		};
-		colors: { text: string; muted: string; border: string; link: string };
+		colors: {
+			text: string;
+			muted: string;
+			border: string;
+			link: string;
+		};
 		assets: {
 			maxFileSize?: number;
 		};
-		components: Record<DirectiveCategory, DirectiveConfig>;
+		components: ResolvedComponents;
 		utilities: Record<string, string>;
 		referenceLabels: Record<string, string>;
-		citationStyle: "numeric" | "ieee" | "apc" | "author-year" | "apa";
+		citationStyle: "numeric" | "ieee" | "author-year" | "apa";
 	};
 	print: {
 		page: {
@@ -203,16 +253,11 @@ export type TemplateFileResolved = {
 			defaultPageColumns: number;
 			columnGap: string;
 		};
-		headerFooter: {
-			enabled: boolean;
-			firstPage: {
-				header: { left: string; center: string; right: string };
-				footer: { left: string; center: string; right: string };
-			};
-			defaultPage: {
-				header: { left: string; center: string; right: string };
-				footer: { left: string; center: string; right: string };
-			};
+		pageMargins: {
+			header: ResolvedMarginConfig;
+			footer: ResolvedMarginConfig;
+			left: ResolvedMarginConfig;
+			right: ResolvedMarginConfig;
 		};
 		titleBlock: {
 			enabled: boolean;
@@ -232,6 +277,47 @@ export type TemplateFileResolved = {
 		};
 	};
 	plugins: string[];
+};
+
+// ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+export type TemplateDiagnosticCode =
+	| "template-missing"
+	| "template-json-invalid"
+	| "template-schema-invalid";
+
+export type TemplateDiagnostic = {
+	code: TemplateDiagnosticCode;
+	severity: "error" | "warning";
+	message: string;
+	details?: string;
+};
+
+// ---------------------------------------------------------------------------
+// Default resolved template
+// ---------------------------------------------------------------------------
+
+const DEFAULT_COMPONENT_CONFIG: PluginConfig = {
+	captionPosition: "bottom",
+	defaultSpan: "column",
+	spacingBefore: "0",
+	spacingAfter: "0",
+};
+
+const DEFAULT_MARGIN_SEGMENT: ResolvedMarginSegment = {
+	left: "",
+	center: "",
+	right: "",
+};
+
+const DEFAULT_MARGIN_CONFIG: ResolvedMarginConfig = {
+	enabled: true,
+	first: DEFAULT_MARGIN_SEGMENT,
+	last: DEFAULT_MARGIN_SEGMENT,
+	odd: DEFAULT_MARGIN_SEGMENT,
+	even: DEFAULT_MARGIN_SEGMENT,
 };
 
 export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
@@ -261,42 +347,12 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 		},
 		assets: {},
 		components: {
-			abstract: {
-				captionPosition: "bottom",
-				defaultSpan: "column",
-				spacingBefore: "0",
-				spacingAfter: "0",
-			},
-			table: {
-				captionPosition: "bottom",
-				defaultSpan: "column",
-				spacingBefore: "0",
-				spacingAfter: "0",
-			},
-			figure: {
-				captionPosition: "bottom",
-				defaultSpan: "column",
-				spacingBefore: "0",
-				spacingAfter: "0",
-			},
-			map: {
-				captionPosition: "bottom",
-				defaultSpan: "column",
-				spacingBefore: "0",
-				spacingAfter: "0",
-			},
-			equation: {
-				captionPosition: "bottom",
-				defaultSpan: "column",
-				spacingBefore: "0",
-				spacingAfter: "0",
-			},
-			code: {
-				captionPosition: "bottom",
-				defaultSpan: "column",
-				spacingBefore: "0",
-				spacingAfter: "0",
-			},
+			abstract: { ...DEFAULT_COMPONENT_CONFIG },
+			table: { ...DEFAULT_COMPONENT_CONFIG },
+			figure: { ...DEFAULT_COMPONENT_CONFIG },
+			map: { ...DEFAULT_COMPONENT_CONFIG },
+			equation: { ...DEFAULT_COMPONENT_CONFIG },
+			code: { ...DEFAULT_COMPONENT_CONFIG },
 		},
 		utilities: {},
 		referenceLabels: {
@@ -325,16 +381,11 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 			defaultPageColumns: 2,
 			columnGap: "7mm",
 		},
-		headerFooter: {
-			enabled: true,
-			firstPage: {
-				header: { left: "", center: "", right: "{title}" },
-				footer: { left: "", center: "{pageNumber}", right: "" },
-			},
-			defaultPage: {
-				header: { left: "", center: "", right: "{title}" },
-				footer: { left: "", center: "{pageNumber}", right: "" },
-			},
+		pageMargins: {
+			header: { ...DEFAULT_MARGIN_CONFIG },
+			footer: { ...DEFAULT_MARGIN_CONFIG },
+			left: { ...DEFAULT_MARGIN_CONFIG },
+			right: { ...DEFAULT_MARGIN_CONFIG },
 		},
 		titleBlock: {
 			enabled: true,
@@ -357,247 +408,223 @@ export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 	plugins: getDefaultTemplateDirectivePlugins(),
 };
 
-const TEMPLATE_FALLBACK_MESSAGE = "Using internal fallback template defaults.";
+// ---------------------------------------------------------------------------
+// Deep merge helpers
+// ---------------------------------------------------------------------------
 
-function mergeTemplateWithDefaults(
-	overrides: TemplateFile,
-): TemplateFileResolved {
+function resolveMarginSegment(
+	segment: { left?: string; center?: string; right?: string } | undefined,
+	fallback: ResolvedMarginSegment = DEFAULT_MARGIN_SEGMENT,
+): ResolvedMarginSegment {
 	return {
-		version: overrides.version ?? DEFAULT_TEMPLATE_FILE.version,
+		left: segment?.left ?? fallback.left,
+		center: segment?.center ?? fallback.center,
+		right: segment?.right ?? fallback.right,
+	};
+}
+
+function resolveMarginConfig(
+	config: z.infer<typeof MarginConfigSchema> | undefined,
+	fallback: ResolvedMarginConfig = DEFAULT_MARGIN_CONFIG,
+): ResolvedMarginConfig {
+	return {
+		enabled: config?.enabled ?? fallback.enabled,
+		first: resolveMarginSegment(config?.first, fallback.first),
+		last: resolveMarginSegment(config?.last, fallback.last),
+		odd: resolveMarginSegment(config?.odd, fallback.odd),
+		even: resolveMarginSegment(config?.even, fallback.even),
+	};
+}
+
+function resolveComponentConfig(
+	override: PluginConfig | undefined,
+	fallback: PluginConfig,
+): PluginConfig {
+	return { ...fallback, ...override };
+}
+
+// ---------------------------------------------------------------------------
+// Merge parsed template with defaults
+// ---------------------------------------------------------------------------
+
+function mergeTemplateWithDefaults(parsed: TemplateFile): TemplateFileResolved {
+	const def = DEFAULT_TEMPLATE_FILE;
+	const o = parsed;
+
+	return {
+		version: o.version ?? def.version,
 		publisher: {
-			id: overrides.publisher?.id ?? DEFAULT_TEMPLATE_FILE.publisher.id,
-			name: overrides.publisher?.name ?? DEFAULT_TEMPLATE_FILE.publisher.name,
+			id: o.publisher?.id ?? def.publisher.id,
+			name: o.publisher?.name ?? def.publisher.name,
 		},
 		default: {
 			typography: {
 				fontFamily: {
 					body:
-						overrides.default?.typography?.fontFamily?.body ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontFamily.body,
+						o.default?.typography?.fontFamily?.body ??
+						def.default.typography.fontFamily.body,
 					heading:
-						overrides.default?.typography?.fontFamily?.heading ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontFamily.heading,
+						o.default?.typography?.fontFamily?.heading ??
+						def.default.typography.fontFamily.heading,
 					mono:
-						overrides.default?.typography?.fontFamily?.mono ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontFamily.mono,
+						o.default?.typography?.fontFamily?.mono ??
+						def.default.typography.fontFamily.mono,
 				},
 				fontSize: {
 					body:
-						overrides.default?.typography?.fontSize?.body ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontSize.body,
+						o.default?.typography?.fontSize?.body ??
+						def.default.typography.fontSize.body,
 					h1:
-						overrides.default?.typography?.fontSize?.h1 ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontSize.h1,
+						o.default?.typography?.fontSize?.h1 ??
+						def.default.typography.fontSize.h1,
 					h2:
-						overrides.default?.typography?.fontSize?.h2 ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontSize.h2,
+						o.default?.typography?.fontSize?.h2 ??
+						def.default.typography.fontSize.h2,
 					h3:
-						overrides.default?.typography?.fontSize?.h3 ??
-						DEFAULT_TEMPLATE_FILE.default.typography.fontSize.h3,
+						o.default?.typography?.fontSize?.h3 ??
+						def.default.typography.fontSize.h3,
 				},
 				lineHeight:
-					overrides.default?.typography?.lineHeight ??
-					DEFAULT_TEMPLATE_FILE.default.typography.lineHeight,
+					o.default?.typography?.lineHeight ??
+					def.default.typography.lineHeight,
 				textAlign:
-					overrides.default?.typography?.textAlign ??
-					DEFAULT_TEMPLATE_FILE.default.typography.textAlign,
+					o.default?.typography?.textAlign ?? def.default.typography.textAlign,
 			},
 			colors: {
-				text:
-					overrides.default?.colors?.text ??
-					DEFAULT_TEMPLATE_FILE.default.colors.text,
-				muted:
-					overrides.default?.colors?.muted ??
-					DEFAULT_TEMPLATE_FILE.default.colors.muted,
-				border:
-					overrides.default?.colors?.border ??
-					DEFAULT_TEMPLATE_FILE.default.colors.border,
-				link:
-					overrides.default?.colors?.link ??
-					DEFAULT_TEMPLATE_FILE.default.colors.link,
+				text: o.default?.colors?.text ?? def.default.colors.text,
+				muted: o.default?.colors?.muted ?? def.default.colors.muted,
+				border: o.default?.colors?.border ?? def.default.colors.border,
+				link: o.default?.colors?.link ?? def.default.colors.link,
 			},
 			assets: {
 				maxFileSize:
-					overrides.default?.assets?.maxFileSize ??
-					DEFAULT_TEMPLATE_FILE.default.assets.maxFileSize,
+					o.default?.assets?.maxFileSize ?? def.default.assets.maxFileSize,
 			},
 			components: {
-				abstract: {
-					...DEFAULT_TEMPLATE_FILE.default.components.abstract,
-					...(overrides.default?.components?.abstract ?? {}),
-				},
-				table: {
-					...DEFAULT_TEMPLATE_FILE.default.components.table,
-					...(overrides.default?.components?.table ?? {}),
-				},
-				figure: {
-					...DEFAULT_TEMPLATE_FILE.default.components.figure,
-					...(overrides.default?.components?.figure ?? {}),
-				},
-				map: {
-					...DEFAULT_TEMPLATE_FILE.default.components.map,
-					...(overrides.default?.components?.map ?? {}),
-				},
-				equation: {
-					...DEFAULT_TEMPLATE_FILE.default.components.equation,
-					...(overrides.default?.components?.equation ?? {}),
-				},
-				code: {
-					...DEFAULT_TEMPLATE_FILE.default.components.code,
-					...(overrides.default?.components?.code ?? {}),
-				},
+				abstract: resolveComponentConfig(
+					o.default?.components?.abstract,
+					def.default.components.abstract,
+				),
+				table: resolveComponentConfig(
+					o.default?.components?.table,
+					def.default.components.table,
+				),
+				figure: resolveComponentConfig(
+					o.default?.components?.figure,
+					def.default.components.figure,
+				),
+				map: resolveComponentConfig(
+					o.default?.components?.map,
+					def.default.components.map,
+				),
+				equation: resolveComponentConfig(
+					o.default?.components?.equation,
+					def.default.components.equation,
+				),
+				code: resolveComponentConfig(
+					o.default?.components?.code,
+					def.default.components.code,
+				),
 			},
 			utilities: {
-				...DEFAULT_TEMPLATE_FILE.default.utilities,
-				...(overrides.default?.utilities ?? {}),
+				...def.default.utilities,
+				...o.default?.utilities,
 			},
 			referenceLabels: {
-				...DEFAULT_TEMPLATE_FILE.default.referenceLabels,
-				...(overrides.default?.referenceLabels ?? {}),
+				...def.default.referenceLabels,
+				...o.default?.referenceLabels,
 			},
-			citationStyle:
-				overrides.default?.citationStyle ??
-				DEFAULT_TEMPLATE_FILE.default.citationStyle,
+			citationStyle: o.default?.citationStyle ?? def.default.citationStyle,
 		},
 		print: {
 			page: {
-				size:
-					overrides.print?.page?.size ?? DEFAULT_TEMPLATE_FILE.print.page.size,
-				orientation:
-					overrides.print?.page?.orientation ??
-					DEFAULT_TEMPLATE_FILE.print.page.orientation,
+				size: o.print?.page?.size ?? def.print.page.size,
+				orientation: o.print?.page?.orientation ?? def.print.page.orientation,
 				margin: {
-					top:
-						overrides.print?.page?.margin?.top ??
-						DEFAULT_TEMPLATE_FILE.print.page.margin.top,
-					right:
-						overrides.print?.page?.margin?.right ??
-						DEFAULT_TEMPLATE_FILE.print.page.margin.right,
-					bottom:
-						overrides.print?.page?.margin?.bottom ??
-						DEFAULT_TEMPLATE_FILE.print.page.margin.bottom,
-					left:
-						overrides.print?.page?.margin?.left ??
-						DEFAULT_TEMPLATE_FILE.print.page.margin.left,
+					top: o.print?.page?.margin?.top ?? def.print.page.margin.top,
+					right: o.print?.page?.margin?.right ?? def.print.page.margin.right,
+					bottom: o.print?.page?.margin?.bottom ?? def.print.page.margin.bottom,
+					left: o.print?.page?.margin?.left ?? def.print.page.margin.left,
 				},
 			},
 			layout: {
 				firstPageColumns:
-					overrides.print?.layout?.firstPageColumns ??
-					DEFAULT_TEMPLATE_FILE.print.layout.firstPageColumns,
+					o.print?.layout?.firstPageColumns ??
+					def.print.layout.firstPageColumns,
 				defaultPageColumns:
-					overrides.print?.layout?.defaultPageColumns ??
-					DEFAULT_TEMPLATE_FILE.print.layout.defaultPageColumns,
-				columnGap:
-					overrides.print?.layout?.columnGap ??
-					DEFAULT_TEMPLATE_FILE.print.layout.columnGap,
+					o.print?.layout?.defaultPageColumns ??
+					def.print.layout.defaultPageColumns,
+				columnGap: o.print?.layout?.columnGap ?? def.print.layout.columnGap,
 			},
-			headerFooter: {
-				enabled:
-					overrides.print?.headerFooter?.enabled ??
-					DEFAULT_TEMPLATE_FILE.print.headerFooter.enabled,
-				firstPage: {
-					header: {
-						left:
-							overrides.print?.headerFooter?.firstPage?.header?.left ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.firstPage.header.left,
-						center:
-							overrides.print?.headerFooter?.firstPage?.header?.center ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.firstPage.header.center,
-						right:
-							overrides.print?.headerFooter?.firstPage?.header?.right ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.firstPage.header.right,
-					},
-					footer: {
-						left:
-							overrides.print?.headerFooter?.firstPage?.footer?.left ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.firstPage.footer.left,
-						center:
-							overrides.print?.headerFooter?.firstPage?.footer?.center ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.firstPage.footer.center,
-						right:
-							overrides.print?.headerFooter?.firstPage?.footer?.right ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.firstPage.footer.right,
-					},
-				},
-				defaultPage: {
-					header: {
-						left:
-							overrides.print?.headerFooter?.defaultPage?.header?.left ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.defaultPage.header.left,
-						center:
-							overrides.print?.headerFooter?.defaultPage?.header?.center ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.defaultPage.header
-								.center,
-						right:
-							overrides.print?.headerFooter?.defaultPage?.header?.right ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.defaultPage.header.right,
-					},
-					footer: {
-						left:
-							overrides.print?.headerFooter?.defaultPage?.footer?.left ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.defaultPage.footer.left,
-						center:
-							overrides.print?.headerFooter?.defaultPage?.footer?.center ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.defaultPage.footer
-								.center,
-						right:
-							overrides.print?.headerFooter?.defaultPage?.footer?.right ??
-							DEFAULT_TEMPLATE_FILE.print.headerFooter.defaultPage.footer.right,
-					},
-				},
+			pageMargins: {
+				header: resolveMarginConfig(
+					o.print?.pageMargins?.header,
+					def.print.pageMargins.header,
+				),
+				footer: resolveMarginConfig(
+					o.print?.pageMargins?.footer,
+					def.print.pageMargins.footer,
+				),
+				left: resolveMarginConfig(
+					o.print?.pageMargins?.left,
+					def.print.pageMargins.left,
+				),
+				right: resolveMarginConfig(
+					o.print?.pageMargins?.right,
+					def.print.pageMargins.right,
+				),
 			},
 			titleBlock: {
-				enabled:
-					overrides.print?.titleBlock?.enabled ??
-					DEFAULT_TEMPLATE_FILE.print.titleBlock.enabled,
-				align:
-					overrides.print?.titleBlock?.align ??
-					DEFAULT_TEMPLATE_FILE.print.titleBlock.align,
+				enabled: o.print?.titleBlock?.enabled ?? def.print.titleBlock.enabled,
+				align: o.print?.titleBlock?.align ?? def.print.titleBlock.align,
 				showAuthors:
-					overrides.print?.titleBlock?.showAuthors ??
-					DEFAULT_TEMPLATE_FILE.print.titleBlock.showAuthors,
+					o.print?.titleBlock?.showAuthors ?? def.print.titleBlock.showAuthors,
 				showAffiliations:
-					overrides.print?.titleBlock?.showAffiliations ??
-					DEFAULT_TEMPLATE_FILE.print.titleBlock.showAffiliations,
+					o.print?.titleBlock?.showAffiliations ??
+					def.print.titleBlock.showAffiliations,
 				showKeywords:
-					overrides.print?.titleBlock?.showKeywords ??
-					DEFAULT_TEMPLATE_FILE.print.titleBlock.showKeywords,
+					o.print?.titleBlock?.showKeywords ??
+					def.print.titleBlock.showKeywords,
 				spacingAfter:
-					overrides.print?.titleBlock?.spacingAfter ??
-					DEFAULT_TEMPLATE_FILE.print.titleBlock.spacingAfter,
+					o.print?.titleBlock?.spacingAfter ??
+					def.print.titleBlock.spacingAfter,
 			},
 		},
 		web: {
 			layout: {
 				containerWidth:
-					overrides.web?.layout?.containerWidth ??
-					DEFAULT_TEMPLATE_FILE.web.layout.containerWidth,
+					o.web?.layout?.containerWidth ?? def.web.layout.containerWidth,
 				containerClass:
-					overrides.web?.layout?.containerClass ??
-					DEFAULT_TEMPLATE_FILE.web.layout.containerClass,
+					o.web?.layout?.containerClass ?? def.web.layout.containerClass,
 				containerPaddingClass:
-					overrides.web?.layout?.containerPaddingClass ??
-					DEFAULT_TEMPLATE_FILE.web.layout.containerPaddingClass,
+					o.web?.layout?.containerPaddingClass ??
+					def.web.layout.containerPaddingClass,
 				contentClass:
-					overrides.web?.layout?.contentClass ??
-					DEFAULT_TEMPLATE_FILE.web.layout.contentClass,
+					o.web?.layout?.contentClass ?? def.web.layout.contentClass,
 			},
 		},
 		plugins:
-			Array.isArray(overrides.plugins) && overrides.plugins.length > 0
-				? [...new Set(overrides.plugins.map((plugin) => plugin.trim()))].filter(
-						Boolean,
-					)
-				: DEFAULT_TEMPLATE_FILE.plugins,
+			Array.isArray(o.plugins) && o.plugins.length > 0
+				? [...new Set(o.plugins.map((p) => p.trim()))].filter(Boolean)
+				: def.plugins,
 	};
 }
 
-export function resolveTemplateFile(raw: string | undefined): {
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+const TEMPLATE_FALLBACK_MESSAGE = "Using internal fallback template defaults.";
+
+export type ResolveTemplateFileResult = {
 	template: TemplateFileResolved;
 	diagnostics: TemplateDiagnostic[];
 	hasError: boolean;
-} {
+};
+
+export function resolveTemplateFile(
+	raw: string | undefined,
+): ResolveTemplateFileResult {
 	if (!raw || raw.trim() === "") {
 		return {
 			template: DEFAULT_TEMPLATE_FILE,
@@ -634,18 +661,18 @@ export function resolveTemplateFile(raw: string | undefined): {
 		};
 	}
 
-	const parsed = TemplateFileSchema.safeParse(parsedJson);
-	if (!parsed.success) {
-		const issue = parsed.error.issues[0];
+	const result = TemplateFileSchema.safeParse(parsedJson);
+	if (!result.success) {
+		const issue = result.error.issues[0];
 		const pathMsg = issue?.path.join(".") || "Unknown path";
 		return {
-			template: DEFAULT_TEMPLATE_FILE as any,
+			template: DEFAULT_TEMPLATE_FILE,
 			diagnostics: [
 				{
 					code: "template-schema-invalid",
 					severity: "error",
 					message: "`template.json` does not match the expected schema.",
-					details: `${pathMsg}: ${issue?.message || "Unknown schema error"}. ${TEMPLATE_FALLBACK_MESSAGE}`,
+					details: `${pathMsg}: ${issue?.message ?? "Unknown schema error"}. ${TEMPLATE_FALLBACK_MESSAGE}`,
 				},
 			],
 			hasError: true,
@@ -653,7 +680,7 @@ export function resolveTemplateFile(raw: string | undefined): {
 	}
 
 	return {
-		template: mergeTemplateWithDefaults(parsed.data),
+		template: mergeTemplateWithDefaults(result.data),
 		diagnostics: [],
 		hasError: false,
 	};

@@ -3,41 +3,17 @@ import type { Components } from "react-markdown";
 import type { ResolvedReference } from "@/lib/article-analysis";
 import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
-type RefKind = "plot" | "datatable";
-
-type RefIndexMap = Record<
-	string,
-	{
-		kind: RefKind;
-		index: number;
-	}
->;
 type RefRenderProps = {
 	node?: {
 		properties?: Record<string, unknown>;
 	};
 	children?: React.ReactNode;
 } & React.HTMLAttributes<HTMLSpanElement>;
-
-type RefKindConfig = {
-	anchorPrefix: string;
-};
-
-const REF_KIND_CONFIG: Record<RefKind, RefKindConfig> = {
-	plot: {
-		anchorPrefix: "plot",
-	},
-	datatable: {
-		anchorPrefix: "datatable",
-	},
-};
-
 function registerRefRenderRuntime(
 	context: RenderHookContext,
 ): Partial<Components> {
 	return {
 		span: createRefRender(
-			context.refIndexById,
 			context.resolvedReferences,
 			context.utilityClasses?.ref || "ref",
 		),
@@ -65,7 +41,6 @@ function normalizeCaptionId(type: string, key: string): string {
 }
 
 export function createRefRender(
-	refIndexById: RefIndexMap,
 	resolvedReferences: Record<string, ResolvedReference>,
 	refClassName: string,
 ): Components["span"] {
@@ -95,6 +70,12 @@ export function createRefRender(
 
 		if (captionType && captionKey) {
 			const captionId = normalizeCaptionId(captionType, captionKey);
+			const expectedSelector = `${captionType.toLowerCase()}:${normalizeRefId(
+				captionKey,
+			).toLowerCase()}`;
+			const resolvedLabel = resolvedReferences[expectedSelector]?.label;
+			const displayLabel = resolvedLabel ? `${resolvedLabel}. ` : "";
+
 			if (captionTitle) {
 				return (
 					<span
@@ -102,6 +83,11 @@ export function createRefRender(
 						id={captionId}
 						className="caption-anchor my-2 block text-center text-xs italic"
 					>
+						{displayLabel && (
+							<span className="font-semibold not-italic text-[var(--ac-text-color)] mr-1">
+								{displayLabel}
+							</span>
+						)}
 						{captionTitle}
 					</span>
 				);
@@ -127,13 +113,8 @@ export function createRefRender(
 		const hasRefId = normalizedRefId !== "";
 
 		const resolved = resolvedReferences[normalizedRefId];
-		const target = refIndexById[normalizedRefId];
-		const config = target ? REF_KIND_CONFIG[target.kind] : null;
-		const label =
-			resolved?.label || (config && target ? `? ${target.index}`.trim() : "?");
-		const href =
-			resolved?.href ||
-			(config ? `#${config.anchorPrefix}-${normalizedRefId}` : "#");
+		const label = resolved?.label || "?";
+		const href = resolved?.href || "#";
 
 		return (
 			<span {...rest}>
