@@ -319,10 +319,10 @@ function detectUnsupportedSourceConcepts(
 	content: string,
 ): PipelineDiagnostic[] {
 	const diagnostics: PipelineDiagnostic[] = [];
-	const hasFootnoteReference = /\[\^[^]]+\]/.test(content);
-	const hasFootnoteDefinition = /^\[\^[^]]+\]:/m.test(content);
+	const hasFootnoteReference = /\[\^[^\]]+]/.test(content);
+	const hasFootnoteDefinition = /^\[\^[^\]]+]:/m.test(content);
 	const footnoteMatch =
-		content.match(/\[\^[^]]+\]/) || content.match(/^\[\^[^]]+\]:/m);
+		content.match(/\[\^[^\]]+]/) || content.match(/^\[\^[^\]]+]:/m);
 	const location = (() => {
 		const offset = footnoteMatch?.index ?? 0;
 		let line = 1;
