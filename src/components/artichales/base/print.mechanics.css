@@ -9,7 +9,7 @@
 }
 
 .paged-print-content .pagedjs_pagebox {
-	@apply overflow-hidden;
+	overflow: visible;
 }
 
 @media print {

@@ -39,10 +39,26 @@ const MarginSegmentSchema = z.object({
 
 const MarginConfigSchema = z.object({
 	enabled: z.boolean().optional().default(true),
-	first: MarginSegmentSchema.optional().default({}),
-	last: MarginSegmentSchema.optional().default({}),
-	odd: MarginSegmentSchema.optional().default({}),
-	even: MarginSegmentSchema.optional().default({}),
+	first: MarginSegmentSchema.optional().default({
+		left: "",
+		center: "",
+		right: "",
+	}),
+	last: MarginSegmentSchema.optional().default({
+		left: "",
+		center: "",
+		right: "",
+	}),
+	odd: MarginSegmentSchema.optional().default({
+		left: "",
+		center: "",
+		right: "",
+	}),
+	even: MarginSegmentSchema.optional().default({
+		left: "",
+		center: "",
+		right: "",
+	}),
 });
 
 const MarginSchema = z.object({
@@ -123,10 +139,34 @@ const PrintTemplateSectionSchema = z.object({
 		.optional(),
 	pageMargins: z
 		.object({
-			header: MarginConfigSchema.optional().default({}),
-			footer: MarginConfigSchema.optional().default({}),
-			left: MarginConfigSchema.optional().default({}),
-			right: MarginConfigSchema.optional().default({}),
+			header: MarginConfigSchema.optional().default({
+				enabled: true,
+				first: { left: "", center: "", right: "" },
+				last: { left: "", center: "", right: "" },
+				odd: { left: "", center: "", right: "" },
+				even: { left: "", center: "", right: "" },
+			}),
+			footer: MarginConfigSchema.optional().default({
+				enabled: true,
+				first: { left: "", center: "", right: "" },
+				last: { left: "", center: "", right: "" },
+				odd: { left: "", center: "", right: "" },
+				even: { left: "", center: "", right: "" },
+			}),
+			left: MarginConfigSchema.optional().default({
+				enabled: true,
+				first: { left: "", center: "", right: "" },
+				last: { left: "", center: "", right: "" },
+				odd: { left: "", center: "", right: "" },
+				even: { left: "", center: "", right: "" },
+			}),
+			right: MarginConfigSchema.optional().default({
+				enabled: true,
+				first: { left: "", center: "", right: "" },
+				last: { left: "", center: "", right: "" },
+				odd: { left: "", center: "", right: "" },
+				even: { left: "", center: "", right: "" },
+			}),
 		})
 		.optional(),
 	// Legacy shape (v1 templates) kept for backward compatibility.

@@ -7,7 +7,6 @@ export const mathParserPlugin: PluginDefinition = {
 	id: "math-parser",
 	category: "parser",
 	name: "Math Parser",
-	ownsSyntax: ["equation", "math"],
 	hooks: {},
 };
 

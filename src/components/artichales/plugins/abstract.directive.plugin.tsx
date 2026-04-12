@@ -19,7 +19,6 @@ function registerAbstractRenderRuntime(
 export const abstractDirectivePlugin: PluginDefinition = {
 	id: "abstract",
 	category: "abstract",
-	directiveCategory: "abstract",
 	name: "Abstract",
 	hooks: {
 		directiveRender: registerAbstractRenderRuntime,

@@ -41,32 +41,37 @@ editors:
 ---
 
 :::abstract
-This document demonstrates core Markdown features, citation and reference tokens, code blocks, math equations, and custom Artichales directives.
+This document demonstrates core Markdown features, citation and reference tokens, code blocks, math equations, and custom Artichales directives. Integer maximus dui leo, sit amet dignissim augue malesuada eu. Aenean ornare odio a ligula feugiat, ut hendrerit urna interdum. Pellentesque in feugiat ex, quis placerat magna. Sed lacus sapien, posuere ac ipsum sed, dapibus tempor urna. Aenean vel est eros. Nam euismod, orci quis sodales lacinia, neque neque mattis enim, eget mollis quam tellus a arcu.
 :::
 
 # Heading Level 1
 Regular paragraph with **bold**, *italic*, ~~strikethrough~~, and `inline code`.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Maecenas nec eleifend nisi. Duis sit amet feugiat arcu. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc malesuada erat at ante lacinia tristique et eget turpis. Duis sagittis, justo a mollis malesuada, orci dui vestibulum risus, nec hendrerit urna ligula non est. Quisque nec rhoncus sem, pulvinar dignissim risus. Aliquam tristique molestie lorem, eu egestas elit auctor sit amet.
+
 
 ## Heading Level 2
-Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3).
+Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3). Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 ### Heading Level 3
 Citation tokens: [cite:knuth1984, goker] and [cite: knuth1984, goker].
 Cross refs: [ref:plotty:plot_1], [ref: plotty:plot_1], [ref:datatable:datatable_1], [ref:abstract].
 [caption:section:intro_section](Introduction Section)
-Caption refs: [ref:section:intro_section].
+Caption refs: [ref:section:intro_section]. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 #### Heading Level 4
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 - Unordered item
 - Another item
   - Nested item
 
 ##### Heading Level 5
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 1. Ordered item one
 2. Ordered item two
 3. Ordered item three
 
 ###### Heading Level 6
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 - [x] Task item checked
 - [ ] Task item unchecked
 
@@ -76,9 +81,16 @@ Caption refs: [ref:section:intro_section].
 > - Quote list item A
 > - Quote list item B
 
+# Section
+
+Sed vitae neque at dolor laoreet pharetra. Aliquam a lectus sit amet neque semper ullamcorper sit amet non leo. Phasellus congue purus nec orci bibendum, vel eleifend magna interdum. Donec sagittis nisl pretium, mollis diam ut, rhoncus dolor. Vestibulum commodo, nisi non semper mollis, lorem ligula vehicula massa, et finibus lectus justo sit amet tortor. Pellentesque convallis nulla dolor, ut sodales justo convallis id. Nullam orci felis, lobortis in magna ac, egestas pellentesque nulla. Donec ultricies pharetra hendrerit. Vivamus facilisis rutrum sem, sed consectetur tellus gravida at. Vestibulum rhoncus lobortis orci, id mollis lorem sodales vel. Mauris eleifend urna ac libero posuere, sit amet dignissim enim venenatis. Integer tristique rhoncus libero, ut bibendum diam finibus eget. Nulla non venenatis orci. Sed tincidunt posuere erat, quis egestas risus interdum at. Nulla facilisi. Duis ultricies nulla augue, quis blandit urna iaculis id.
+
+Proin ac iaculis odio. Duis sit amet leo ut massa semper euismod. Aenean dapibus nec dui sit amet ullamcorper. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Donec at posuere odio, quis scelerisque metus. Mauris ultricies vestibulum nisl et accumsan. Proin molestie metus eget sem aliquet, a sollicitudin dolor commodo. Vivamus eu ligula eget augue convallis dignissim. Phasellus dignissim, libero sit amet mollis auctor, nisl magna bibendum mauris, venenatis pharetra ante sapien nec augue. Integer maximus dui leo, sit amet dignissim augue malesuada eu. Aenean ornare odio a ligula feugiat, ut hendrerit urna interdum. Pellentesque in feugiat ex, quis placerat magna. Sed lacus sapien, posuere ac ipsum sed, dapibus tempor urna. Aenean vel est eros. Nam euismod, orci quis sodales lacinia, neque neque mattis enim, eget mollis quam tellus a arcu.
+
 ---
 
 ## Table Sample
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 | Metric | Control | Treatment |
 | ------ | ------- | --------- |
@@ -86,6 +98,7 @@ Caption refs: [ref:section:intro_section].
 | Std    | 0.03    | 0.04      |
 
 ## Code Sample
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 ~~~ts
 type Result = {
@@ -119,6 +132,7 @@ $$
 $$
 
 ## Custom Directives
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 :::plotty[plot_1.json]
 caption: "Full-width ribbon plot in two-column print layout"

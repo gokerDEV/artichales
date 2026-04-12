@@ -71,16 +71,16 @@ ${createZoneCss(document, ":left", "even", pageMargins?.footer, "bottom")}
 
 	const verticalMarginBoxes = `
 @page :first {
-	@left-middle { content: ${formatMarginContent(document, pageMargins?.left?.first?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
-	@right-middle { content: ${formatMarginContent(document, pageMargins?.right?.first?.center)}; writing-mode: vertical-rl; }
+	@left-middle { content: ${formatMarginContent(document, pageMargins?.left?.first?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9pt; color: #4b5563; }
+	@right-middle { content: ${formatMarginContent(document, pageMargins?.right?.first?.center)}; writing-mode: vertical-rl; font-size: 9pt; color: #4b5563; }
 }
 @page :right {
-	@left-middle { content: ${formatMarginContent(document, pageMargins?.left?.odd?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
-	@right-middle { content: ${formatMarginContent(document, pageMargins?.right?.odd?.center)}; writing-mode: vertical-rl; }
+	@left-middle { content: ${formatMarginContent(document, pageMargins?.left?.odd?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9pt; color: #4b5563; }
+	@right-middle { content: ${formatMarginContent(document, pageMargins?.right?.odd?.center)}; writing-mode: vertical-rl; font-size: 9pt; color: #4b5563; }
 }
 @page :left {
-	@left-middle { content: ${formatMarginContent(document, pageMargins?.left?.even?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
-	@right-middle { content: ${formatMarginContent(document, pageMargins?.right?.even?.center)}; writing-mode: vertical-rl; }
+	@left-middle { content: ${formatMarginContent(document, pageMargins?.left?.even?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9pt; color: #4b5563; }
+	@right-middle { content: ${formatMarginContent(document, pageMargins?.right?.even?.center)}; writing-mode: vertical-rl; font-size: 9pt; color: #4b5563; }
 }
 `;
 

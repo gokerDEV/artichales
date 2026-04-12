@@ -120,69 +120,69 @@
 			"header": {
 				"enabled": true,
 				"first": {
-					"left": "",
-					"center": "",
-					"right": "{title}"
+					"left": "Artichales v1",
+					"center": "First Page Header {shortTitle}",
+					"right": "{pageNumber}"
 				},
 				"last": {
 					"left": "",
-					"center": "",
-					"right": "{title}"
+					"center": "Artichales v1 - Last Page Header {publisherName}",
+					"right": "{pageNumber}"
 				},
 				"odd": {
 					"left": "",
-					"center": "",
-					"right": "{title}"
+					"center": "Artichales v1 - Odd Pages Header {shortTitle}",
+					"right": "{pageNumber}"
 				},
 				"even": {
 					"left": "",
-					"center": "",
-					"right": "{title}"
+					"center": "Artichales v1 - Even Pages Header {shortTitle}",
+					"right": "{pageNumber}"
 				}
 			},
 			"footer": {
 				"enabled": true,
 				"first": {
 					"left": "",
-					"center": "{pageNumber}",
-					"right": ""
+					"center": "Artichales v1 - First Page Footer {shortTitle}",
+					"right": "{pageNumber}"
 				},
 				"last": {
 					"left": "",
-					"center": "{pageNumber}",
-					"right": ""
+					"center": "Artichales v1 - Last Page Footer {publisherName}",
+					"right": "{pageNumber}"
 				},
 				"odd": {
 					"left": "",
-					"center": "{pageNumber}",
-					"right": ""
+					"center": "Artichales v1 - Odd Pages Footer {shortTitle}",
+					"right": "{pageNumber}"
 				},
 				"even": {
 					"left": "",
-					"center": "{pageNumber}",
-					"right": ""
+					"center": "Artichales v1 - Even Pages Footer {shortTitle}",
+					"right": "{pageNumber}"
 				}
 			},
 			"left": {
 				"enabled": true,
 				"first": {
 					"left": "",
-					"center": "Artichales v1",
+					"center": "Artichales v1 - First Page Left {shortTitle}",
 					"right": ""
 				},
 				"last": {
 					"left": "",
-					"center": "Artichales v1",
+					"center": "Artichales v1 - Last Page Left {publisherName}",
 					"right": ""
 				},
 				"odd": {
 					"left": "",
-					"center": "Artichales v1",
+					"center": "Artichales v1 - Odd Pages Left {shortTitle}",
 					"right": ""
 				},
 				"even": {
 					"left": "",
-					"center": "Artichales v1",
+					"center": "Artichales v1 - Even Pages Left {shortTitle}",
 					"right": ""
 				}
 			},
@@ -190,22 +190,22 @@
 				"enabled": true,
 				"first": {
 					"left": "",
-					"center": "{shortTitle}",
+					"center": "Artichales v1 - First Page Right {shortTitle}",
 					"right": ""
 				},
 				"last": {
 					"left": "",
-					"center": "{shortTitle}",
+					"center": "Artichales v1 - Last Page Right {publisherName}",
 					"right": ""
 				},
 				"odd": {
 					"left": "",
-					"center": "{shortTitle}",
+					"center": "Artichales v1 - Odd Pages Right {shortTitle}",
 					"right": ""
 				},
 				"even": {
 					"left": "",
-					"center": "{shortTitle}",
+					"center": "Artichales v1 - Even Pages Right {shortTitle}",
 					"right": ""
 				}
 			}

@@ -32,13 +32,40 @@ function decodeHtmlEntity(entity: string): string {
 }
 
 function ensureWorkerDocumentPolyfill(): void {
-	const globalScope = globalThis as typeof globalThis & Record<string, unknown>;
+	type RefreshSig = () => (type: unknown) => unknown;
+	type RefreshReg = () => void;
+	type WorkerLikeLocation = { href: string };
+	type WorkerLikeNavigator = { userAgent: string };
+	type StubElement = {
+		textContent: string;
+		innerHTML: string;
+		appendChild: (node: unknown) => void;
+		removeChild: (node: unknown) => void;
+		setAttribute: (name: string, value: string) => void;
+		getAttribute: (name: string) => string | null;
+		querySelector: (selectors: string) => StubElement | null;
+		querySelectorAll: (selectors: string) => StubElement[];
+	};
+	type StubDocument = {
+		createElement: (tagName: string) => StubElement;
+		createElementNS: (
+			namespaceURI: string,
+			qualifiedName: string,
+		) => StubElement;
+		querySelector: (selectors: string) => StubElement | null;
+		querySelectorAll: (selectors: string) => StubElement[];
+		body: StubElement;
+		head: StubElement;
+	};
+	const globalScope = globalThis as unknown as Record<string, unknown>;
 
 	if (typeof globalScope.$RefreshSig$ === "undefined") {
-		globalScope.$RefreshSig$ = () => (type: unknown) => type;
+		const refreshSig: RefreshSig = () => (type: unknown) => type;
+		globalScope.$RefreshSig$ = refreshSig;
 	}
 	if (typeof globalScope.$RefreshReg$ === "undefined") {
-		globalScope.$RefreshReg$ = () => undefined;
+		const refreshReg: RefreshReg = () => undefined;
+		globalScope.$RefreshReg$ = refreshReg;
 	}
 
 	if (typeof globalScope.window === "undefined") {
@@ -49,16 +76,20 @@ function ensureWorkerDocumentPolyfill(): void {
 		if (typeof selfScope.window === "undefined") {
 			selfScope.window = globalScope.window;
 		}
+	} else {
+		globalScope.self = globalScope;
 	}
 	if (typeof globalScope.location === "undefined") {
-		globalScope.location = { href: "worker://pipeline" };
+		const location: WorkerLikeLocation = { href: "worker://pipeline" };
+		globalScope.location = location;
 	}
 	if (typeof globalScope.navigator === "undefined") {
-		globalScope.navigator = { userAgent: "worker" };
+		const navigator: WorkerLikeNavigator = { userAgent: "worker" };
+		globalScope.navigator = navigator;
 	}
 	if (typeof globalScope.document !== "undefined") return;
 
-	const createStubElement = () => {
+	const createStubElement = (): StubElement => {
 		let textContent = "";
 		return {
 			get textContent() {
@@ -82,7 +113,7 @@ function ensureWorkerDocumentPolyfill(): void {
 		};
 	};
 
-	globalScope.document = {
+	const documentPolyfill: StubDocument = {
 		createElement: createStubElement,
 		createElementNS: createStubElement,
 		querySelector: () => null,
@@ -90,6 +121,8 @@ function ensureWorkerDocumentPolyfill(): void {
 		body: createStubElement(),
 		head: createStubElement(),
 	};
+
+	globalScope.document = documentPolyfill;
 }
 
 async function getPipelineModule(): Promise<PipelineModule> {
