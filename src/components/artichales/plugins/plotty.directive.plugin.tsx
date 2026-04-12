@@ -35,6 +35,21 @@ function normalizeDataFileKey(value: string): string {
 		.toLowerCase();
 }
 
+function resolveFlowSpan(
+	spanOptions: string | undefined,
+	fallback: "column" | "page" = "column",
+): "column" | "page" {
+	if (!spanOptions) return fallback;
+	const normalized = spanOptions.trim().toLowerCase();
+	if (normalized === "page" || /\bspan\s*[:=]\s*page\b/.test(normalized)) {
+		return "page";
+	}
+	if (normalized === "column" || /\bspan\s*[:=]\s*column\b/.test(normalized)) {
+		return "column";
+	}
+	return fallback;
+}
+
 function toNumber(value: unknown): number | undefined {
 	return typeof value === "number" && Number.isFinite(value)
 		? value
@@ -129,15 +144,17 @@ function PlottyDirectiveRender({
 	config,
 	...rest
 }: DirectiveComponentProps) {
-	const { data, lastUpdated } = useWorkspaceJsonFile(params.data_file ?? "");
+	const dataFile = params.data_file ?? "";
+	const { data, lastUpdated } = useWorkspaceJsonFile(dataFile);
 	const normalizedKey =
-		typeof params.data_file === "string" && params.data_file.trim() !== ""
-			? normalizeDataFileKey(params.data_file)
+		typeof dataFile === "string" && dataFile.trim() !== ""
+			? normalizeDataFileKey(dataFile)
 			: "";
 	const plot = React.useMemo(
 		() => resolvePlotDefinition(data, raw),
 		[data, raw],
 	);
+	const flowSpan = resolveFlowSpan(params.span_options, config.defaultSpan);
 
 	if (!plot) {
 		return (
@@ -156,7 +173,7 @@ function PlottyDirectiveRender({
 			{...rest}
 			id={normalizedKey ? `plot-${normalizedKey}` : undefined}
 			className="plotty overflow-x-auto"
-			data-flow-span={config.defaultSpan}
+			data-flow-span={flowSpan}
 			style={{
 				marginTop: config.spacingBefore,
 				marginBottom: config.spacingAfter,

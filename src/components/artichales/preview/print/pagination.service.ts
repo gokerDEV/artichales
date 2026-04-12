@@ -139,29 +139,74 @@ function parseLayoutHintFromDirectiveBlock(markdown: string): PrintLayoutHint {
 		firstLine.startsWith(":::plotty[") || firstLine.startsWith(":::datatable[");
 	if (!isFlowDirective) return defaultHint;
 
+	const parseHeaderSegments = (line: string): string[] => {
+		const segments: string[] = [];
+		const segmentRegex = /\[([^\]]*)\]/g;
+		let match: RegExpExecArray | null = null;
+		while (true) {
+			match = segmentRegex.exec(line);
+			if (match === null) break;
+			const segment = match[1]?.trim();
+			if (segment) segments.push(segment);
+		}
+		return segments;
+	};
+
+	const applySpanOptionsHint = (
+		hint: PrintLayoutHint,
+		spanOptionsRaw: string | undefined,
+	): PrintLayoutHint => {
+		if (!spanOptionsRaw) return hint;
+		const normalized = spanOptionsRaw.trim().toLowerCase();
+		const nextHint: PrintLayoutHint = { ...hint };
+		if (normalized === "page" || /\bspan\s*[:=]\s*page\b/.test(normalized)) {
+			nextHint.span = "page";
+		}
+		if (
+			normalized === "column" ||
+			/\bspan\s*[:=]\s*column\b/.test(normalized)
+		) {
+			nextHint.span = "column";
+		}
+		if (/\bbreakbefore\s*[:=]\s*page\b/.test(normalized)) {
+			nextHint.breakBefore = "page";
+		}
+		if (/\bbreakafter\s*[:=]\s*page\b/.test(normalized)) {
+			nextHint.breakAfter = "page";
+		}
+		return nextHint;
+	};
+
+	const segments = parseHeaderSegments(firstLine);
+	let hintFromHeader = defaultHint;
+	if (segments.length >= 2) {
+		hintFromHeader = applySpanOptionsHint(defaultHint, segments[1]);
+	}
+
 	const bodyLines = lines.slice(1, -1);
 	const bodyText = bodyLines.join("\n").trim();
-	if (!bodyText) return defaultHint;
+	if (!bodyText) return hintFromHeader;
 
 	let parsed: unknown = null;
 	try {
 		parsed = parseYaml(bodyText);
 	} catch {
-		return defaultHint;
+		return hintFromHeader;
 	}
 	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-		return defaultHint;
+		return hintFromHeader;
 	}
 
 	const raw = parsed as Record<string, unknown>;
-	const span = raw.span === "page" ? "page" : "column";
+	const span = raw.span === "page" ? "page" : hintFromHeader.span;
 	const breakBefore: FlowBreak = raw.breakBefore === "page" ? "page" : "auto";
 	const breakAfter: FlowBreak = raw.breakAfter === "page" ? "page" : "auto";
 
 	return {
 		span,
-		breakBefore,
-		breakAfter,
+		breakBefore:
+			breakBefore === "page" ? breakBefore : hintFromHeader.breakBefore,
+		breakAfter: breakAfter === "page" ? breakAfter : hintFromHeader.breakAfter,
 	};
 }
 

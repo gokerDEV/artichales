@@ -127,20 +127,16 @@ function parseDirectiveTargets(content: string): {
 		const pluginId = normalizeToken(match[1] || "");
 		const tail = match[2] || "";
 		const segments = parseBracketSegments(tail);
-		const dataSegments = segments.filter(
-			(segment) => !segment.toLowerCase().startsWith("span="),
-		);
-		if (dataSegments.length > 1) {
+		if (segments.length > 3) {
 			diagnostics.push({
 				code: "article-directive-invalid-data-file-segments",
 				severity: "error",
 				source: "parser",
-				message: `Directive "${pluginId}" can declare at most one data file segment.`,
+				message: `Directive "${pluginId}" supports at most three bracket parameters: [data_file][span_options][reserve].`,
 				...offsetToLocation(content, match.index),
 			});
 		}
-
-		const dataFile = dataSegments[0];
+		const dataFile = segments[0];
 
 		if (dataFile && !PLUGINS_REQUIRING_DATA_FILE.has(pluginId)) {
 			diagnostics.push({

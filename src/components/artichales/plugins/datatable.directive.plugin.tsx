@@ -30,6 +30,21 @@ function normalizeDataFileKey(value: string): string {
 		.toLowerCase();
 }
 
+function resolveFlowSpan(
+	spanOptions: string | undefined,
+	fallback: "column" | "page" = "column",
+): "column" | "page" {
+	if (!spanOptions) return fallback;
+	const normalized = spanOptions.trim().toLowerCase();
+	if (normalized === "page" || /\bspan\s*[:=]\s*page\b/.test(normalized)) {
+		return "page";
+	}
+	if (normalized === "column" || /\bspan\s*[:=]\s*column\b/.test(normalized)) {
+		return "column";
+	}
+	return fallback;
+}
+
 function toCellString(value: unknown): string {
 	if (value === null || value === undefined) return "";
 	if (typeof value === "string") return value;
@@ -149,15 +164,17 @@ function DatatableDirectiveRender({
 	target,
 	...rest
 }: DirectiveComponentProps) {
-	const { data, lastUpdated } = useWorkspaceJsonFile(params.data_file ?? "");
+	const dataFile = params.data_file ?? "";
+	const { data, lastUpdated } = useWorkspaceJsonFile(dataFile);
 	const normalizedKey =
-		typeof params.data_file === "string" && params.data_file.trim() !== ""
-			? normalizeDataFileKey(params.data_file)
+		typeof dataFile === "string" && dataFile.trim() !== ""
+			? normalizeDataFileKey(dataFile)
 			: "";
 	const definition = React.useMemo(
 		() => resolveDatatableDefinition(data),
 		[data],
 	);
+	const flowSpan = resolveFlowSpan(params.span_options, config.defaultSpan);
 
 	if (!definition) {
 		return (
@@ -176,7 +193,7 @@ function DatatableDirectiveRender({
 			{...rest}
 			id={normalizedKey ? `datatable-${normalizedKey}` : undefined}
 			className="datatable"
-			data-flow-span={config.defaultSpan}
+			data-flow-span={flowSpan}
 			style={{
 				marginTop: config.spacingBefore,
 				marginBottom: config.spacingAfter,

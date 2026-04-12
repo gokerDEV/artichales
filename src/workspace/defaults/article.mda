@@ -134,16 +134,12 @@ $$
 ## Custom Directives
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
-:::plotty[plot_1.json]
+:::plotty[plot_1.json][span=page breakBefore=page breakAfter=page][]
 caption: "Full-width ribbon plot in two-column print layout"
-span: page
-breakBefore: page
-breakAfter: page
 :::
 
-:::datatable[datatable_1.json]
+:::datatable[datatable_1.json][span=column][]
 caption: "Column-flow datatable after full-width figure"
-span: column
 :::
 
 ## Long Flow Demo

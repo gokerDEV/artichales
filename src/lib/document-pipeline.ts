@@ -489,7 +489,10 @@ function validatePluginRuntimeAvailability(
 import type { Root } from "mdast";
 import { visit } from "unist-util-visit";
 
-import { remarkNormalizeDirectives } from "@/lib/artichales.utils";
+import {
+	normalizeExtendedDirectiveSyntax,
+	remarkNormalizeDirectives,
+} from "@/lib/artichales.utils";
 
 function executeParserHooks(
 	articleContent: string,
@@ -573,9 +576,12 @@ function executeParserHooks(
 		);
 	});
 
+	const normalizedArticleContent =
+		normalizeExtendedDirectiveSyntax(articleContent);
+
 	let ast: Root | null = null;
 	try {
-		ast = processor.parse(articleContent);
+		ast = processor.parse(normalizedArticleContent);
 		ast = processor.runSync(ast) as Root;
 	} catch (error) {
 		const detail = error instanceof Error ? error.message : String(error);
