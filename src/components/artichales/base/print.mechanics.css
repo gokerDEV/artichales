@@ -18,8 +18,18 @@
 		background: white !important;
 		height: auto !important;
 		overflow: visible !important;
+		margin: 0 !important;
+		padding: 0 !important;
 		print-color-adjust: exact;
 		-webkit-print-color-adjust: exact;
+	}
+
+	#print-root,
+	#print-root main,
+	#print-root [data-art-print-document="true"],
+	#print-root .paged-print-content {
+		margin: 0 !important;
+		padding: 0 !important;
 	}
 
 	.paged-print-content .pagedjs_pages {
@@ -31,7 +41,7 @@
 		page-break-after: always;
 		border: 0 !important;
 		box-shadow: none !important;
-		margin: 0 auto !important;
+		margin: 0 !important;
 	}
 
 	.paged-print-content .pagedjs_page:last-child {

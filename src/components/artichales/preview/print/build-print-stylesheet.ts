@@ -85,8 +85,15 @@ ${createZoneCss(document, ":left", "even", pageMargins?.footer, "bottom")}
 `;
 
 	return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
-.paged-print-content .art__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
-.paged-print-content .pagedjs_first_page .art__body { column-count: ${firstPageColumns}; }
+.paged-print-content .artichales__body,
+.paged-print-content .pagedjs_page_content {
+	column-count: ${defaultColumns};
+	column-gap: ${columnGap};
+}
+.paged-print-content .pagedjs_first_page .artichales__body,
+.paged-print-content .pagedjs_first_page .pagedjs_page_content {
+	column-count: ${firstPageColumns};
+}
 ${marginBoxes}
 ${verticalMarginBoxes}`;
 }

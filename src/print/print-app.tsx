@@ -166,7 +166,7 @@ export function PrintApp() {
 	}
 
 	return (
-		<main className="mx-auto min-h-screen w-full bg-white px-4 py-6">
+		<main className="mx-auto min-h-screen w-full bg-white px-4 py-6 print:m-0 print:min-h-0 print:px-0 print:py-0">
 			<PrintDocumentRenderer
 				document={documentSource}
 				onReadyToPrint={handleReadyToPrint}
