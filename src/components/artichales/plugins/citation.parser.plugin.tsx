@@ -1,4 +1,11 @@
-import type { LinkReference, Parent, PhrasingContent, Root, Text } from "mdast";
+import type {
+	Link,
+	LinkReference,
+	Parent,
+	PhrasingContent,
+	Root,
+	Text,
+} from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 import type { PluginDefinition } from "./plugin.contract";
@@ -18,7 +25,10 @@ export interface CrossRefNode extends Parent {
 	data: {
 		hName: "span";
 		hProperties: {
-			"data-ref-id": string;
+			"data-ref-id"?: string;
+			"data-caption-type"?: string;
+			"data-caption-key"?: string;
+			"data-caption-title"?: string;
 		};
 	};
 }
@@ -66,13 +76,26 @@ function parseRefSelectors(raw: string): string[] {
 
 function parseTokenLabel(
 	label: string,
-): { kind: "cite" | "ref"; value: string } | null {
-	const match = label.match(/^(cite|ref)\s*:\s*(.+)$/i);
+): { kind: "cite" | "ref" | "caption"; value: string } | null {
+	const match = label.match(/^(cite|ref|caption)\s*:\s*(.+)$/i);
 	if (!match) return null;
-	const kind = match[1].toLowerCase() as "cite" | "ref";
+	const kind = match[1].toLowerCase() as "cite" | "ref" | "caption";
 	const value = match[2].trim();
 	if (!value) return null;
 	return { kind, value };
+}
+
+function parseCaptionPayload(
+	value: string,
+	inlineTitle?: string,
+): { type: string; key: string; title?: string } | null {
+	const match = value.match(/^([^:\s]+)\s*:\s*([^\s]+)$/);
+	if (!match) return null;
+	const type = match[1].trim();
+	const key = match[2].trim();
+	const title = typeof inlineTitle === "string" ? inlineTitle.trim() : "";
+	if (!type || !key) return null;
+	return { type, key, title: title || undefined };
 }
 
 export const remarkCitation: Plugin<[], Root> = () => {
@@ -186,6 +209,36 @@ export const remarkCitation: Plugin<[], Root> = () => {
 					return index + replacementNodes.length;
 				}
 
+				if (parsedLabel.kind === "caption") {
+					const caption = parseCaptionPayload(parsedLabel.value);
+					if (!caption) return undefined;
+					const captionNode: CrossRefNode = {
+						type: "xref",
+						data: {
+							hName: "span",
+							hProperties: {
+								"data-caption-type": caption.type,
+								"data-caption-key": caption.key,
+								...(caption.title
+									? { "data-caption-title": caption.title }
+									: {}),
+							},
+						},
+						children: [
+							{
+								type: "text",
+								value: `[caption:${caption.type}:${caption.key}]`,
+							},
+						],
+					};
+					parent.children.splice(
+						index,
+						1,
+						captionNode as unknown as PhrasingContent,
+					);
+					return index + 1;
+				}
+
 				const refNode: CrossRefNode = {
 					type: "xref",
 					data: {
@@ -229,10 +282,89 @@ export const remarkCitation: Plugin<[], Root> = () => {
 			},
 		);
 
+		visit(tree, "link", (node: Link, index?: number, parent?: Parent) => {
+			if (!parent || typeof index !== "number") return;
+			if (!Array.isArray(node.children) || node.children.length !== 1) return;
+			const first = node.children[0];
+			if (!first || first.type !== "text") return;
+			const parsedLabel = parseTokenLabel(first.value || "");
+			if (!parsedLabel) return;
+
+			if (parsedLabel.kind === "caption") {
+				const caption = parseCaptionPayload(parsedLabel.value, node.url || "");
+				if (!caption) return;
+				parent.children.splice(index, 1, {
+					type: "xref",
+					data: {
+						hName: "span",
+						hProperties: {
+							"data-caption-type": caption.type,
+							"data-caption-key": caption.key,
+							...(caption.title ? { "data-caption-title": caption.title } : {}),
+						},
+					},
+					children: [
+						{
+							type: "text",
+							value: `[caption:${caption.type}:${caption.key}]`,
+						},
+					],
+				} as unknown as PhrasingContent);
+				return index + 1;
+			}
+
+			if (parsedLabel.kind === "ref") {
+				const selectors = parseRefSelectors(parsedLabel.value);
+				if (selectors.length === 0) return;
+				const nodes: PhrasingContent[] = [];
+				selectors.forEach((selector, idx) => {
+					nodes.push({
+						type: "xref",
+						data: {
+							hName: "span",
+							hProperties: {
+								"data-ref-id": selector,
+							},
+						},
+						children: [{ type: "text", value: `[ref:${selector}]` }],
+					} as unknown as PhrasingContent);
+					if (idx < selectors.length - 1) {
+						nodes.push({ type: "text", value: ", " } as PhrasingContent);
+					}
+				});
+				parent.children.splice(index, 1, ...nodes);
+				return index + nodes.length;
+			}
+
+			if (parsedLabel.kind === "cite") {
+				const ids = parseIds(parsedLabel.value);
+				if (ids.length === 0) return;
+				const nodes: PhrasingContent[] = [];
+				ids.forEach((id, idx) => {
+					nodes.push({
+						type: "cite",
+						data: {
+							hName: "cite",
+							hProperties: {
+								"data-cite-id": id,
+							},
+						},
+						children: [{ type: "text", value: `[${id}]` }],
+					} as unknown as PhrasingContent);
+					if (idx < ids.length - 1) {
+						nodes.push({ type: "text", value: ", " } as PhrasingContent);
+					}
+				});
+				parent.children.splice(index, 1, ...nodes);
+				return index + nodes.length;
+			}
+		});
+
 		visit(tree, "text", (node: Text, index?: number, parent?: Parent) => {
 			if (!node.value) return;
 
-			const tokenRegex = /\[(cite|ref)\s*:\s*([^\]]+)\]/g;
+			const tokenRegex =
+				/\[(cite|ref|caption)\s*:\s*([^\]]+)\](?:\(([^)]+)\))?/g;
 			if (!tokenRegex.test(node.value)) return;
 
 			tokenRegex.lastIndex = 0;
@@ -253,6 +385,8 @@ export const remarkCitation: Plugin<[], Root> = () => {
 
 				const tokenKind = match[1];
 				const rawValue = match[2];
+				const inlineTitle =
+					typeof match[3] === "string" ? match[3].trim() : undefined;
 				if (tokenKind === "cite") {
 					const ids = parseIds(rawValue);
 					ids.forEach((id, idx) => {
@@ -293,6 +427,34 @@ export const remarkCitation: Plugin<[], Root> = () => {
 							});
 						}
 					});
+				} else if (tokenKind === "caption") {
+					const caption = parseCaptionPayload(rawValue, inlineTitle);
+					if (caption) {
+						newNodes.push({
+							type: "xref",
+							data: {
+								hName: "span",
+								hProperties: {
+									"data-caption-type": caption.type,
+									"data-caption-key": caption.key,
+									...(caption.title
+										? { "data-caption-title": caption.title }
+										: {}),
+								},
+							},
+							children: [
+								{
+									type: "text",
+									value: `[caption:${caption.type}:${caption.key}]`,
+								},
+							],
+						});
+					} else {
+						newNodes.push({
+							type: "text",
+							value: match[0],
+						});
+					}
 				}
 
 				lastIndex = tokenRegex.lastIndex;

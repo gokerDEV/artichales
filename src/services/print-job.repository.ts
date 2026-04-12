@@ -106,9 +106,48 @@ class PrintJobRepository {
 		return job;
 	}
 
+	async readPrintJobResult(id: string): Promise<
+		| { ok: true; job: PrintJob; state: "created" | "consumed" }
+		| {
+				ok: false;
+				state:
+					| "missing_job_id"
+					| "not_found"
+					| "expired"
+					| "storage_unavailable";
+		  }
+	> {
+		if (!id || id.trim() === "") {
+			return { ok: false, state: "missing_job_id" };
+		}
+		try {
+			const key = getStorageKey(id);
+			const existing = await storageGet<PrintJob>(key);
+			if (!existing) {
+				return { ok: false, state: "not_found" };
+			}
+			if (Date.now() - existing.createdAt > PRINT_JOB_TTL_MS) {
+				await this.deletePrintJob(id);
+				return { ok: false, state: "expired" };
+			}
+			const consumedMarker = await storageGet<boolean>(`${key}:consumed`);
+			if (!consumedMarker) {
+				await storageSet(`${key}:consumed`, true);
+			}
+			return {
+				ok: true,
+				job: existing,
+				state: consumedMarker ? "consumed" : "created",
+			};
+		} catch {
+			return { ok: false, state: "storage_unavailable" };
+		}
+	}
+
 	async deletePrintJob(id: string): Promise<void> {
 		if (!id) return;
 		await storageRemove(getStorageKey(id));
+		await storageRemove(`${getStorageKey(id)}:consumed`);
 		await removeJobId(id);
 	}
 
@@ -128,6 +167,7 @@ class PrintJobRepository {
 		if (stale.length === 0) return;
 		for (const id of stale) {
 			await storageRemove(getStorageKey(id));
+			await storageRemove(`${getStorageKey(id)}:consumed`);
 		}
 		await saveJobIds(ids.filter((id) => !stale.includes(id)));
 	}

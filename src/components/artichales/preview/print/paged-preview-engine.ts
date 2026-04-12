@@ -8,9 +8,9 @@ type PagedPreviewerInstance = {
 
 export type RunPagedPreviewParams = {
 	sourceHtml: string;
-	stagingHost: HTMLElement;
 	mountRoot: HTMLElement;
 	pageLimit?: number;
+	stylesheets?: string[];
 };
 
 export type RunPagedPreviewResult = {
@@ -41,9 +41,9 @@ function resolvePagedPreviewerFactory(
 
 export async function runPagedPreview({
 	sourceHtml,
-	stagingHost,
 	mountRoot,
 	pageLimit,
+	stylesheets = [],
 }: RunPagedPreviewParams): Promise<RunPagedPreviewResult> {
 	const pagedModule = await import("pagedjs");
 	const createPreviewer = resolvePagedPreviewerFactory(pagedModule);
@@ -52,6 +52,17 @@ export async function runPagedPreview({
 	}
 
 	const previewer = createPreviewer();
+	const temporaryHost = globalThis.document.createElement("div");
+	temporaryHost.setAttribute("aria-hidden", "true");
+	temporaryHost.style.position = "fixed";
+	temporaryHost.style.left = "-200vw";
+	temporaryHost.style.top = "0";
+	temporaryHost.style.width = "0";
+	temporaryHost.style.height = "0";
+	temporaryHost.style.overflow = "hidden";
+	temporaryHost.style.pointerEvents = "none";
+	globalThis.document.body.appendChild(temporaryHost);
+
 	const stagingElement = globalThis.document.createElement("div");
 	stagingElement.className = "paged-print-content w-full";
 	stagingElement.setAttribute("aria-hidden", "true");
@@ -60,10 +71,10 @@ export async function runPagedPreview({
 	stagingElement.style.top = "0";
 	stagingElement.style.visibility = "hidden";
 	stagingElement.style.pointerEvents = "none";
-	stagingHost.appendChild(stagingElement);
+	temporaryHost.appendChild(stagingElement);
 
 	try {
-		await previewer.preview(sourceHtml, [], stagingElement);
+		await previewer.preview(sourceHtml, stylesheets, stagingElement);
 
 		const renderedPages = Array.from(
 			stagingElement.querySelectorAll(".pagedjs_page"),
@@ -91,5 +102,6 @@ export async function runPagedPreview({
 		};
 	} finally {
 		stagingElement.remove();
+		temporaryHost.remove();
 	}
 }

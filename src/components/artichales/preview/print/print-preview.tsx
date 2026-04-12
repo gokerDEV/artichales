@@ -1,9 +1,10 @@
 import * as React from "react";
+import { buildPrintStylesheet } from "@/components/artichales/preview/print/build-print-stylesheet";
 import { runPagedPreview } from "@/components/artichales/preview/print/paged-preview-engine";
+import { usePrintStylesheet } from "@/components/artichales/preview/print/use-print-stylesheet";
 import { DocumentRenderContent } from "@/components/artichales/preview/shared/document-render-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { DocumentSource } from "@/hooks/use-document";
-import type { ResolvedMarginConfig } from "@/lib/template";
 import { cn } from "@/lib/utils";
 
 export type PrintPreviewProps = {
@@ -30,109 +31,12 @@ export function PrintPreviewPane({
 	const [pagedWasTruncated, setPagedWasTruncated] = React.useState(false);
 
 	const pageConfig = template?.page;
-	const margins = pageConfig?.margin;
 	const pageHeightPx = pageConfig?.orientation === "landscape" ? 794 : 1123;
-	const columnGap = template.layout?.columnGap || "7mm";
-	const pagedCss = React.useMemo(() => {
-		const orientation =
-			pageConfig?.orientation === "landscape" ? "landscape" : "portrait";
-		const pageSize = pageConfig?.size || "A4";
-		const marginTop = typeof margins?.top === "string" ? margins.top : "24mm";
-		const marginRight =
-			typeof margins?.right === "string" ? margins.right : "20mm";
-		const marginBottom =
-			typeof margins?.bottom === "string" ? margins.bottom : "24mm";
-		const marginLeft =
-			typeof margins?.left === "string" ? margins.left : "20mm";
-		const defaultColumns = Math.max(
-			1,
-			template.layout?.defaultPageColumns || 2,
-		);
-		const firstPageColumns = Math.max(
-			1,
-			template.layout?.firstPageColumns || 1,
-		);
-
-		const formatContent = (str: string | undefined) => {
-			if (!str) return "none";
-			const tokens = str.split(/(\{.*?\})/g).filter(Boolean);
-			const cssTokens = tokens.map((token) => {
-				if (token === "{pageNumber}") return `counter(page)`;
-				if (token === "{totalPages}") return `counter(pages)`;
-				if (token.startsWith("{") && token.endsWith("}")) {
-					const path = token.slice(1, -1).trim().split(".");
-					let value: unknown = document.frontmatter;
-					for (const key of path) {
-						if (value == null || typeof value !== "object") break;
-						value = (value as Record<string, unknown>)[key];
-					}
-					return `"${String(value ?? "").replaceAll('"', '\\"')}"`;
-				}
-				return `"${token.replaceAll('"', '\\"')}"`;
-			});
-			return cssTokens.join(" ");
-		};
-
-		const pageMargins = template.pageMargins;
-
-		const createZoneCss = (
-			pageSelector: string,
-			state: "first" | "odd" | "even",
-			config: ResolvedMarginConfig | undefined,
-			baseStr: string,
-		) => {
-			if (!config?.enabled) return "";
-			const segs = config[state];
-			if (!segs) return "";
-			return `
-@page ${pageSelector} {
-	@${baseStr}-left { content: ${formatContent(segs.left)}; text-align: left; font-size: 9pt; color: #4b5563; }
-	@${baseStr}-center { content: ${formatContent(segs.center)}; text-align: center; font-size: 9pt; color: #4b5563; }
-	@${baseStr}-right { content: ${formatContent(segs.right)}; text-align: right; font-size: 9pt; color: #4b5563; }
-}`;
-		};
-
-		const marginBoxes = `
-${createZoneCss(":first", "first", pageMargins?.header, "top")}
-${createZoneCss(":first", "first", pageMargins?.footer, "bottom")}
-${createZoneCss(":right", "odd", pageMargins?.header, "top")}
-${createZoneCss(":right", "odd", pageMargins?.footer, "bottom")}
-${createZoneCss(":left", "even", pageMargins?.header, "top")}
-${createZoneCss(":left", "even", pageMargins?.footer, "bottom")}
-`;
-
-		// NOTE: vertical margins left/right are usually injected globally or rotated.
-		// For simplicity we will handle left/right with simple text content vertically.
-		const verticalMarginBoxes = `
-@page :first {
-	@left-middle { content: ${formatContent(pageMargins?.left?.first?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
-	@right-middle { content: ${formatContent(pageMargins?.right?.first?.center)}; writing-mode: vertical-rl; }
-}
-@page :right {
-	@left-middle { content: ${formatContent(pageMargins?.left?.odd?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
-	@right-middle { content: ${formatContent(pageMargins?.right?.odd?.center)}; writing-mode: vertical-rl; }
-}
-@page :left {
-	@left-middle { content: ${formatContent(pageMargins?.left?.even?.center)}; writing-mode: vertical-rl; transform: rotate(180deg); }
-	@right-middle { content: ${formatContent(pageMargins?.right?.even?.center)}; writing-mode: vertical-rl; }
-}
-`;
-
-		return `@page { size: ${pageSize} ${orientation}; margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft}; }
-.paged-print-content .art__body { column-count: ${defaultColumns}; column-gap: ${columnGap}; }
-.paged-print-content .pagedjs_first_page .art__body { column-count: ${firstPageColumns}; }
-${marginBoxes}
-${verticalMarginBoxes}`;
-	}, [
-		document.frontmatter.title,
-		columnGap,
-		margins,
-		pageConfig?.orientation,
-		pageConfig?.size,
-		template.pageMargins,
-		template.layout,
-		document.frontmatter,
-	]);
+	const pagedCss = React.useMemo(
+		() => buildPrintStylesheet(document),
+		[document],
+	);
+	usePrintStylesheet(pagedCss, "preview");
 	const pagedPreviewKey = React.useMemo(
 		() =>
 			JSON.stringify({
@@ -160,8 +64,7 @@ ${verticalMarginBoxes}`;
 		const renderPagedPreview = async () => {
 			const sourceElement = pagedSourceRef.current;
 			const previewElement = pagedPreviewRef.current;
-			const previewShell = previewElement?.parentElement;
-			if (!sourceElement || !previewElement || !previewShell) return;
+			if (!sourceElement || !previewElement) return;
 			setPagedStatus("loading");
 			setPagedError(null);
 			setPagedWasTruncated(false);
@@ -172,12 +75,21 @@ ${verticalMarginBoxes}`;
 			const previousScrollHeight = viewport?.scrollHeight ?? 0;
 
 			try {
-				const { wasTruncated } = await runPagedPreview({
-					sourceHtml: sourceElement.innerHTML,
-					stagingHost: previewShell,
-					mountRoot: previewElement,
-					pageLimit: PAGE_LIMIT,
-				});
+				const stylesheetUrl = URL.createObjectURL(
+					new Blob([pagedCss], { type: "text/css" }),
+				);
+				const { wasTruncated } = await (async () => {
+					try {
+						return await runPagedPreview({
+							sourceHtml: sourceElement.innerHTML,
+							mountRoot: previewElement,
+							pageLimit: PAGE_LIMIT,
+							stylesheets: [stylesheetUrl],
+						});
+					} finally {
+						URL.revokeObjectURL(stylesheetUrl);
+					}
+				})();
 
 				if (
 					cancelled ||
@@ -219,7 +131,7 @@ ${verticalMarginBoxes}`;
 			window.clearTimeout(timeout);
 			cancelled = true;
 		};
-	}, [pagedPreviewKey]);
+	}, [pagedCss, pagedPreviewKey]);
 
 	return (
 		<div
@@ -231,7 +143,6 @@ ${verticalMarginBoxes}`;
 				data-art-print-source="true"
 			>
 				<div ref={pagedSourceRef}>
-					<style>{pagedCss}</style>
 					<div className="paged-print-content">
 						<DocumentRenderContent
 							document={document}

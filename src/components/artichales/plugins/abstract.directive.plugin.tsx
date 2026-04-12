@@ -31,7 +31,7 @@ export const AbstractRender = React.memo(function AbstractRender({
 	...rest
 }: DirectiveComponentProps) {
 	return (
-		<div className="mx-auto my-8 max-w-[85%]" {...rest}>
+		<div id="abstract" className="mx-auto my-8 max-w-[85%]" {...rest}>
 			<hr
 				className="mb-4 border-t-2"
 				style={{ borderColor: "var(--art-border-color)" }}

@@ -23,6 +23,13 @@ type DatatableRow = Record<string, unknown> & {
 	__rowKey: string;
 };
 
+function normalizeDataFileKey(value: string): string {
+	return value
+		.trim()
+		.replace(/\.[^/.]+$/, "")
+		.toLowerCase();
+}
+
 function toCellString(value: unknown): string {
 	if (value === null || value === undefined) return "";
 	if (typeof value === "string") return value;
@@ -143,6 +150,10 @@ function DatatableDirectiveRender({
 	...rest
 }: DirectiveComponentProps) {
 	const { data, lastUpdated } = useWorkspaceJsonFile(params.data_file ?? "");
+	const normalizedKey =
+		typeof params.data_file === "string" && params.data_file.trim() !== ""
+			? normalizeDataFileKey(params.data_file)
+			: "";
 	const definition = React.useMemo(
 		() => resolveDatatableDefinition(data),
 		[data],
@@ -163,6 +174,7 @@ function DatatableDirectiveRender({
 	return (
 		<div
 			{...rest}
+			id={normalizedKey ? `datatable-${normalizedKey}` : undefined}
 			className="datatable"
 			data-flow-span={config.defaultSpan}
 			style={{

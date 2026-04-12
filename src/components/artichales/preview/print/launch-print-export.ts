@@ -17,7 +17,7 @@ export async function launchPrintExport(
 		autoPrint: true,
 	});
 	const printUrl = resolvePrintEntryUrl(job.id);
-	const printWindow = window.open(printUrl, "_blank", "noopener,noreferrer");
+	const printWindow = window.open(printUrl, "_blank", "noopener");
 	if (!printWindow) {
 		throw new Error("Unable to open the print window. Please allow popups.");
 	}

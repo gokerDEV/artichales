@@ -5,10 +5,6 @@ import { citationParserPlugin } from "./citation.parser.plugin";
 import { citationRenderPlugin } from "./citation.render.plugin";
 import { codeRenderPlugin } from "./code.render.plugin";
 import { datatableDirectivePlugin } from "./datatable.directive.plugin";
-import { footerRenderPlugin } from "./footer.render.plugin";
-import { headerRenderPlugin } from "./header.render.plugin";
-import { marginLeftRenderPlugin } from "./margin-left.render.plugin";
-import { marginRightRenderPlugin } from "./margin-right.render.plugin";
 import { mathParserPlugin } from "./math.parser.plugin";
 import { plottyDirectivePlugin } from "./plotty.directive.plugin";
 import type { PluginCategory, PluginDefinition } from "./plugin.contract";
@@ -21,10 +17,6 @@ const CORE_PLUGINS: PluginDefinition[] = [
 	citationParserPlugin,
 	mathParserPlugin,
 	titleRenderPlugin,
-	headerRenderPlugin,
-	footerRenderPlugin,
-	marginLeftRenderPlugin,
-	marginRightRenderPlugin,
 	authorRenderPlugin,
 	referencesRenderPlugin,
 	citationRenderPlugin,

@@ -28,6 +28,13 @@ type PlotlyModule = {
 	purge: (root: HTMLElement) => void;
 };
 
+function normalizeDataFileKey(value: string): string {
+	return value
+		.trim()
+		.replace(/\.[^/.]+$/, "")
+		.toLowerCase();
+}
+
 function toNumber(value: unknown): number | undefined {
 	return typeof value === "number" && Number.isFinite(value)
 		? value
@@ -123,6 +130,10 @@ function PlottyDirectiveRender({
 	...rest
 }: DirectiveComponentProps) {
 	const { data, lastUpdated } = useWorkspaceJsonFile(params.data_file ?? "");
+	const normalizedKey =
+		typeof params.data_file === "string" && params.data_file.trim() !== ""
+			? normalizeDataFileKey(params.data_file)
+			: "";
 	const plot = React.useMemo(
 		() => resolvePlotDefinition(data, raw),
 		[data, raw],
@@ -143,6 +154,7 @@ function PlottyDirectiveRender({
 	return (
 		<div
 			{...rest}
+			id={normalizedKey ? `plot-${normalizedKey}` : undefined}
 			className="plotty overflow-x-auto"
 			data-flow-span={config.defaultSpan}
 			style={{

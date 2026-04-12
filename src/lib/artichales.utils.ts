@@ -73,6 +73,11 @@ function normalizeDirectiveNode(
 		"data-directive-raw": raw,
 		"data-directive-data-file": dataFile,
 	};
+	// Keep prose directive children intact (e.g. abstract body text).
+	if (directiveName === "abstract") {
+		return;
+	}
+	// Data-driven directives normalize to metadata-only nodes.
 	node.children = [];
 }
 

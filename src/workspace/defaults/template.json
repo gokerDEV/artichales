@@ -162,6 +162,52 @@
 					"center": "{pageNumber}",
 					"right": ""
 				}
+			},
+			"left": {
+				"enabled": true,
+				"first": {
+					"left": "",
+					"center": "Artichales v1",
+					"right": ""
+				},
+				"last": {
+					"left": "",
+					"center": "Artichales v1",
+					"right": ""
+				},
+				"odd": {
+					"left": "",
+					"center": "Artichales v1",
+					"right": ""
+				},
+				"even": {
+					"left": "",
+					"center": "Artichales v1",
+					"right": ""
+				}
+			},
+			"right": {
+				"enabled": true,
+				"first": {
+					"left": "",
+					"center": "{shortTitle}",
+					"right": ""
+				},
+				"last": {
+					"left": "",
+					"center": "{shortTitle}",
+					"right": ""
+				},
+				"odd": {
+					"left": "",
+					"center": "{shortTitle}",
+					"right": ""
+				},
+				"even": {
+					"left": "",
+					"center": "{shortTitle}",
+					"right": ""
+				}
 			}
 		}
 	},

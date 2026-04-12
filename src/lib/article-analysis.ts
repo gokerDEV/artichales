@@ -371,6 +371,7 @@ function buildReferenceResolution(
 			if (parts.length === 1) {
 				const candidates = unkeyedTargetMap.get(type) || [];
 				if (candidates.length === 1) {
+					const only = candidates[0];
 					if (!config.isMapped) {
 						diagnostics.push({
 							code: "article-ref-label-unmapped",
@@ -382,8 +383,12 @@ function buildReferenceResolution(
 					}
 					resolvedReferences[selector] = {
 						label: config.label,
-						href: "#",
+						href: type === "abstract" ? "#abstract" : `#${config.anchorPrefix}`,
 					};
+					if (only.source === "caption" && only.key) {
+						resolvedReferences[selector].href =
+							`#caption-${type}-${normalizeKey(only.key)}`;
+					}
 					continue;
 				}
 				if (candidates.length === 0) {

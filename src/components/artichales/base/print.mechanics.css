@@ -13,10 +13,6 @@
 }
 
 @media print {
-	@page {
-		margin: 0;
-	}
-
 	html,
 	body {
 		background: white !important;

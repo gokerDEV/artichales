@@ -69,11 +69,14 @@ export function createRefRender(
 			typeof rawCaptionTitle === "string" ? rawCaptionTitle.trim() : "";
 
 		if (captionType && captionKey) {
-			const captionId = normalizeCaptionId(captionType, captionKey);
 			const expectedSelector = `${captionType.toLowerCase()}:${normalizeRefId(
 				captionKey,
 			).toLowerCase()}`;
-			const resolvedLabel = resolvedReferences[expectedSelector]?.label;
+			const resolved = resolvedReferences[expectedSelector];
+			const captionId = resolved?.href
+				? resolved.href.replace(/^#/, "")
+				: normalizeCaptionId(captionType, captionKey);
+			const resolvedLabel = resolved?.label;
 			const displayLabel = resolvedLabel ? `${resolvedLabel}. ` : "";
 
 			if (captionTitle) {
