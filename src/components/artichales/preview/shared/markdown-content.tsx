@@ -15,14 +15,10 @@ import type {
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
 import { buildAlignmentHeadingId } from "@/lib/alignment";
 import "katex/dist/katex.min.css";
-import type {
-	ResolvedCaption,
-	ResolvedReference,
-} from "@/lib/article-analysis";
+import type { ResolvedCaption, ResolvedReference } from "@/lib/render-document";
 
 type MarkdownContentProps = {
 	ast: Root;
-	content: string;
 	target: "web" | "print";
 	printTitle?: string;
 	resolvedReferences: Record<string, ResolvedReference>;
@@ -151,7 +147,6 @@ function getDirectiveProperty(node: unknown, key: string): string {
 
 export function MarkdownContent({
 	ast,
-	content: _content,
 	target,
 	printTitle,
 	resolvedReferences,

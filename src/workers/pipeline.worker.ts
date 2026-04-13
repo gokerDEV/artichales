@@ -136,29 +136,13 @@ async function getPipelineModule(): Promise<PipelineModule> {
 self.onmessage = async (event: MessageEvent) => {
 	if (event.data.type === "EXECUTE_PIPELINE") {
 		try {
-			const { buildDocumentModel, enrichDocumentModelForTarget } =
-				await getPipelineModule();
-			const model = buildDocumentModel(event.data.files);
-			const result = enrichDocumentModelForTarget(model, event.data.target);
+			const { runDocumentPipeline } = await getPipelineModule();
+			const result = runDocumentPipeline(event.data.files, event.data.target);
 			const payload: PipelineResultPayload = {
-				ast: result.ast,
-				content: result.content,
-				frontmatter: result.frontmatter,
-				citations: result.citations,
-				validatedBibEntries: result.validatedBibEntries,
-				plots: result.plots,
-				template: result.template,
-				citationStyle: result.template?.default?.citationStyle || "numeric",
-				referenceRegistry: result.resolvedReferences,
-				captions: result.captions,
-				referenceTargets: result.referenceTargets,
-				diagnostics: [
-					...result.templateDiagnostics,
-					...result.bibDiagnostics,
-					...result.assetDiagnostics,
-					...result.articleDiagnostics,
-					...result.pipelineDiagnostics,
-				],
+				parsedTemplate: result.template,
+				parsedBibliography: result.bibliography,
+				parsedArticle: result.article,
+				diagnostics: result.diagnostics,
 				activePluginIds: result.activePluginIds,
 			};
 			self.postMessage({

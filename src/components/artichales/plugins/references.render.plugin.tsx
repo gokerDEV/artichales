@@ -35,11 +35,11 @@ export const ReferencesRenderPlugin = React.memo(
 		target: "web" | "print";
 		className?: string;
 	}) {
-		const { template, citations } = document;
+		const { template, renderedReferences } = document;
 		const isPrint = target === "print";
 		const docStyle = template?.document || {};
 
-		if (Object.keys(citations).length === 0) return null;
+		if (renderedReferences.length === 0) return null;
 
 		return (
 			<div
@@ -59,34 +59,39 @@ export const ReferencesRenderPlugin = React.memo(
 					{"References"}
 				</h2>
 				<div className="flex flex-col gap-2">
-					{Object.values(citations).map((ref, idx) => (
-						<div
-							key={ref.id}
-							id={`ref-${ref.id}`}
-							className={cn(
-								"flex gap-4",
-								isPrint
-									? "text-[10px] leading-relaxed"
-									: "text-sm leading-relaxed",
-							)}
-							style={{ color: "var(--art-muted-color)" }}
-						>
-							<span
-								className="shrink-0 font-medium"
-								style={{ color: "var(--art-text-color)" }}
-							>
-								[{idx + 1}]
-							</span>
-							<span>
-								{ref.author && <span className="mr-1">{ref.author}.</span>}
-								{ref.title && (
-									<span className="mr-1 font-medium italic">{ref.title}.</span>
+					{renderedReferences.map((reference, idx) => {
+						const ref = reference.entry;
+						return (
+							<div
+								key={ref.id}
+								id={`ref-${ref.id}`}
+								className={cn(
+									"flex gap-4",
+									isPrint
+										? "text-[10px] leading-relaxed"
+										: "text-sm leading-relaxed",
 								)}
-								{ref.journal && <span className="mr-1">{ref.journal},</span>}
-								{ref.year && <span>{ref.year}.</span>}
-							</span>
-						</div>
-					))}
+								style={{ color: "var(--art-muted-color)" }}
+							>
+								<span
+									className="shrink-0 font-medium"
+									style={{ color: "var(--art-text-color)" }}
+								>
+									[{idx + 1}]
+								</span>
+								<span>
+									{ref.author && <span className="mr-1">{ref.author}.</span>}
+									{ref.title && (
+										<span className="mr-1 font-medium italic">
+											{ref.title}.
+										</span>
+									)}
+									{ref.journal && <span className="mr-1">{ref.journal},</span>}
+									{ref.year && <span>{ref.year}.</span>}
+								</span>
+							</div>
+						);
+					})}
 				</div>
 			</div>
 		);
@@ -95,7 +100,8 @@ export const ReferencesRenderPlugin = React.memo(
 		return (
 			prevProps.target === nextProps.target &&
 			prevProps.className === nextProps.className &&
-			prevProps.document.citations === nextProps.document.citations &&
+			prevProps.document.renderedReferences ===
+				nextProps.document.renderedReferences &&
 			prevProps.document.template?.document ===
 				nextProps.document.template?.document
 		);

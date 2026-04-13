@@ -569,13 +569,13 @@ export function EditorPreviewSurface() {
 				: "info";
 	const editorCompletions = React.useMemo(
 		() => ({
-			bibKeys: Object.keys(docSource.citations),
+			bibKeys: Object.keys(docSource.parsedBibliography.entriesById),
 			referenceSelectors: docSource.referenceTargets.map(
 				(target) => target.selector,
 			),
 			directiveNames: TEMPLATE_DIRECTIVE_NAMES,
 		}),
-		[docSource.citations, docSource.referenceTargets],
+		[docSource.parsedBibliography.entriesById, docSource.referenceTargets],
 	);
 
 	const handleSelectFile = React.useCallback(
@@ -735,8 +735,8 @@ export function EditorPreviewSurface() {
 	return (
 		<CitationContext.Provider
 			value={{
-				entries: docSource.citations,
-				validatedEntries: docSource.validatedBibEntries,
+				entries: docSource.citationEntries,
+				validatedEntries: docSource.parsedBibliography.entriesById,
 				style: docSource.citationStyle,
 				citeClassName: docSource.template.utilities?.cite || "cite",
 			}}

@@ -5,48 +5,77 @@ import {
 	resolveTemplateForTarget,
 } from "@/hooks/use-document";
 import {
-	buildDocumentModel,
-	enrichDocumentModelForTarget,
-	type PipelineResult,
+	buildPluginRegistryMaps,
+	type PipelineExecutionResult,
+	runDocumentPipeline,
 } from "@/lib/document-pipeline";
+import {
+	buildRenderReferenceLookup,
+	renderDocument,
+} from "@/lib/render-document";
 import { printJobRepository } from "@/services/print-job.repository";
 import type { PrintJob } from "@/types/print-job";
 
-function buildDocumentSource(result: PipelineResult): DocumentSource {
-	const resolvedTemplate = resolveTemplateForTarget(result.template, "print");
-	const allDiagnostics = [
-		...result.templateDiagnostics,
-		...result.bibDiagnostics,
-		...result.assetDiagnostics,
-		...result.articleDiagnostics,
-		...result.pipelineDiagnostics,
-	];
+function buildDocumentSource(result: PipelineExecutionResult): DocumentSource {
+	const resolvedTemplate = resolveTemplateForTarget(
+		result.template.template,
+		"print",
+	);
+	const pluginRegistry = buildPluginRegistryMaps(
+		result.template.enabledPluginIds,
+	);
+	const renderLookup = buildRenderReferenceLookup(
+		result.template,
+		result.article,
+		pluginRegistry,
+	);
+	const rendered = renderDocument({
+		template: result.template,
+		bibliography: result.bibliography,
+		article: result.article,
+		pluginRegistry,
+		target: "print",
+	});
+	const citationEntries = rendered.references.reduce<
+		Record<string, DocumentSource["citationEntries"][string]>
+	>((acc, item) => {
+		acc[item.id] = item.entry;
+		return acc;
+	}, {});
 
 	return {
-		ast: result.ast,
-		content: result.content,
-		frontmatter: result.frontmatter,
-		citations: result.citations,
-		validatedBibEntries: result.validatedBibEntries,
-		plots: result.plots,
+		ast: result.article.ast,
+		frontmatter: result.article.frontmatter,
+		citationEntries,
+		renderedReferences: rendered.references,
 		template: resolvedTemplate,
+		parsedTemplate: result.template,
+		parsedBibliography: result.bibliography,
+		parsedArticle: result.article,
 		citationStyle: resolvedTemplate.citationStyle ?? "numeric",
 		assetFiles: [],
-		templateDiagnostics: result.templateDiagnostics,
-		bibDiagnostics: result.bibDiagnostics,
-		assetDiagnostics: result.assetDiagnostics,
-		articleDiagnostics: result.articleDiagnostics,
-		resolvedReferences: result.resolvedReferences,
-		captions: result.captions,
-		referenceTargets: result.referenceTargets,
+		templateDiagnostics: [...result.template.diagnostics],
+		bibDiagnostics: [...result.bibliography.diagnostics],
+		assetDiagnostics: [],
+		articleDiagnostics: [...result.article.diagnostics],
+		resolvedReferences: renderLookup.resolvedReferences,
+		captions: renderLookup.captions,
+		referenceTargets: renderLookup.referenceTargets,
 		activePluginIds: result.activePluginIds,
-		pipelineDiagnostics: result.pipelineDiagnostics,
+		pipelineDiagnostics: result.diagnostics.filter(
+			(
+				diag,
+			): diag is NonNullable<DocumentSource["pipelineDiagnostics"][number]> =>
+				"source" in diag && diag.source === "pipeline",
+		),
 		blockingByFile: {},
 		isBlockingActiveFile: () => false,
-		hasTemplateError: allDiagnostics.some(
+		hasTemplateError: result.diagnostics.some(
 			(diag) => diag.severity === "error" && diag.code.startsWith("template-"),
 		),
-		hasBlockingError: allDiagnostics.some((diag) => diag.severity === "error"),
+		hasBlockingError: result.diagnostics.some(
+			(diag) => diag.severity === "error",
+		),
 	};
 }
 
@@ -88,8 +117,7 @@ export function PrintApp() {
 				}
 				let nextDocument: DocumentSource;
 				try {
-					const model = buildDocumentModel(loaded.job.files);
-					const result = enrichDocumentModelForTarget(model, "print");
+					const result = runDocumentPipeline(loaded.job.files, "print");
 					nextDocument = buildDocumentSource(result);
 				} catch {
 					setErrorState("document_build_failed");

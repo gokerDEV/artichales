@@ -1,145 +1,77 @@
+import type { Root } from "mdast";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import type { Processor } from "unified";
 import { unified } from "unified";
+import { visit } from "unist-util-visit";
 import type { VFile } from "vfile";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
-import type { RenderHookContext } from "@/components/artichales/plugins/plugin.contract";
+import type {
+	DirectiveKind,
+	DisplayAs,
+	PluginDefinition,
+} from "@/components/artichales/plugins/plugin.contract";
 import {
 	loadPluginRegistry,
 	resolveRuntimePluginIdsFromTemplate,
 } from "@/components/artichales/plugins/plugin.registry";
 import { resolvePluginExecutionState } from "@/components/artichales/plugins/plugin.runtime";
-import {
-	type ArticleAnalysisDiagnostic,
-	analyzeArticleSource,
-	type ReferenceSelectorTarget,
-	type ResolvedCaption,
-	type ResolvedReference,
-} from "@/lib/article-analysis";
 import type {
-	BibtexDiagnostic,
-	CitationEntry,
-	ValidatedBibEntry,
-} from "@/lib/bibtex";
-import { parseBibtexDocument } from "@/lib/bibtex";
+	HeadingEntry,
+	LabeledBlockEntry,
+} from "@/components/artichales/types/article.types";
+import type { ArticleFrontmatter } from "@/components/artichales/types/frontmatter.types";
+import type {
+	ParsedArticle,
+	ParsedBibliography,
+	ParsedTemplate,
+	PipelineDiagnostic,
+	PipelineExecutionResult,
+	PipelineStage,
+} from "@/components/artichales/types/pipeline.types";
+import type {
+	PluginMetadata,
+	PluginRegistryMaps,
+} from "@/components/artichales/types/plugin.types";
 import {
-	resolveTemplateFile,
-	type TemplateDiagnostic,
-	type TemplateFileResolved,
-} from "@/lib/template";
+	normalizeExtendedDirectiveSyntax,
+	remarkNormalizeDirectives,
+} from "@/lib/artichales.utils";
+import { parseBibtexDocument } from "@/lib/bibtex";
+import { resolveTemplateFile } from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,
 	CORE_BIB_FILE,
 	CORE_TEMPLATE_FILE,
 } from "@/lib/workspace";
 
-type PipelineStage =
-	| "validate-template"
-	| "validate-bibliography"
-	| "parse-article"
-	| "normalize-document"
-	| "build-registry-and-numbering"
-	| "plugin-processing"
-	| "render-active-target";
-
-export type PipelineDiagnostic = {
-	code:
-		| "pipeline-stage-complete"
-		| "article-frontmatter-missing"
-		| "article-frontmatter-invalid"
-		| "article-frontmatter-schema-invalid"
-		| "article-footnote-unsupported"
-		| "asset-json-invalid"
-		| "plugin-config-invalid"
-		| "plugin-config-map-invalid"
-		| "plugin-runtime-missing"
-		| "plugin-hook-failed";
-	severity: "error" | "warning" | "info";
-	source: "pipeline" | "parser" | "plugin";
-	message: string;
-	stage?: PipelineStage;
-	fileName?: string;
-	pluginId?: string;
-	offset?: number;
-	line?: number;
-	column?: number;
-};
-
-export type PipelineResult = {
-	ast: Root | null;
-	content: string;
-	frontmatter: Record<string, unknown>;
-	citations: Record<string, CitationEntry>;
-	validatedBibEntries: Record<string, ValidatedBibEntry>;
-	plots: Record<string, unknown>;
-	template: TemplateFileResolved;
-	templateDiagnostics: TemplateDiagnostic[];
-	bibDiagnostics: BibtexDiagnostic[];
-	assetDiagnostics: PipelineDiagnostic[];
-	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
-	resolvedReferences: Record<string, ResolvedReference>;
-	captions: Record<string, ResolvedCaption>;
-	referenceTargets: ReferenceSelectorTarget[];
-	activePluginIds: {
-		parser: string[];
-		core: string[];
-		render: string[];
-		editor: string[];
-	};
-	pipelineDiagnostics: PipelineDiagnostic[];
-};
-
-export type DocumentModel = {
-	ast: Root | null;
-	content: string;
-	frontmatter: Record<string, unknown>;
-	citations: Record<string, CitationEntry>;
-	validatedBibEntries: Record<string, ValidatedBibEntry>;
-	plots: Record<string, unknown>;
-	template: TemplateFileResolved;
-	templateDiagnostics: TemplateDiagnostic[];
-	bibDiagnostics: BibtexDiagnostic[];
-	assetDiagnostics: PipelineDiagnostic[];
-	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
-	resolvedReferences: Record<string, ResolvedReference>;
-	captions: Record<string, ResolvedCaption>;
-	referenceTargets: ReferenceSelectorTarget[];
-	activePluginIds: {
-		parser: string[];
-		core: string[];
-		render: string[];
-		editor: string[];
-	};
-	runtimePluginIds: string[] | undefined;
-	pipelineDiagnostics: PipelineDiagnostic[];
-};
-
-// Unified diagnostic type for UI/state layers.
-export type AppDiagnostic =
-	| TemplateDiagnostic
-	| BibtexDiagnostic
-	| PipelineDiagnostic
-	| ArticleAnalysisDiagnostic;
-
-// Shape posted from the worker back to the UI/store.
-export type PipelineResultPayload = {
-	ast: PipelineResult["ast"];
-	content: PipelineResult["content"];
-	frontmatter: PipelineResult["frontmatter"];
-	citations: PipelineResult["citations"];
-	validatedBibEntries: PipelineResult["validatedBibEntries"];
-	plots: PipelineResult["plots"];
-	template: PipelineResult["template"];
-	citationStyle: string;
-	referenceRegistry: PipelineResult["resolvedReferences"];
-	captions: PipelineResult["captions"];
-	referenceTargets: PipelineResult["referenceTargets"];
-	diagnostics: AppDiagnostic[];
-	activePluginIds: PipelineResult["activePluginIds"];
-};
+export type {
+	HeadingEntry,
+	LabeledBlockEntry,
+} from "@/components/artichales/types/article.types";
+export type {
+	ArticleFrontmatter,
+	FrontmatterAuthor,
+	FrontmatterConference,
+	FrontmatterJournal,
+	FrontmatterLicense,
+} from "@/components/artichales/types/frontmatter.types";
+export type {
+	AppDiagnostic,
+	ParsedArticle,
+	ParsedBibliography,
+	ParsedTemplate,
+	PipelineDiagnostic,
+	PipelineExecutionResult,
+	PipelineResultPayload,
+	PipelineStage,
+} from "@/components/artichales/types/pipeline.types";
+export type {
+	PluginMetadata,
+	PluginRegistryMaps,
+} from "@/components/artichales/types/plugin.types";
 
 const FrontmatterOptionalString = z.union([z.string(), z.null()]).optional();
 
@@ -152,7 +84,7 @@ const FrontmatterPersonSchema = z
 		address: z.union([z.string(), z.array(z.string()), z.null()]).optional(),
 		corresponding: z.boolean().optional(),
 	})
-	.passthrough();
+	.strict();
 
 const FrontmatterLicenseSchema = z
 	.object({
@@ -160,7 +92,7 @@ const FrontmatterLicenseSchema = z
 		text: FrontmatterOptionalString,
 		url: FrontmatterOptionalString,
 	})
-	.passthrough();
+	.strict();
 
 const FrontmatterJournalSchema = z
 	.object({
@@ -171,7 +103,7 @@ const FrontmatterJournalSchema = z
 		issue: z.union([z.string(), z.number(), z.null()]).optional(),
 		pages: FrontmatterOptionalString,
 	})
-	.passthrough();
+	.strict();
 
 const FrontmatterConferenceSchema = z
 	.object({
@@ -181,7 +113,7 @@ const FrontmatterConferenceSchema = z
 		proceedings: FrontmatterOptionalString,
 		pages: FrontmatterOptionalString,
 	})
-	.passthrough();
+	.strict();
 
 const ArticleFrontmatterSchema = z
 	.object({
@@ -204,44 +136,41 @@ const ArticleFrontmatterSchema = z
 		journal: FrontmatterJournalSchema.optional(),
 		conference: FrontmatterConferenceSchema.optional(),
 		editors: z.array(FrontmatterPersonSchema).optional(),
-		plugins: z.record(z.string(), z.unknown()).optional(),
 	})
-	.passthrough();
+	.strict();
 
-function getStageInfoMessage(
-	stage: PipelineStage,
-	target: "web" | "print" = "web",
-): string {
+function getStageInfoMessage(stage: PipelineStage): string {
 	const labels: Record<PipelineStage, string> = {
 		"validate-template": "Template validation stage completed.",
 		"validate-bibliography": "Bibliography validation stage completed.",
 		"parse-article": "Article parsing stage completed.",
-		"normalize-document": "Document normalization stage completed.",
 		"build-registry-and-numbering": "Registry and numbering stage completed.",
-		"plugin-processing": "Plugin processing stage completed.",
-		"render-active-target": `Active target render stage completed for "${target}".`,
 	};
 	return labels[stage];
 }
 
-function parseArticleContent(articleText: string): {
+function atOffset(content: string, offset: number) {
+	const safeOffset = Math.max(0, Math.min(offset, content.length));
+	let line = 1;
+	let column = 1;
+	for (let index = 0; index < safeOffset; index++) {
+		if (content[index] === "\n") {
+			line++;
+			column = 1;
+			continue;
+		}
+		column++;
+	}
+	return { offset: safeOffset, line, column };
+}
+
+function parseArticleFrontmatter(articleText: string): {
 	content: string;
-	frontmatter: Record<string, unknown>;
+	frontmatter: ArticleFrontmatter;
 	diagnostics: PipelineDiagnostic[];
 } {
-	const atOffset = (offset: number) => {
-		const safeOffset = Math.max(0, Math.min(offset, articleText.length));
-		let line = 1;
-		let column = 1;
-		for (let index = 0; index < safeOffset; index++) {
-			if (articleText[index] === "\n") {
-				line++;
-				column = 1;
-				continue;
-			}
-			column++;
-		}
-		return { offset: safeOffset, line, column };
+	const emptyFrontmatter: ArticleFrontmatter = {
+		title: "Untitled",
 	};
 	const match = articleText.match(
 		/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
@@ -249,7 +178,7 @@ function parseArticleContent(articleText: string): {
 	if (!match) {
 		return {
 			content: articleText,
-			frontmatter: {},
+			frontmatter: emptyFrontmatter,
 			diagnostics: [
 				{
 					code: "article-frontmatter-missing",
@@ -258,7 +187,7 @@ function parseArticleContent(articleText: string): {
 					message:
 						"`article.mda` frontmatter is required. Preview is blocked until it is added.",
 					stage: "parse-article",
-					...atOffset(0),
+					...atOffset(articleText, 0),
 				},
 			],
 		};
@@ -270,15 +199,14 @@ function parseArticleContent(articleText: string): {
 			typeof parsed === "object" && parsed !== null
 				? (parsed as Record<string, unknown>)
 				: {};
-		const frontmatterValidation =
-			ArticleFrontmatterSchema.safeParse(parsedFrontmatter);
-		if (!frontmatterValidation.success) {
+		const validation = ArticleFrontmatterSchema.safeParse(parsedFrontmatter);
+		if (!validation.success) {
 			const issueMessage =
-				frontmatterValidation.error.issues[0]?.message ||
+				validation.error.issues[0]?.message ||
 				"Frontmatter does not match required schema.";
 			return {
 				content: articleText.slice(match[0].length).trim(),
-				frontmatter: parsedFrontmatter,
+				frontmatter: emptyFrontmatter,
 				diagnostics: [
 					{
 						code: "article-frontmatter-schema-invalid",
@@ -286,20 +214,33 @@ function parseArticleContent(articleText: string): {
 						source: "parser",
 						message: `\`article.mda\` frontmatter schema is invalid: ${issueMessage}`,
 						stage: "parse-article",
-						...atOffset(0),
+						...atOffset(articleText, 0),
 					},
 				],
 			};
 		}
+
+		const normalizedAuthors = (() => {
+			const { authors } = validation.data;
+			if (!authors) return undefined;
+			if (typeof authors === "string") return [{ name: authors }] as const;
+			return authors.map((author) =>
+				typeof author === "string" ? { name: author } : author,
+			);
+		})();
+
 		return {
 			content: articleText.slice(match[0].length).trim(),
-			frontmatter: parsedFrontmatter,
+			frontmatter: {
+				...validation.data,
+				authors: normalizedAuthors,
+			},
 			diagnostics: [],
 		};
 	} catch {
 		return {
 			content: articleText.slice(match[0].length).trim(),
-			frontmatter: {},
+			frontmatter: emptyFrontmatter,
 			diagnostics: [
 				{
 					code: "article-frontmatter-invalid",
@@ -308,7 +249,7 @@ function parseArticleContent(articleText: string): {
 					message:
 						"`article.mda` frontmatter YAML is invalid. Preview is blocked until fixed.",
 					stage: "parse-article",
-					...atOffset(0),
+					...atOffset(articleText, 0),
 				},
 			],
 		};
@@ -323,20 +264,6 @@ function detectUnsupportedSourceConcepts(
 	const hasFootnoteDefinition = /^\[\^[^\]]+]:/m.test(content);
 	const footnoteMatch =
 		content.match(/\[\^[^\]]+]/) || content.match(/^\[\^[^\]]+]:/m);
-	const location = (() => {
-		const offset = footnoteMatch?.index ?? 0;
-		let line = 1;
-		let column = 1;
-		for (let index = 0; index < offset; index++) {
-			if (content[index] === "\n") {
-				line++;
-				column = 1;
-				continue;
-			}
-			column++;
-		}
-		return { offset, line, column };
-	})();
 	if (hasFootnoteReference || hasFootnoteDefinition) {
 		diagnostics.push({
 			code: "article-footnote-unsupported",
@@ -345,136 +272,350 @@ function detectUnsupportedSourceConcepts(
 			stage: "parse-article",
 			message:
 				"Footnotes are out of scope for v1 and must be removed from `article.mda`.",
-			...location,
+			...atOffset(content, footnoteMatch?.index ?? 0),
 		});
 	}
 	return diagnostics;
 }
 
-function parseAssetJsonFiles(files: Record<string, string>): {
-	plots: Record<string, unknown>;
-	diagnostics: PipelineDiagnostic[];
-} {
-	const plots: Record<string, unknown> = {};
+function executeParserHooks(
+	articleContent: string,
+	runtimePluginIds: string[],
+): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
 	const diagnostics: PipelineDiagnostic[] = [];
-	for (const [fileName, fileContent] of Object.entries(files)) {
-		if (
-			!fileName.endsWith(".json") ||
-			fileName === CORE_TEMPLATE_FILE ||
-			fileName === CORE_ARTICLE_FILE ||
-			fileName === CORE_BIB_FILE
-		) {
-			continue;
-		}
-		try {
-			plots[fileName] = JSON.parse(fileContent);
-		} catch {
-			plots[fileName] = null;
-			diagnostics.push({
-				code: "asset-json-invalid",
-				severity: "error",
-				source: "parser",
-				fileName,
-				message: `Asset JSON is invalid: ${fileName}`,
-				stage: "normalize-document",
-			});
-		}
-	}
-	return { plots, diagnostics };
-}
+	const executionState = resolvePluginExecutionState(runtimePluginIds);
+	let processor = unified()
+		.use(remarkParse)
+		.use(remarkGfm)
+		.use(remarkDirective)
+		.use(remarkNormalizeDirectives);
 
-function parsePluginConfigMap(frontmatter: Record<string, unknown>): {
-	configMap: Record<string, unknown>;
-	diagnostics: PipelineDiagnostic[];
-} {
-	const rawPlugins = frontmatter.plugins;
-	if (rawPlugins === undefined) {
-		return { configMap: {}, diagnostics: [] };
-	}
-	if (
-		typeof rawPlugins !== "object" ||
-		rawPlugins === null ||
-		Array.isArray(rawPlugins)
-	) {
-		return {
-			configMap: {},
-			diagnostics: [
-				{
-					code: "plugin-config-map-invalid",
+	for (const plugin of executionState.parser) {
+		const parseHook = plugin.hooks.parse;
+		if (!parseHook) continue;
+		processor = processor.use(function (this: Processor) {
+			try {
+				const transformer = parseHook.call(this) as
+					| ((tree: Root, file: VFile) => void)
+					| undefined;
+				if (!transformer) return;
+				return (tree: Root, file: VFile) => {
+					try {
+						transformer(tree, file);
+					} catch (error) {
+						const detail =
+							error instanceof Error ? error.message : String(error);
+						diagnostics.push({
+							code: "plugin-hook-failed",
+							severity: "error",
+							source: "plugin",
+							pluginId: plugin.id,
+							stage: "parse-article",
+							message: `Parser hook failed for "${plugin.id}": ${detail}`,
+						});
+					}
+				};
+			} catch (error) {
+				const detail = error instanceof Error ? error.message : String(error);
+				diagnostics.push({
+					code: "plugin-hook-failed",
 					severity: "error",
 					source: "plugin",
-					stage: "plugin-processing",
-					message:
-						"Frontmatter `plugins` must be an object map keyed by plugin id.",
+					pluginId: plugin.id,
+					stage: "parse-article",
+					message: `Parser hook setup failed for "${plugin.id}": ${detail}`,
+				});
+			}
+		});
+	}
+
+	const normalizedArticleContent =
+		normalizeExtendedDirectiveSyntax(articleContent);
+	try {
+		let ast = processor.parse(normalizedArticleContent);
+		ast = processor.runSync(ast) as Root;
+		return { ast, diagnostics };
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : String(error);
+		return {
+			ast: null,
+			diagnostics: [
+				...diagnostics,
+				{
+					code: "plugin-hook-failed",
+					severity: "error",
+					source: "pipeline",
+					stage: "parse-article",
+					message: `Pipeline parsing failed: ${detail}`,
 				},
 			],
 		};
 	}
-	return {
-		configMap: rawPlugins as Record<string, unknown>,
-		diagnostics: [],
-	};
 }
 
-function validatePluginConfigs(
-	configMap: Record<string, unknown>,
-	runtimePluginIds: string[] | undefined,
-): PipelineDiagnostic[] {
-	const diagnostics: PipelineDiagnostic[] = [];
-	const activePlugins = loadPluginRegistry(runtimePluginIds);
+function extractNodeText(node: unknown): string {
+	if (!node || typeof node !== "object") return "";
+	const record = node as Record<string, unknown>;
+	const ownValue = typeof record.value === "string" ? record.value : "";
+	const children = Array.isArray(record.children) ? record.children : [];
+	return [ownValue, ...children.map((child) => extractNodeText(child))]
+		.join("")
+		.trim();
+}
 
-	for (const plugin of activePlugins) {
-		if (!plugin.configSchema) continue;
-		const candidateConfig = configMap[plugin.id] ?? {};
-		const parsed = plugin.configSchema.safeParse(candidateConfig);
-		if (parsed.success) continue;
+function normalizeLabelKey(raw: string): string {
+	return raw
+		.trim()
+		.replace(/\.[^/.]+$/, "")
+		.toLowerCase();
+}
 
-		const issueMessage =
-			parsed.error.issues[0]?.message ||
-			"Unknown plugin config validation error.";
-		diagnostics.push({
-			code: "plugin-config-invalid",
-			severity: "error",
-			source: "plugin",
-			pluginId: plugin.id,
-			stage: "plugin-processing",
-			message: `Plugin config is invalid for "${plugin.id}": ${issueMessage}`,
-		});
+function extractDirectiveDataFile(node: Record<string, unknown>): string {
+	const data = node.data;
+	if (data && typeof data === "object") {
+		const hProperties = (data as Record<string, unknown>).hProperties;
+		if (hProperties && typeof hProperties === "object") {
+			const value = (hProperties as Record<string, unknown>)[
+				"data-directive-data-file"
+			];
+			if (typeof value === "string" && value.trim() !== "") return value.trim();
+		}
+	}
+	const attributes = node.attributes;
+	if (attributes && typeof attributes === "object") {
+		const dataFile =
+			(attributes as Record<string, unknown>).data_file ??
+			(attributes as Record<string, unknown>).datafile;
+		if (typeof dataFile === "string" && dataFile.trim() !== "") {
+			return dataFile.trim();
+		}
+	}
+	return "";
+}
+
+function fallbackDisplayAsByPluginId(pluginId: string): DisplayAs | undefined {
+	if (pluginId === "plotty" || pluginId === "figure") return "figure";
+	if (pluginId === "datatable" || pluginId === "table") return "table";
+	if (pluginId === "equation") return "equation";
+	if (pluginId === "codesample" || pluginId === "code") return "code";
+	if (pluginId === "abstract") return "abstract";
+	return undefined;
+}
+
+function sourceLocation(node: Record<string, unknown>) {
+	const position = node.position;
+	if (!position || typeof position !== "object") return {};
+	const start = (position as Record<string, unknown>).start;
+	if (!start || typeof start !== "object") return {};
+	const startRecord = start as Record<string, unknown>;
+	const offset =
+		typeof startRecord.offset === "number" ? startRecord.offset : undefined;
+	const line =
+		typeof startRecord.line === "number" ? startRecord.line : undefined;
+	const column =
+		typeof startRecord.column === "number" ? startRecord.column : undefined;
+	return { offset, line, column };
+}
+
+function collectArticleArtifacts(
+	ast: Root | null,
+	pluginRegistry: PluginRegistryMaps,
+): {
+	headings: HeadingEntry[];
+	labeledBlocks: LabeledBlockEntry[];
+	citations: string[];
+	diagnostics: PipelineDiagnostic[];
+} {
+	if (!ast) {
+		return { headings: [], labeledBlocks: [], citations: [], diagnostics: [] };
 	}
 
-	return diagnostics;
+	const diagnostics: PipelineDiagnostic[] = [];
+	const headings: HeadingEntry[] = [];
+	const labeledBlocks: LabeledBlockEntry[] = [];
+	const citations: string[] = [];
+	const seenCitationIds = new Set<string>();
+	const seenHeadingIds = new Set<string>();
+	const seenBlockIds = new Set<string>();
+	const blockCounterByFamily = new Map<string, number>();
+
+	let sectionNumber = 0;
+	let subsectionNumber = 0;
+	let subsubsectionNumber = 0;
+	let currentSectionId: string | undefined;
+	let currentSubsectionId: string | undefined;
+
+	const pushCitation = (id: string) => {
+		const normalized = id.trim();
+		if (!normalized || seenCitationIds.has(normalized)) return;
+		seenCitationIds.add(normalized);
+		citations.push(normalized);
+	};
+
+	visit(ast, (rawNode: unknown) => {
+		if (!rawNode || typeof rawNode !== "object") return;
+		const node = rawNode as Record<string, unknown>;
+
+		if (node.type === "cite") {
+			const data = node.data as Record<string, unknown> | undefined;
+			const props = data?.hProperties as Record<string, unknown> | undefined;
+			const rawIds = props?.["data-cite-id"] ?? props?.["data-cite-ids"];
+			if (typeof rawIds === "string") {
+				for (const token of rawIds.split(",")) {
+					pushCitation(token);
+				}
+			}
+			return;
+		}
+
+		const nodeType = typeof node.type === "string" ? node.type : "";
+		if (nodeType !== "containerDirective" && nodeType !== "leafDirective")
+			return;
+
+		const pluginId =
+			typeof node.name === "string" ? node.name.trim().toLowerCase() : "";
+		if (!pluginId) return;
+		const rawLabel = extractDirectiveDataFile(node);
+		const normalizedLabel = normalizeLabelKey(rawLabel);
+		const location = sourceLocation(node);
+
+		if (
+			pluginId === "section" ||
+			pluginId === "subsection" ||
+			pluginId === "subsubsection"
+		) {
+			if (!normalizedLabel) return;
+			const title = extractNodeText(node) || rawLabel || pluginId;
+			const id = `${pluginId}:${normalizedLabel}`;
+			if (seenHeadingIds.has(id)) {
+				diagnostics.push({
+					code: "article-heading-duplicate-label",
+					severity: "error",
+					source: "parser",
+					stage: "build-registry-and-numbering",
+					message: `Duplicate heading label detected for "${id}".`,
+					...location,
+				});
+				return;
+			}
+			seenHeadingIds.add(id);
+
+			if (pluginId === "section") {
+				sectionNumber += 1;
+				subsectionNumber = 0;
+				subsubsectionNumber = 0;
+				currentSectionId = id;
+				currentSubsectionId = undefined;
+				headings.push({
+					id,
+					pluginId,
+					label: rawLabel,
+					title,
+					level: 1,
+					number: `${sectionNumber}`,
+				});
+				return;
+			}
+
+			if (pluginId === "subsection") {
+				if (!currentSectionId) {
+					diagnostics.push({
+						code: "article-heading-parent-missing",
+						severity: "error",
+						source: "parser",
+						stage: "build-registry-and-numbering",
+						message: `Subsection "${id}" is missing a parent section.`,
+						...location,
+					});
+					return;
+				}
+				subsectionNumber += 1;
+				subsubsectionNumber = 0;
+				currentSubsectionId = id;
+				headings.push({
+					id,
+					pluginId,
+					label: rawLabel,
+					title,
+					level: 2,
+					number: `${sectionNumber}.${subsectionNumber}`,
+					parentId: currentSectionId,
+				});
+				return;
+			}
+
+			if (!currentSubsectionId) {
+				diagnostics.push({
+					code: "article-heading-parent-missing",
+					severity: "error",
+					source: "parser",
+					stage: "build-registry-and-numbering",
+					message: `Subsubsection "${id}" is missing a parent subsection.`,
+					...location,
+				});
+				return;
+			}
+			subsubsectionNumber += 1;
+			headings.push({
+				id,
+				pluginId,
+				label: rawLabel,
+				title,
+				level: 3,
+				number: `${sectionNumber}.${subsectionNumber}.${subsubsectionNumber}`,
+				parentId: currentSubsectionId,
+			});
+			return;
+		}
+
+		if (!normalizedLabel) return;
+		const id = `${pluginId}:${normalizedLabel}`;
+		if (seenBlockIds.has(id)) {
+			diagnostics.push({
+				code: "article-labeled-block-duplicate-label",
+				severity: "error",
+				source: "parser",
+				stage: "build-registry-and-numbering",
+				message: `Duplicate labeled block detected for "${id}".`,
+				...location,
+			});
+			return;
+		}
+		seenBlockIds.add(id);
+
+		const family =
+			pluginRegistry.displayAsByPluginId.get(pluginId) ??
+			fallbackDisplayAsByPluginId(pluginId) ??
+			pluginId;
+		const nextNumber = (blockCounterByFamily.get(family) ?? 0) + 1;
+		blockCounterByFamily.set(family, nextNumber);
+		labeledBlocks.push({
+			id,
+			pluginId,
+			label: rawLabel,
+			number: nextNumber,
+		});
+	});
+
+	return { headings, labeledBlocks, citations, diagnostics };
 }
 
-function validatePluginRuntimeAvailability(
-	runtimePluginIds: string[] | undefined,
-): {
+function validatePluginRuntimeAvailability(runtimePluginIds: string[]): {
 	diagnostics: PipelineDiagnostic[];
-	activePluginIds: PipelineResult["activePluginIds"];
+	activePluginIds: PipelineExecutionResult["activePluginIds"];
 } {
 	const executionState = resolvePluginExecutionState(runtimePluginIds);
 	const diagnostics: PipelineDiagnostic[] = [];
-
 	for (const parserPluginId of executionState.missingParserRuntimeIds) {
 		diagnostics.push({
 			code: "plugin-runtime-missing",
 			severity: "error",
 			source: "plugin",
 			pluginId: parserPluginId,
-			stage: "plugin-processing",
+			stage: "parse-article",
 			message: `Parser runtime hook is missing for plugin "${parserPluginId}".`,
 		});
 	}
-	for (const renderPluginId of executionState.missingRenderRuntimeIds) {
-		diagnostics.push({
-			code: "plugin-runtime-missing",
-			severity: "error",
-			source: "plugin",
-			pluginId: renderPluginId,
-			stage: "plugin-processing",
-			message: `Render runtime hook is missing for plugin "${renderPluginId}".`,
-		});
-	}
-
 	return {
 		diagnostics,
 		activePluginIds: {
@@ -486,231 +627,101 @@ function validatePluginRuntimeAvailability(
 	};
 }
 
-import type { Root } from "mdast";
-import { visit } from "unist-util-visit";
-
-import {
-	normalizeExtendedDirectiveSyntax,
-	remarkNormalizeDirectives,
-} from "@/lib/artichales.utils";
-
-function executeParserHooks(
-	articleContent: string,
-	runtimePluginIds: string[] | undefined,
-): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
-	const diagnostics: PipelineDiagnostic[] = [];
-	const executionState = resolvePluginExecutionState(runtimePluginIds);
-
-	let processor = unified()
-		.use(remarkParse)
-		.use(remarkGfm)
-		.use(remarkDirective)
-		.use(remarkNormalizeDirectives);
-
-	for (const plugin of executionState.parser) {
-		const parseHook = plugin.hooks.parse;
-		if (!parseHook) continue;
-
-		processor = processor.use(function (this: Processor) {
-			try {
-				const transformer = parseHook.call(this) as
-					| ((tree: Root, file: VFile) => void)
-					| undefined;
-				if (transformer) {
-					return (tree: Root, file: VFile) => {
-						try {
-							transformer(tree, file);
-						} catch (error) {
-							const detail =
-								error instanceof Error ? error.message : String(error);
-							diagnostics.push({
-								code: "plugin-hook-failed",
-								severity: "error",
-								source: "plugin",
-								pluginId: plugin.id,
-								stage: "plugin-processing",
-								message: `Parser hook failed for "${plugin.id}": ${detail}`,
-							});
-						}
-					};
-				}
-			} catch (error) {
-				const detail = error instanceof Error ? error.message : String(error);
-				diagnostics.push({
-					code: "plugin-hook-failed",
-					severity: "error",
-					source: "plugin",
-					pluginId: plugin.id,
-					stage: "plugin-processing",
-					message: `Parser hook setup failed for "${plugin.id}": ${detail}`,
-				});
-			}
-		});
-	}
-
-	processor = processor.use(() => (tree: Root) => {
-		visit(
-			tree,
-			[
-				"heading",
-				"paragraph",
-				"containerDirective",
-				"leafDirective",
-				"textDirective",
-				"list",
-				"blockquote",
-				"table",
-			],
-			(node) => {
-				type MdastNodeWithData = typeof node & {
-					data?: { hProperties?: Record<string, unknown> };
-				};
-				const dataNode = node as MdastNodeWithData;
-				if (node.position?.start?.offset != null) {
-					dataNode.data ??= {};
-					dataNode.data.hProperties ??= {};
-					dataNode.data.hProperties["data-source-offset"] =
-						node.position.start.offset;
-				}
-			},
-		);
-	});
-
-	const normalizedArticleContent =
-		normalizeExtendedDirectiveSyntax(articleContent);
-
-	let ast: Root | null = null;
-	try {
-		ast = processor.parse(normalizedArticleContent);
-		ast = processor.runSync(ast) as Root;
-	} catch (error) {
-		const detail = error instanceof Error ? error.message : String(error);
-		diagnostics.push({
-			code: "plugin-hook-failed",
-			severity: "error",
-			source: "pipeline",
-			stage: "plugin-processing",
-			message: `Pipeline parsing failed: ${detail}`,
-		});
-	}
-
-	return { ast, diagnostics };
-}
-
-function executeVoidHooks(
-	plugins: Array<{
-		id: string;
-		hooks: { process?: () => void };
-	}>,
-	stage: "plugin-processing",
-): PipelineDiagnostic[] {
-	const diagnostics: PipelineDiagnostic[] = [];
-
-	for (const plugin of plugins) {
-		const hookFn = plugin.hooks.process;
-		if (!hookFn) continue;
-
-		try {
-			hookFn();
-		} catch (error) {
-			const detail = error instanceof Error ? error.message : String(error);
-			diagnostics.push({
-				code: "plugin-hook-failed",
-				severity: "error",
-				source: "plugin",
-				pluginId: plugin.id,
-				stage,
-				message: `Process hook failed for "${plugin.id}": ${detail}`,
-			});
-		}
-	}
-
-	return diagnostics;
-}
-
-function executeRenderHooks(
-	plugins: Array<{
-		id: string;
-		hooks: {
-			render?: (context: RenderHookContext) => unknown;
-			directiveRender?: (context: RenderHookContext) => unknown;
-		};
-	}>,
-	target: "web" | "print",
-): PipelineDiagnostic[] {
-	const diagnostics: PipelineDiagnostic[] = [];
-	const context: RenderHookContext = {
-		target,
-		resolvedReferences: {},
-		captions: {},
-		utilityClasses: {},
-	};
-
-	for (const plugin of plugins) {
-		try {
-			plugin.hooks.render?.(context);
-			plugin.hooks.directiveRender?.(context);
-		} catch (error) {
-			const detail = error instanceof Error ? error.message : String(error);
-			diagnostics.push({
-				code: "plugin-hook-failed",
-				severity: "error",
-				source: "plugin",
-				pluginId: plugin.id,
-				stage: "render-active-target",
-				message: `Render hook failed for "${plugin.id}": ${detail}`,
-			});
-		}
-	}
-
-	return diagnostics;
-}
-
-function executePluginHooks(
-	articleContent: string,
-	runtimePluginIds: string[] | undefined,
-): { ast: Root | null; diagnostics: PipelineDiagnostic[] } {
-	const executionState = resolvePluginExecutionState(runtimePluginIds);
-	const parserResult = executeParserHooks(articleContent, runtimePluginIds);
+function pluginToMetadata(plugin: PluginDefinition): PluginMetadata {
 	return {
-		ast: parserResult.ast,
-		diagnostics: [
-			...parserResult.diagnostics,
-			...executeVoidHooks(executionState.core, "plugin-processing"),
-		],
+		id: plugin.id,
+		displayAs: plugin.displayAs,
+		kind: plugin.kind,
+		autocomplete: plugin.autocomplete,
 	};
 }
 
-function executeTargetRenderHooks(
-	target: "web" | "print",
-	runtimePluginIds: string[] | undefined,
-): PipelineDiagnostic[] {
-	const executionState = resolvePluginExecutionState(runtimePluginIds);
-	return executeRenderHooks(executionState.render, target);
-}
-
-function emitPluginTrace(
-	runtimePluginIds: string[] | undefined,
-	pluginConfigDiagnostics: PipelineDiagnostic[],
-): void {
-	if (!import.meta.env.DEV) return;
-	const activePlugins = loadPluginRegistry(runtimePluginIds).map((p) => p.id);
-	const failedPlugins = pluginConfigDiagnostics
-		.map((diag) => diag.pluginId)
-		.filter((id): id is string => typeof id === "string");
-
-	console.groupCollapsed("[artichales:pipeline] plugin-processing");
-	console.debug("activePlugins", activePlugins);
-	console.debug("configValidationErrors", pluginConfigDiagnostics.length);
-	if (failedPlugins.length > 0) {
-		console.debug("failedPlugins", failedPlugins);
+export function buildPluginRegistryMaps(
+	runtimePluginIds: readonly string[],
+): PluginRegistryMaps {
+	const byId = new Map<string, PluginMetadata>();
+	const displayAsByPluginId = new Map<string, DisplayAs>();
+	const directiveKindByPluginId = new Map<string, DirectiveKind>();
+	for (const plugin of loadPluginRegistry([...runtimePluginIds])) {
+		const metadata = pluginToMetadata(plugin);
+		byId.set(metadata.id, metadata);
+		if (metadata.displayAs) {
+			displayAsByPluginId.set(metadata.id, metadata.displayAs);
+		}
+		if (metadata.kind) {
+			directiveKindByPluginId.set(metadata.id, metadata.kind);
+		}
 	}
-	console.groupEnd();
+	return { byId, displayAsByPluginId, directiveKindByPluginId };
 }
 
-export function buildDocumentModel(
+export function parseTemplatePhase(
 	files: Record<string, string>,
-): DocumentModel {
+): ParsedTemplate {
+	const templateResult = resolveTemplateFile(files[CORE_TEMPLATE_FILE]);
+	return {
+		template: templateResult.template,
+		enabledPluginIds: resolveRuntimePluginIdsFromTemplate(
+			templateResult.template.plugins,
+		),
+		diagnostics: templateResult.diagnostics,
+	};
+}
+
+export function parseBibliographyPhase(
+	files: Record<string, string>,
+): ParsedBibliography {
+	const bibResult = parseBibtexDocument(files[CORE_BIB_FILE] || "");
+	return {
+		entriesById: bibResult.validatedEntries,
+		diagnostics: bibResult.diagnostics,
+	};
+}
+
+export function parseArticlePhase(
+	files: Record<string, string>,
+	template: ParsedTemplate,
+	pluginRegistry: PluginRegistryMaps,
+): {
+	article: ParsedArticle;
+	activePluginIds: PipelineExecutionResult["activePluginIds"];
+} {
+	const articleText = files[CORE_ARTICLE_FILE] || "";
+	const frontmatterResult = parseArticleFrontmatter(articleText);
+	const unsupportedDiagnostics = detectUnsupportedSourceConcepts(
+		frontmatterResult.content,
+	);
+	const runtimeValidation = validatePluginRuntimeAvailability([
+		...template.enabledPluginIds,
+	]);
+	const parserResult = executeParserHooks(frontmatterResult.content, [
+		...template.enabledPluginIds,
+	]);
+	const indexed = collectArticleArtifacts(parserResult.ast, pluginRegistry);
+
+	return {
+		article: {
+			frontmatter: frontmatterResult.frontmatter,
+			ast: parserResult.ast,
+			headings: indexed.headings,
+			labeledBlocks: indexed.labeledBlocks,
+			citations: indexed.citations,
+			diagnostics: [
+				...frontmatterResult.diagnostics,
+				...unsupportedDiagnostics,
+				...runtimeValidation.diagnostics,
+				...parserResult.diagnostics,
+				...indexed.diagnostics,
+			],
+		},
+		activePluginIds: runtimeValidation.activePluginIds,
+	};
+}
+
+export function runDocumentPipeline(
+	files: Record<string, string>,
+	_target: "web" | "print" = "web",
+): PipelineExecutionResult {
 	const stageDiagnostics: PipelineDiagnostic[] = [];
 	const shouldEmitStageInfo = import.meta.env.DEV;
 	const pushStage = (stage: PipelineStage) => {
@@ -724,120 +735,47 @@ export function buildDocumentModel(
 		});
 	};
 
-	const templateResult = resolveTemplateFile(files[CORE_TEMPLATE_FILE]);
+	const parsedTemplate = parseTemplatePhase(files);
 	pushStage("validate-template");
 
-	const bibResult = parseBibtexDocument(files[CORE_BIB_FILE] || "");
+	const parsedBibliography = parseBibliographyPhase(files);
 	pushStage("validate-bibliography");
 
-	const articleResult = parseArticleContent(files[CORE_ARTICLE_FILE] || "");
+	const pluginRegistry = buildPluginRegistryMaps(
+		parsedTemplate.enabledPluginIds,
+	);
+	const parsedArticleResult = parseArticlePhase(
+		files,
+		parsedTemplate,
+		pluginRegistry,
+	);
 	pushStage("parse-article");
-
-	const assetResult = parseAssetJsonFiles(files);
-	pushStage("normalize-document");
-
-	const articleAnalysis = analyzeArticleSource(
-		articleResult.content,
-		templateResult.template.default.referenceLabels,
-	);
 	pushStage("build-registry-and-numbering");
-	const unsupportedConceptDiagnostics = detectUnsupportedSourceConcepts(
-		articleResult.content,
-	);
-	const runtimePluginIds = resolveRuntimePluginIdsFromTemplate(
-		templateResult.template.plugins,
-	);
-
-	const pluginMapResult = parsePluginConfigMap(articleResult.frontmatter);
-	const pluginConfigDiagnostics = validatePluginConfigs(
-		pluginMapResult.configMap,
-		runtimePluginIds,
-	);
-	const pluginRuntimeResult =
-		validatePluginRuntimeAvailability(runtimePluginIds);
-	const pluginHooksResult = executePluginHooks(
-		articleResult.content,
-		runtimePluginIds,
-	);
-	emitPluginTrace(runtimePluginIds, [
-		...pluginConfigDiagnostics,
-		...pluginRuntimeResult.diagnostics,
-		...pluginHooksResult.diagnostics,
-	]);
-	pushStage("plugin-processing");
 
 	return {
-		ast: pluginHooksResult.ast,
-		content: articleResult.content,
-		frontmatter: articleResult.frontmatter,
-		citations: bibResult.citations,
-		validatedBibEntries: bibResult.validatedEntries,
-		plots: assetResult.plots,
-		template: templateResult.template,
-		templateDiagnostics: templateResult.diagnostics,
-		bibDiagnostics: bibResult.diagnostics,
-		assetDiagnostics: assetResult.diagnostics,
-		articleDiagnostics: [
-			...articleResult.diagnostics,
-			...unsupportedConceptDiagnostics,
-			...articleAnalysis.diagnostics,
-			...pluginMapResult.diagnostics,
-			...pluginConfigDiagnostics,
-			...pluginRuntimeResult.diagnostics,
-			...pluginHooksResult.diagnostics,
+		template: parsedTemplate,
+		bibliography: parsedBibliography,
+		article: parsedArticleResult.article,
+		pluginRegistry,
+		activePluginIds: parsedArticleResult.activePluginIds,
+		diagnostics: [
+			...parsedTemplate.diagnostics,
+			...parsedBibliography.diagnostics,
+			...parsedArticleResult.article.diagnostics,
+			...stageDiagnostics,
 		],
-		referenceTargets: articleAnalysis.referenceTargets,
-		resolvedReferences: articleAnalysis.resolvedReferences,
-		captions: articleAnalysis.captions,
-		activePluginIds: pluginRuntimeResult.activePluginIds,
-		runtimePluginIds,
-		pipelineDiagnostics: stageDiagnostics,
 	};
+}
+
+export function buildDocumentModel(
+	files: Record<string, string>,
+): PipelineExecutionResult {
+	return runDocumentPipeline(files, "web");
 }
 
 export function enrichDocumentModelForTarget(
-	model: DocumentModel,
-	target: "web" | "print",
-): PipelineResult {
-	const renderDiagnostics = executeTargetRenderHooks(
-		target,
-		model.runtimePluginIds,
-	);
-	const pipelineDiagnostics = [...model.pipelineDiagnostics];
-	if (import.meta.env.DEV) {
-		pipelineDiagnostics.push({
-			code: "pipeline-stage-complete",
-			severity: "info",
-			source: "pipeline",
-			message: getStageInfoMessage("render-active-target", target),
-			stage: "render-active-target",
-		});
-	}
-
-	return {
-		ast: model.ast,
-		content: model.content,
-		frontmatter: model.frontmatter,
-		citations: model.citations,
-		validatedBibEntries: model.validatedBibEntries,
-		plots: model.plots,
-		template: model.template,
-		templateDiagnostics: model.templateDiagnostics,
-		bibDiagnostics: model.bibDiagnostics,
-		assetDiagnostics: model.assetDiagnostics,
-		articleDiagnostics: [...model.articleDiagnostics, ...renderDiagnostics],
-		resolvedReferences: model.resolvedReferences,
-		captions: model.captions,
-		referenceTargets: model.referenceTargets,
-		activePluginIds: model.activePluginIds,
-		pipelineDiagnostics,
-	};
-}
-
-export function runDocumentPipeline(
-	files: Record<string, string>,
-	target: "web" | "print",
-): PipelineResult {
-	const model = buildDocumentModel(files);
-	return enrichDocumentModelForTarget(model, target);
+	model: PipelineExecutionResult,
+	_target: "web" | "print",
+): PipelineExecutionResult {
+	return model;
 }

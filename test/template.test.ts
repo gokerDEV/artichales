@@ -15,8 +15,8 @@ describe("template merge behavior", () => {
 			resolved.template.plugins,
 		);
 		expect(pluginIds.includes("citation-parser")).toBe(true);
-		expect(pluginIds.includes("plotty-parser")).toBe(true);
-		expect(pluginIds.includes("datatable-parser")).toBe(false);
+		expect(pluginIds.includes("plotty")).toBe(true);
+		expect(pluginIds.includes("datatable")).toBe(false);
 	});
 
 	test("rejects unsupported citationStyle values", () => {

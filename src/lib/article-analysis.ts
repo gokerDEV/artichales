@@ -1,3 +1,9 @@
+import type {
+	ReferenceSelectorTarget as SharedReferenceSelectorTarget,
+	ResolvedCaption as SharedResolvedCaption,
+	ResolvedReference as SharedResolvedReference,
+} from "@/components/artichales/types/reference.types";
+
 type DiagnosticSeverity = "error" | "warning" | "info";
 
 export type ArticleAnalysisDiagnostic = {
@@ -20,24 +26,17 @@ export type ArticleAnalysisDiagnostic = {
 	column?: number;
 };
 
-export type ResolvedReference = {
-	label: string;
-	href: string;
+export type ResolvedReference = SharedResolvedReference & {
 	diagnostic?: ArticleAnalysisDiagnostic;
 };
 
-export type ResolvedCaption = {
+export type ResolvedCaption = SharedResolvedCaption & {
 	type: string;
 	key: string;
 	number: string;
-	href: string;
-	label: string;
 };
 
-export type ReferenceSelectorTarget = {
-	selector: string;
-	mode: "full" | "partial";
-};
+export type ReferenceSelectorTarget = SharedReferenceSelectorTarget;
 
 type ReferenceTarget = {
 	type: string;

@@ -1,6 +1,6 @@
 import React from "react";
 import type { Components } from "react-markdown";
-import type { ResolvedCaption } from "@/lib/article-analysis";
+import type { ResolvedCaption } from "@/lib/render-document";
 import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
 type CaptionRenderProps = {
@@ -20,8 +20,8 @@ function registerCaptionRenderRuntime(
 
 export const captionRenderPlugin: PluginDefinition = {
 	id: "caption-render",
-	category: "caption",
 	name: "Caption Render",
+	category: "caption",
 	hooks: {
 		render: registerCaptionRenderRuntime,
 	},

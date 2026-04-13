@@ -40,18 +40,20 @@ export function PrintPreviewPane({
 	const pagedPreviewKey = React.useMemo(
 		() =>
 			JSON.stringify({
-				content: document.content,
-				frontmatter: document.frontmatter,
 				template: document.template,
-				citations: Object.keys(document.citations).length,
-				plots: Object.keys(document.plots).length,
+				frontmatter: document.frontmatter,
+				citations: document.parsedArticle.citations.length,
+				headings: document.parsedArticle.headings.length,
+				labeledBlocks: document.parsedArticle.labeledBlocks.length,
+				references: document.renderedReferences.length,
 				pagedCss,
 			}),
 		[
-			document.citations,
-			document.content,
 			document.frontmatter,
-			document.plots,
+			document.parsedArticle.citations.length,
+			document.parsedArticle.headings.length,
+			document.parsedArticle.labeledBlocks.length,
+			document.renderedReferences.length,
 			document.template,
 			pagedCss,
 		],

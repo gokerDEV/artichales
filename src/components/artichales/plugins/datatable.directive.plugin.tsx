@@ -220,8 +220,11 @@ function registerDatatableRenderRuntime(
 
 export const datatableDirectivePlugin: PluginDefinition = {
 	id: "datatable",
-	category: "table",
 	name: "Datatable",
+	category: "table",
+	displayAs: "table",
+	kind: "container",
+	autocomplete: true,
 	hooks: {
 		directiveRender: registerDatatableRenderRuntime,
 	},

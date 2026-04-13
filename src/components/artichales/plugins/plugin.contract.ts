@@ -4,10 +4,7 @@ import type { Components } from "react-markdown";
 import type { Plugin } from "unified";
 import type { ZodType } from "zod";
 import type { DocumentSource } from "@/hooks/use-document";
-import type {
-	ResolvedCaption,
-	ResolvedReference,
-} from "@/lib/article-analysis";
+import type { ResolvedCaption, ResolvedReference } from "@/lib/render-document";
 
 /**
  * Functional pipeline categories (parser, editor) + content-based render categories.
@@ -36,6 +33,16 @@ export type PluginCategory =
 	| "caption"
 	| "map"
 	| "equation";
+
+export type DisplayAs =
+	| "section"
+	| "figure"
+	| "table"
+	| "equation"
+	| "code"
+	| "abstract";
+
+export type DirectiveKind = "container" | "leaf" | "text";
 
 export type PluginConfig = {
 	captionPosition?: "top" | "bottom"; // deprecated
@@ -90,6 +97,9 @@ export type PluginDefinition = {
 	id: string;
 	name: string;
 	category: PluginCategory;
+	displayAs?: DisplayAs;
+	kind?: DirectiveKind;
+	autocomplete?: boolean;
 	version?: string;
 	description?: string;
 	configSchema?: ZodType<unknown>;

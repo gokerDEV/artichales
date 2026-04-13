@@ -18,8 +18,11 @@ function registerAbstractRenderRuntime(
 
 export const abstractDirectivePlugin: PluginDefinition = {
 	id: "abstract",
-	category: "abstract",
 	name: "Abstract",
+	category: "abstract",
+	displayAs: "abstract",
+	kind: "container",
+	autocomplete: true,
 	hooks: {
 		directiveRender: registerAbstractRenderRuntime,
 	},

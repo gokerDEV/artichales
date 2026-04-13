@@ -198,6 +198,9 @@ export const plottyDirectivePlugin: PluginDefinition = {
 	id: "plotty",
 	category: "figure",
 	name: "Plotty",
+	displayAs: "figure",
+	kind: "container",
+	autocomplete: true,
 	hooks: {
 		directiveRender: registerPlottyRenderRuntime,
 	},

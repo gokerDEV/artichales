@@ -78,7 +78,6 @@ export function DocumentRenderContent({
 				{document.ast ? (
 					<MarkdownContent
 						ast={document.ast}
-						content={document.content}
 						target={target}
 						printTitle={
 							target === "print" &&

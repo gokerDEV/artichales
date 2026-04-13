@@ -1,16 +1,11 @@
-import type { Root } from "mdast";
 import { create } from "zustand";
 import type {
-	ReferenceSelectorTarget,
-	ResolvedCaption,
-	ResolvedReference,
-} from "@/lib/article-analysis";
-import type { CitationEntry, ValidatedBibEntry } from "@/lib/bibtex";
-import type {
 	AppDiagnostic,
+	ParsedArticle,
+	ParsedBibliography,
+	ParsedTemplate,
 	PipelineResultPayload,
 } from "@/lib/document-pipeline";
-import type { TemplateFileResolved } from "@/lib/template";
 import {
 	CORE_ARTICLE_FILE,
 	CORE_BIB_FILE,
@@ -67,22 +62,12 @@ interface WorkspaceState {
 	setRawFiles: (files: Record<string, string>) => void;
 	updateFile: (fileName: string, content: string) => void;
 
-	// Slice 2: Processed Output (Read by root Preview components)
-	ast: Root | null;
-	content: string;
-	frontmatter: Record<string, unknown>;
-	citations: Record<string, CitationEntry>;
-	validatedBibEntries: Record<string, ValidatedBibEntry>;
-	plots: Record<string, unknown>;
-	template: TemplateFileResolved | null;
-	citationStyle: string;
+	// Slice 2: Parsed Output
+	parsedTemplate: ParsedTemplate | null;
+	parsedBibliography: ParsedBibliography | null;
+	parsedArticle: ParsedArticle | null;
 
-	// Slice 3: Reactive Numbering (Read exclusively by Tier 1 Plugin Containers)
-	referenceRegistry: Record<string, ResolvedReference>;
-	captions: Record<string, ResolvedCaption>;
-	referenceTargets: ReferenceSelectorTarget[];
-
-	// Slice 4: Diagnostics & UI (Read exclusively by diagnostic panels / specific UI logic)
+	// Slice 3: Diagnostics & UI
 	diagnostics: AppDiagnostic[];
 	activePluginIds: {
 		parser: string[];
@@ -114,18 +99,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 			),
 		})),
 
-	ast: null,
-	content: "",
-	frontmatter: {},
-	citations: {},
-	validatedBibEntries: {},
-	plots: {},
-	template: null,
-	citationStyle: "numeric",
-
-	referenceRegistry: {},
-	captions: {},
-	referenceTargets: [],
+	parsedTemplate: null,
+	parsedBibliography: null,
+	parsedArticle: null,
 
 	diagnostics: [],
 	activePluginIds: {
@@ -138,17 +114,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 
 	setPipelineResult: (result) =>
 		set({
-			ast: result.ast,
-			content: result.content,
-			frontmatter: result.frontmatter,
-			citations: result.citations,
-			validatedBibEntries: result.validatedBibEntries,
-			plots: result.plots,
-			template: result.template,
-			citationStyle: result.citationStyle,
-			referenceRegistry: result.referenceRegistry,
-			captions: result.captions,
-			referenceTargets: result.referenceTargets,
+			parsedTemplate: result.parsedTemplate,
+			parsedBibliography: result.parsedBibliography,
+			parsedArticle: result.parsedArticle,
 			diagnostics: result.diagnostics,
 			activePluginIds: result.activePluginIds,
 			isPipelineRunning: false,

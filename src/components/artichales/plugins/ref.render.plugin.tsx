@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Components } from "react-markdown";
-import type { ResolvedReference } from "@/lib/article-analysis";
+import type { ResolvedReference } from "@/lib/render-document";
 import type { PluginDefinition, RenderHookContext } from "./plugin.contract";
 
 type RefRenderProps = {
@@ -22,8 +22,8 @@ function registerRefRenderRuntime(
 
 export const refRenderPlugin: PluginDefinition = {
 	id: "ref-render",
-	category: "ref",
 	name: "Ref Render",
+	category: "ref",
 	hooks: {
 		render: registerRefRenderRuntime,
 	},

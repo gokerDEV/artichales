@@ -1,21 +1,26 @@
+import type { Root } from "mdast";
 import type { JSX } from "react";
 import * as React from "react";
 import type { PreviewTarget } from "@/components/artichales/panels/preview-header";
 import type { PluginConfig } from "@/components/artichales/plugins/plugin.contract";
+import type { ArticleFrontmatter } from "@/components/artichales/types/frontmatter.types";
 import type {
-	ArticleAnalysisDiagnostic,
-	ResolvedCaption,
-	ResolvedReference,
-} from "@/lib/article-analysis";
-import type {
-	BibtexDiagnostic,
-	CitationEntry,
-	ValidatedBibEntry,
-} from "@/lib/bibtex";
-import type {
-	AppDiagnostic,
+	ParsedArticle,
+	ParsedBibliography,
+	ParsedTemplate,
 	PipelineDiagnostic,
-} from "@/lib/document-pipeline";
+} from "@/components/artichales/types/pipeline.types";
+import type { PluginRegistryMaps } from "@/components/artichales/types/plugin.types";
+import type { BibtexDiagnostic, CitationEntry } from "@/lib/bibtex";
+import { buildPluginRegistryMaps as createPluginRegistryMaps } from "@/lib/document-pipeline";
+import {
+	buildRenderReferenceLookup,
+	type ReferenceSelectorTarget,
+	type RenderedReferenceEntry,
+	type ResolvedCaption,
+	type ResolvedReference,
+	renderDocument,
+} from "@/lib/render-document";
 import type {
 	ResolvedMarginConfig,
 	TemplateDiagnostic,
@@ -105,16 +110,15 @@ export type DocumentTemplate = {
 	plugins?: string[];
 };
 
-import type { Root } from "mdast";
-
 export interface DocumentSource {
 	ast: Root | null;
-	content: string;
-	frontmatter: Record<string, unknown>;
-	citations: Record<string, CitationEntry>;
-	validatedBibEntries: Record<string, ValidatedBibEntry>;
-	plots: Record<string, unknown>;
+	frontmatter: ArticleFrontmatter;
+	citationEntries: Record<string, CitationEntry>;
+	renderedReferences: readonly RenderedReferenceEntry[];
 	template: DocumentTemplate;
+	parsedTemplate: ParsedTemplate;
+	parsedBibliography: ParsedBibliography;
+	parsedArticle: ParsedArticle;
 	citationStyle: string;
 	assetFiles: Array<{
 		name: string;
@@ -124,13 +128,10 @@ export interface DocumentSource {
 	templateDiagnostics: TemplateDiagnostic[];
 	bibDiagnostics: BibtexDiagnostic[];
 	assetDiagnostics: PipelineDiagnostic[];
-	articleDiagnostics: Array<PipelineDiagnostic | ArticleAnalysisDiagnostic>;
+	articleDiagnostics: PipelineDiagnostic[];
 	resolvedReferences: Record<string, ResolvedReference>;
 	captions: Record<string, ResolvedCaption>;
-	referenceTargets: Array<{
-		selector: string;
-		mode: "full" | "partial";
-	}>;
+	referenceTargets: ReferenceSelectorTarget[];
 	activePluginIds: {
 		parser: string[];
 		core: string[];
@@ -193,118 +194,110 @@ export function resolveTemplateForTarget(
 
 import { useWorkspaceStore } from "@/store/workspace.store";
 
+const EMPTY_FRONTMATTER: ArticleFrontmatter = { title: "Untitled" };
+const EMPTY_PARSED_ARTICLE: ParsedArticle = {
+	frontmatter: EMPTY_FRONTMATTER,
+	ast: null,
+	headings: [],
+	labeledBlocks: [],
+	citations: [],
+	diagnostics: [],
+};
+const EMPTY_PARSED_BIBLIOGRAPHY: ParsedBibliography = {
+	entriesById: {},
+	diagnostics: [],
+};
+const EMPTY_PARSED_TEMPLATE: ParsedTemplate = {
+	template: DEFAULT_TEMPLATE_FILE,
+	enabledPluginIds: DEFAULT_TEMPLATE_FILE.plugins,
+	diagnostics: [],
+};
+
 export function useDocument(
 	_files: Record<string, string>,
 	target: PreviewTarget,
 ): DocumentSource {
-	const ast = useWorkspaceStore((state) => state.ast);
-	const content = useWorkspaceStore((state) => state.content);
-	const frontmatter = useWorkspaceStore((state) => state.frontmatter);
-	const citations = useWorkspaceStore((state) => state.citations);
-	const validatedBibEntries = useWorkspaceStore(
-		(state) => state.validatedBibEntries,
+	const parsedTemplate = useWorkspaceStore((state) => state.parsedTemplate);
+	const parsedBibliography = useWorkspaceStore(
+		(state) => state.parsedBibliography,
 	);
-	const plots = useWorkspaceStore((state) => state.plots);
-	const templateFile = useWorkspaceStore((state) => state.template);
-	const referenceRegistry = useWorkspaceStore(
-		(state) => state.referenceRegistry,
-	);
-	const captions = useWorkspaceStore((state) => state.captions);
-	const referenceTargets = useWorkspaceStore((state) => state.referenceTargets);
+	const parsedArticle = useWorkspaceStore((state) => state.parsedArticle);
 	const diagnostics = useWorkspaceStore((state) => state.diagnostics);
 	const activePluginIds = useWorkspaceStore((state) => state.activePluginIds);
 	const assetFiles = useWorkspaceStore((state) => state.assetFiles);
 
+	const effectiveParsedTemplate = parsedTemplate ?? EMPTY_PARSED_TEMPLATE;
+	const effectiveParsedBibliography =
+		parsedBibliography ?? EMPTY_PARSED_BIBLIOGRAPHY;
+	const effectiveParsedArticle = parsedArticle ?? EMPTY_PARSED_ARTICLE;
+	const templateFile = effectiveParsedTemplate.template;
+	const articleAst = effectiveParsedArticle.ast;
+	const articleFrontmatter = effectiveParsedArticle.frontmatter;
+
 	const resolvedTemplateForTarget = React.useMemo(
-		() =>
-			resolveTemplateForTarget(templateFile ?? DEFAULT_TEMPLATE_FILE, target),
+		() => resolveTemplateForTarget(templateFile, target),
 		[target, templateFile],
 	);
+
+	const pluginRegistry = React.useMemo(
+		(): PluginRegistryMaps =>
+			createPluginRegistryMaps(effectiveParsedTemplate.enabledPluginIds),
+		[effectiveParsedTemplate.enabledPluginIds],
+	);
+
+	const renderLookup = React.useMemo(
+		() =>
+			buildRenderReferenceLookup(
+				effectiveParsedTemplate,
+				effectiveParsedArticle,
+				pluginRegistry,
+			),
+		[effectiveParsedArticle, effectiveParsedTemplate, pluginRegistry],
+	);
+
+	const renderedDocument = React.useMemo(
+		() =>
+			renderDocument({
+				template: effectiveParsedTemplate,
+				bibliography: effectiveParsedBibliography,
+				article: effectiveParsedArticle,
+				pluginRegistry,
+				target,
+			}),
+		[
+			effectiveParsedArticle,
+			effectiveParsedBibliography,
+			effectiveParsedTemplate,
+			pluginRegistry,
+			target,
+		],
+	);
+
+	const citationEntries = React.useMemo(() => {
+		const map: Record<string, CitationEntry> = {};
+		for (const item of renderedDocument.references) {
+			map[item.id] = item.entry;
+		}
+		return map;
+	}, [renderedDocument.references]);
 
 	const citationStyle = React.useMemo(
 		() => resolvedTemplateForTarget?.citationStyle ?? "numeric",
 		[resolvedTemplateForTarget?.citationStyle],
 	);
 
-	const blockingByFile = React.useMemo(() => {
-		const result: Partial<Record<string, string>> = {};
-
-		const isError = (diag: AppDiagnostic) => diag.severity === "error";
-
-		if (
-			diagnostics.some(
-				(diag) => isError(diag) && diag.code.startsWith("template-"),
-			)
-		) {
-			result[CORE_TEMPLATE_FILE] =
-				"Fix template errors before switching away from `template.json`.";
-		}
-		if (
-			diagnostics.some(
-				(diag) => isError(diag) && diag.code.startsWith("bibtex-"),
-			)
-		) {
-			result[CORE_BIB_FILE] =
-				"Fix BibTeX errors before switching away from `references.bib`.";
-		}
-		if (
-			diagnostics.some(
-				(diag): diag is PipelineDiagnostic =>
-					"source" in diag &&
-					isError(diag) &&
-					(diag.source === "parser" ||
-						diag.source === "plugin" ||
-						diag.source === "core"),
-			)
-		) {
-			result[CORE_ARTICLE_FILE] =
-				"Fix article parsing errors before switching away from `article.mda`.";
-		}
-		for (const diagnostic of diagnostics) {
-			if (
-				diagnostic.code !== "asset-json-invalid" ||
-				!("fileName" in diagnostic)
-			)
-				continue;
-			const pipelineDiag = diagnostic as PipelineDiagnostic;
-			if (!pipelineDiag.fileName) continue;
-			result[pipelineDiag.fileName] =
-				"Fix JSON asset syntax errors before switching away from this file.";
-		}
-		return result;
-	}, [diagnostics]);
-
 	const templateDiagnostics = React.useMemo(
-		(): TemplateDiagnostic[] =>
-			diagnostics.filter((d): d is TemplateDiagnostic =>
-				d.code.startsWith("template-"),
-			),
-		[diagnostics],
+		(): TemplateDiagnostic[] => [...effectiveParsedTemplate.diagnostics],
+		[effectiveParsedTemplate.diagnostics],
 	);
 	const bibDiagnostics = React.useMemo(
-		(): BibtexDiagnostic[] =>
-			diagnostics.filter((d): d is BibtexDiagnostic =>
-				d.code.startsWith("bibtex-"),
-			),
-		[diagnostics],
+		(): BibtexDiagnostic[] => [...effectiveParsedBibliography.diagnostics],
+		[effectiveParsedBibliography.diagnostics],
 	);
-	const assetDiagnostics = React.useMemo(
-		(): PipelineDiagnostic[] =>
-			diagnostics.filter(
-				(d): d is PipelineDiagnostic => d.code === "asset-json-invalid",
-			),
-		[diagnostics],
-	);
+	const assetDiagnostics = React.useMemo((): PipelineDiagnostic[] => [], []);
 	const articleDiagnostics = React.useMemo(
-		(): PipelineDiagnostic[] =>
-			diagnostics.filter(
-				(d): d is PipelineDiagnostic =>
-					"source" in d &&
-					(d.source === "parser" ||
-						d.source === "plugin" ||
-						d.source === "core"),
-			),
-		[diagnostics],
+		(): PipelineDiagnostic[] => [...effectiveParsedArticle.diagnostics],
+		[effectiveParsedArticle.diagnostics],
 	);
 	const pipelineDiagnostics = React.useMemo(
 		(): PipelineDiagnostic[] =>
@@ -314,24 +307,41 @@ export function useDocument(
 			),
 		[diagnostics],
 	);
+	const blockingByFile = React.useMemo(() => {
+		const result: Partial<Record<string, string>> = {};
+		if (templateDiagnostics.some((diag) => diag.severity === "error")) {
+			result[CORE_TEMPLATE_FILE] =
+				"Fix template errors before switching away from `template.json`.";
+		}
+		if (bibDiagnostics.some((diag) => diag.severity === "error")) {
+			result[CORE_BIB_FILE] =
+				"Fix BibTeX errors before switching away from `references.bib`.";
+		}
+		if (articleDiagnostics.some((diag) => diag.severity === "error")) {
+			result[CORE_ARTICLE_FILE] =
+				"Fix article parsing errors before switching away from `article.mda`.";
+		}
+		return result;
+	}, [articleDiagnostics, bibDiagnostics, templateDiagnostics]);
 
 	return {
-		ast,
-		content: content || "",
-		frontmatter,
-		citations,
-		validatedBibEntries,
-		plots,
+		ast: articleAst,
+		frontmatter: articleFrontmatter,
+		citationEntries,
+		renderedReferences: renderedDocument.references,
 		template: resolvedTemplateForTarget,
+		parsedTemplate: effectiveParsedTemplate,
+		parsedBibliography: effectiveParsedBibliography,
+		parsedArticle: effectiveParsedArticle,
 		citationStyle,
 		assetFiles,
 		templateDiagnostics,
 		bibDiagnostics,
 		assetDiagnostics,
 		articleDiagnostics,
-		resolvedReferences: referenceRegistry,
-		captions,
-		referenceTargets,
+		resolvedReferences: renderLookup.resolvedReferences,
+		captions: renderLookup.captions,
+		referenceTargets: renderLookup.referenceTargets,
 		activePluginIds,
 		pipelineDiagnostics,
 		blockingByFile,

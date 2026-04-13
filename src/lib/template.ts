@@ -1,9 +1,9 @@
+import { z } from "zod";
 import type { PluginConfig } from "@/components/artichales/plugins/plugin.contract";
 import {
 	getDefaultTemplateDirectivePlugins,
 	listTemplateDirectivePlugins,
 } from "@/components/artichales/plugins/plugin.registry";
-import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Primitive schemas
