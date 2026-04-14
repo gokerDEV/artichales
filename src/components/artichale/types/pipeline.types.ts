@@ -8,10 +8,7 @@ import type {
 	BibliographyById,
 	RenderArtichaleResult,
 } from "@/components/artichale/types/render.types";
-import type {
-	ResolveTemplateResult,
-	TemplateResolved,
-} from "@/components/artichale/types/template.types";
+import type { TemplateResolved } from "@/components/artichale/types/template.types";
 
 export type ParseDiagnostic = {
 	code:
@@ -46,7 +43,6 @@ export type ParseArtichaleResult = {
 	labeledBlocks: readonly LabeledBlockEntry[];
 	citations: readonly string[];
 	diagnostics: readonly ParseDiagnostic[];
-	templateResult: ResolveTemplateResult;
 };
 
 export type ArtichaleExecutionResult = {

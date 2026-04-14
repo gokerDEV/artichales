@@ -1,7 +1,6 @@
-import { collectArtifacts } from "@/components/artichale/core/artifacts.collector";
 import {
 	buildPluginRegistryMaps,
-	resolvePlugins,
+	resolveEnabledPluginsFromTemplate,
 } from "@/components/artichale/core/plugin.registry";
 import { parseBibliography } from "@/components/artichale/parser/bibliography.parser";
 import { parseDocument } from "@/components/artichale/parser/document.parser";
@@ -34,29 +33,28 @@ export function parseArtichale(
 	input: ParseArtichaleInput,
 ): ParseArtichaleResult {
 	const templateResult = parseTemplate(input.rawTemplate);
-	const plugins = resolvePlugins(templateResult.template.plugins);
+	const plugins = resolveEnabledPluginsFromTemplate(
+		templateResult.template.plugins,
+	);
 	const pluginRegistry = buildPluginRegistryMaps(plugins);
 	const bibliographyResult = parseBibliography(input.rawBibliography);
 
 	const split = splitFrontmatter(input.rawMarkdown);
 	const frontmatterResult = parseFrontmatter(split.rawFrontmatter);
-	const documentResult = parseDocument(split.content);
-	const artifacts = collectArtifacts(documentResult.ast, pluginRegistry);
+	const documentResult = parseDocument(split.content, pluginRegistry);
 
 	return {
 		template: templateResult.template,
 		bibliography: bibliographyResult.bibliography,
 		frontmatter: frontmatterResult.frontmatter,
 		ast: documentResult.ast,
-		headings: artifacts.headings,
-		labeledBlocks: artifacts.labeledBlocks,
-		citations: artifacts.citations,
+		headings: documentResult.headings,
+		labeledBlocks: documentResult.labeledBlocks,
+		citations: documentResult.citations,
 		diagnostics: [
 			...frontmatterResult.diagnostics,
 			...documentResult.diagnostics,
-			...artifacts.diagnostics,
 			...bibliographyResult.diagnostics,
 		],
-		templateResult,
 	};
 }

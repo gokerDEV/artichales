@@ -16,7 +16,6 @@ import type {
 } from "mdast";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
-import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import {
 	createPluginRenderDiagnostic,
 	createRenderDiagnostic,
@@ -43,7 +42,7 @@ type RenderDirectiveContext = {
 		data: T;
 		lastModified?: number;
 	}>;
-	fnAsssetResolver?: (fileName: string) => Promise<{
+	fnAssetResolver?: (fileName: string) => Promise<{
 		fileName: string;
 		resolvedSrc: string;
 		mimeType?: string;
@@ -51,6 +50,70 @@ type RenderDirectiveContext = {
 	} | null>;
 	diagnostics: RenderDiagnostic[];
 };
+
+type ParsedDirectiveNode = {
+	id: string;
+	caption: string;
+};
+
+type UnknownRecord = Record<string, unknown>;
+
+function collectNodeText(node: unknown): string {
+	if (!node || typeof node !== "object") return "";
+	const record = node as UnknownRecord;
+	const parts: string[] = [];
+
+	if (typeof record.value === "string" && record.value.trim() !== "") {
+		parts.push(record.value.trim());
+	}
+
+	if (Array.isArray(record.children)) {
+		for (const child of record.children) {
+			const childText = collectNodeText(child);
+			if (childText) parts.push(childText);
+		}
+	}
+
+	return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function parseDirectiveNode(node: {
+	name: string;
+	attributes?: Record<string, string | null | undefined>;
+	children?: RootContent[];
+}): ParsedDirectiveNode {
+	const children = Array.isArray(node.children) ? node.children : [];
+	const directiveLabelNode = children.find((child) => {
+		const record = child as unknown as UnknownRecord;
+		if (record.type !== "paragraph") return false;
+		const data =
+			record.data && typeof record.data === "object"
+				? (record.data as UnknownRecord)
+				: undefined;
+		return data?.directiveLabel === true;
+	});
+	const contentChildren = children.filter(
+		(child) => child !== directiveLabelNode,
+	);
+	const caption = contentChildren
+		.map((child) => collectNodeText(child))
+		.join(" ")
+		.trim();
+	const attributes = node.attributes ?? {};
+	const label = directiveLabelNode ? collectNodeText(directiveLabelNode) : "";
+	const dataFile = attributes.data_file ?? attributes.datafile ?? label;
+	const normalized = (dataFile || label || node.name)
+		.trim()
+		.replace(/\.[^/.]+$/, "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+
+	return {
+		id: normalized ? `${node.name}:${normalized}` : `${node.name}:unknown`,
+		caption,
+	};
+}
 
 function textValue(node: Text): ReactNode {
 	return node.value;
@@ -118,7 +181,7 @@ async function renderDirective(
 			template: context.template,
 			node,
 			fnJSONAssetReader: context.fnJSONAssetReader,
-			fnAsssetResolver: context.fnAsssetResolver,
+			fnAssetResolver: context.fnAssetResolver,
 			resolvedReferences: context.resolvedReferences,
 		});
 		const parsed = parseDirectiveNode(node);
@@ -266,7 +329,7 @@ export async function renderDocument(input: {
 		data: T;
 		lastModified?: number;
 	}>;
-	fnAsssetResolver?: (fileName: string) => Promise<{
+	fnAssetResolver?: (fileName: string) => Promise<{
 		fileName: string;
 		resolvedSrc: string;
 		mimeType?: string;
@@ -288,7 +351,7 @@ export async function renderDocument(input: {
 		pluginRegistry: input.pluginRegistry,
 		resolvedReferences: input.resolvedReferences,
 		fnJSONAssetReader: input.fnJSONAssetReader,
-		fnAsssetResolver: input.fnAsssetResolver,
+		fnAssetResolver: input.fnAssetResolver,
 		diagnostics,
 	});
 

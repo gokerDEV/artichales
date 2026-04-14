@@ -1,6 +1,10 @@
 import type { Root } from "mdast";
 import type { ReactNode } from "react";
 import type { Frontmatter } from "@/components/artichale/schema/frontmatter.schema";
+import type {
+	HeadingEntry,
+	LabeledBlockEntry,
+} from "@/components/artichale/types/article.types";
 import type { TemplateResolved } from "@/components/artichale/types/template.types";
 
 export type RenderTarget = "web" | "print";
@@ -54,11 +58,13 @@ export type RenderDiagnostic = {
 export type RenderArtichaleInput = {
 	target: RenderTarget;
 	fnJSONAssetReader?: JSONAssetReader;
-	fnAsssetResolver?: AssetResolver;
+	fnAssetResolver?: AssetResolver;
 	template: TemplateResolved;
 	bibliography: BibliographyById;
 	frontmatter: Frontmatter;
 	ast: Root | null;
+	headings: readonly HeadingEntry[];
+	labeledBlocks: readonly LabeledBlockEntry[];
 	citations: readonly string[];
 };
 

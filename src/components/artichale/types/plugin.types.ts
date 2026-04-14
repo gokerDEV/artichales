@@ -2,6 +2,7 @@ import type { RootContent } from "mdast";
 import type { ReactNode } from "react";
 import type { ResolvedReference } from "@/components/artichale/types/reference.types";
 import type {
+	AssetResolver,
 	JSONAssetReader,
 	RenderTarget,
 } from "@/components/artichale/types/render.types";
@@ -37,29 +38,16 @@ export type DirectiveNode = {
 	children?: RootContent[];
 };
 
-export type ParsedDirective = {
-	id: string;
-	label: string;
-	dataFile: string;
-	caption: string;
-	attributes: Record<string, string>;
-	children: RootContent[];
-};
-
 export type PluginRenderProps = {
 	target: RenderTarget;
 	template: TemplateResolved;
 	node: DirectiveNode;
 	fnJSONAssetReader?: JSONAssetReader;
-	fnAsssetResolver?: (fileName: string) => Promise<{
-		fileName: string;
-		resolvedSrc: string;
-		mimeType?: string;
-		lastModified?: number;
-	} | null>;
+	fnAssetResolver?: AssetResolver;
 	resolvedReferences: Record<string, ResolvedReference>;
 };
 
+// Directive plugin entry shape expected by registry/runtime.
 export type PluginDefinition = {
 	id: string;
 	name: string;

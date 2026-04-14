@@ -1,4 +1,4 @@
-import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
+import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,

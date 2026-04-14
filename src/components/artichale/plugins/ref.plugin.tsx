@@ -1,7 +1,7 @@
 import {
 	normalizeReferenceKey,
 	parseDirectiveNode,
-} from "@/components/artichale/core/artichale.util";
+} from "@/components/artichale/parser/directive.parser.ts";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,

@@ -7,17 +7,16 @@ import { figurePlugin } from "@/components/artichale/plugins/figure.plugin";
 import { fnPlugin } from "@/components/artichale/plugins/fn.plugin";
 import { plottyPlugin } from "@/components/artichale/plugins/plotty.plugin";
 import { refPlugin } from "@/components/artichale/plugins/ref.plugin";
-import {
-	sectionPlugin,
-	subsectionPlugin,
-	subsubsectionPlugin,
-} from "@/components/artichale/plugins/section.plugin";
+import { sectionPlugin } from "@/components/artichale/plugins/section.plugin";
+import { subsectionPlugin } from "@/components/artichale/plugins/subsection.plugin";
+import { subsubsectionPlugin } from "@/components/artichale/plugins/subsubsection.plugin";
 import { tablePlugin } from "@/components/artichale/plugins/table.plugin";
 import type {
 	PluginDefinition,
 	PluginRegistryMaps,
 } from "@/components/artichale/types/plugin.types";
 
+// Built-in render plugins shipped by Artichale core.
 const BUILTIN_PLUGINS: PluginDefinition[] = [
 	abstractPlugin,
 	citePlugin,
@@ -48,7 +47,8 @@ export function getDefaultTemplateDirectivePlugins(): string[] {
 	return [...DEFAULT_PLUGIN_IDS];
 }
 
-export function resolvePlugins(
+// Resolves enabled plugin runtime from `template.plugins`.
+export function resolveEnabledPluginsFromTemplate(
 	templatePlugins: readonly string[],
 ): PluginDefinition[] {
 	if (templatePlugins.length === 0) return [...BUILTIN_PLUGINS];
@@ -66,6 +66,13 @@ export function resolvePlugins(
 	return result.length > 0 ? result : [...BUILTIN_PLUGINS];
 }
 
+export function resolvePlugins(
+	templatePlugins: readonly string[],
+): PluginDefinition[] {
+	return resolveEnabledPluginsFromTemplate(templatePlugins);
+}
+
+// Exposes fast plugin lookup maps consumed by parser and renderer.
 export function buildPluginRegistryMaps(
 	plugins: readonly PluginDefinition[],
 ): PluginRegistryMaps {

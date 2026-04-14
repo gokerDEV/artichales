@@ -1,4 +1,4 @@
-import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
+import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,
@@ -11,10 +11,10 @@ export const figurePlugin: PluginDefinition = {
 	displayAs: DisplayAs.FIGURE,
 	kind: DirectiveKind.CONTAINER,
 	autocomplete: true,
-	async render({ node, fnAsssetResolver }) {
+	async render({ node, fnAssetResolver }) {
 		const parsed = parseDirectiveNode(node);
-		const resolved = fnAsssetResolver
-			? await fnAsssetResolver(parsed.dataFile || parsed.label)
+		const resolved = fnAssetResolver
+			? await fnAssetResolver(parsed.dataFile || parsed.label)
 			: null;
 
 		return (

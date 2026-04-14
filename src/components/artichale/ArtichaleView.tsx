@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { TemplateResolved } from "@/components/artichale/types/template.types";
 
-import "@/components/artichale/base/base.template.web.css";
 import "@/components/artichale/base/base.template.print.css";
 import "@/components/artichale/base/print.mechanics.css";
 
@@ -35,6 +34,7 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 		<div
 			id="artichale"
 			className="artichale"
+			// Print-only composition container.
 			data-art-print-document="true"
 			style={buildStyleVars(props.template)}
 		>

@@ -1,7 +1,6 @@
-import { collectArtifacts } from "@/components/artichale/core/artifacts.collector";
 import {
 	buildPluginRegistryMaps,
-	resolvePlugins,
+	resolveEnabledPluginsFromTemplate,
 } from "@/components/artichale/core/plugin.registry";
 import { buildReferenceLookup } from "@/components/artichale/core/reference.lookup";
 import { renderAuthors } from "@/components/artichale/render/author.render";
@@ -17,14 +16,13 @@ import type {
 export async function renderArtichale(
 	input: RenderArtichaleInput,
 ): Promise<RenderArtichaleResult> {
-	const plugins = resolvePlugins(input.template.plugins);
+	const plugins = resolveEnabledPluginsFromTemplate(input.template.plugins);
 	const pluginRegistry = buildPluginRegistryMaps(plugins);
 
-	const artifacts = collectArtifacts(input.ast, pluginRegistry);
 	const referenceLookup = buildReferenceLookup({
 		template: input.template,
-		headings: artifacts.headings,
-		labeledBlocks: artifacts.labeledBlocks,
+		headings: input.headings,
+		labeledBlocks: input.labeledBlocks,
 		pluginRegistry,
 	});
 
@@ -45,7 +43,7 @@ export async function renderArtichale(
 		pluginRegistry,
 		resolvedReferences: referenceLookup.resolvedReferences,
 		fnJSONAssetReader: input.fnJSONAssetReader,
-		fnAsssetResolver: input.fnAsssetResolver,
+		fnAssetResolver: input.fnAssetResolver,
 	});
 
 	const article = renderPage({
