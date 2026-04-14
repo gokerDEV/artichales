@@ -1,0 +1,117 @@
+/* Paged.js output primitives shared by preview and isolated print document. */
+
+.paged-print-content .pagedjs_pages {
+	@apply flex flex-col items-center gap-8;
+}
+
+.paged-print-content .pagedjs_page {
+	@apply relative h-auto w-full bg-white shadow-xl ring-1 ring-gray-300;
+}
+
+.paged-print-content .pagedjs_pagebox {
+	overflow: visible;
+}
+
+@media print {
+	html,
+	body {
+		background: white !important;
+		height: auto !important;
+		overflow: visible !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		print-color-adjust: exact;
+		-webkit-print-color-adjust: exact;
+	}
+
+	#print-root,
+	#print-root main,
+	#print-root [data-art-print-document="true"],
+	#print-root .paged-print-content {
+		margin: 0 !important;
+		padding: 0 !important;
+	}
+
+	.paged-print-content .pagedjs_pages {
+		display: block !important;
+	}
+
+	.paged-print-content .pagedjs_page {
+		break-after: page;
+		page-break-after: always;
+		border: 0 !important;
+		box-shadow: none !important;
+		margin: 0 !important;
+	}
+
+	.paged-print-content .pagedjs_page:last-child {
+		break-after: auto;
+		page-break-after: auto;
+	}
+
+	.paged-print-content .print-flow-span-page {
+		column-span: all;
+	}
+
+	.paged-print-content .print-flow-span-column {
+		column-span: none;
+	}
+
+	.paged-print-content .print-flow-break-before-page {
+		break-before: page;
+		page-break-before: always;
+	}
+
+	.paged-print-content .print-flow-break-after-page {
+		break-after: page;
+		page-break-after: always;
+	}
+
+	.paged-print-content h1,
+	.paged-print-content h2,
+	.paged-print-content h3,
+	.paged-print-content figure,
+	.paged-print-content table,
+	.paged-print-content pre,
+	.paged-print-content blockquote {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+
+	.paged-print-content .footnotes {
+		break-before: avoid-page;
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+}
+
+/* Layout rules specific to isolated print document runtime. */
+
+[data-art-print-document="true"] {
+	max-width: 100%;
+}
+
+[data-art-print-document="true"] .paged-print-content .pagedjs_pages {
+	padding: 0;
+}
+
+@media print {
+	html,
+	body {
+		background: white !important;
+	}
+
+	#print-root {
+		height: auto !important;
+		margin: 0 !important;
+		max-width: none !important;
+		min-height: 0 !important;
+		overflow: visible !important;
+		padding: 0 !important;
+		width: 100% !important;
+	}
+
+	[data-art-print-document="true"] .paged-print-content .pagedjs_pages {
+		display: block !important;
+	}
+}

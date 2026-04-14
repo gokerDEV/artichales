@@ -1,0 +1,62 @@
+import { collectArtifacts } from "@/components/artichale/core/artifacts.collector";
+import {
+	buildPluginRegistryMaps,
+	resolvePlugins,
+} from "@/components/artichale/core/plugin.registry";
+import { parseBibliography } from "@/components/artichale/parser/bibliography.parser";
+import { parseDocument } from "@/components/artichale/parser/document.parser";
+import { parseFrontmatter } from "@/components/artichale/parser/frontmatter.parser";
+import { parseTemplate } from "@/components/artichale/parser/template.parser";
+import type {
+	ParseArtichaleInput,
+	ParseArtichaleResult,
+} from "@/components/artichale/types/pipeline.types";
+
+const FRONTMATTER_BLOCK_PATTERN =
+	/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+
+function splitFrontmatter(rawMarkdown: string): {
+	rawFrontmatter?: string;
+	content: string;
+} {
+	const match = rawMarkdown.match(FRONTMATTER_BLOCK_PATTERN);
+	if (!match) {
+		return { content: rawMarkdown };
+	}
+
+	return {
+		rawFrontmatter: match[1],
+		content: rawMarkdown.slice(match[0].length),
+	};
+}
+
+export function parseArtichale(
+	input: ParseArtichaleInput,
+): ParseArtichaleResult {
+	const templateResult = parseTemplate(input.rawTemplate);
+	const plugins = resolvePlugins(templateResult.template.plugins);
+	const pluginRegistry = buildPluginRegistryMaps(plugins);
+	const bibliographyResult = parseBibliography(input.rawBibliography);
+
+	const split = splitFrontmatter(input.rawMarkdown);
+	const frontmatterResult = parseFrontmatter(split.rawFrontmatter);
+	const documentResult = parseDocument(split.content);
+	const artifacts = collectArtifacts(documentResult.ast, pluginRegistry);
+
+	return {
+		template: templateResult.template,
+		bibliography: bibliographyResult.bibliography,
+		frontmatter: frontmatterResult.frontmatter,
+		ast: documentResult.ast,
+		headings: artifacts.headings,
+		labeledBlocks: artifacts.labeledBlocks,
+		citations: artifacts.citations,
+		diagnostics: [
+			...frontmatterResult.diagnostics,
+			...documentResult.diagnostics,
+			...artifacts.diagnostics,
+			...bibliographyResult.diagnostics,
+		],
+		templateResult,
+	};
+}
