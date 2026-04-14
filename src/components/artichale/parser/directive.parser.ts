@@ -48,6 +48,16 @@ function isDirectiveLabelParagraph(node: RootContent): boolean {
 	return data?.directiveLabel === true;
 }
 
+function resolveCaptionText(rawCaption: string): string {
+	const trimmed = rawCaption.trim();
+	if (trimmed === "") return "";
+	const match = trimmed.match(/^caption\s*:\s*(.+)$/i);
+	if (!match) return trimmed;
+	const value = match[1].trim();
+	const quoted = value.match(/^(['"])([\s\S]*)\1$/);
+	return quoted ? quoted[2].trim() : value;
+}
+
 export function parseDirectiveNode(node: DirectiveNode): ParsedDirective {
 	const children = Array.isArray(node.children) ? node.children : [];
 	const attributes = node.attributes ?? {};
@@ -71,6 +81,6 @@ export function parseDirectiveNode(node: DirectiveNode): ParsedDirective {
 			: `${node.name}:unknown`,
 		label,
 		dataFile,
-		caption,
+		caption: resolveCaptionText(caption),
 	};
 }

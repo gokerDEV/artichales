@@ -1,12 +1,5 @@
 import type { Root, RootContent } from "mdast";
 import { visit } from "unist-util-visit";
-import {
-	collectNodeText,
-	normalizeReferenceKey,
-	parseDirectiveNode,
-	sourcePosition,
-	toDirectiveId,
-} from "@/components/artichale/core/artichale.util";
 import { createParseDiagnostic } from "@/components/artichale/core/diagnostic";
 import type {
 	HeadingEntry,

@@ -1,10 +1,15 @@
 import type { RootContent } from "mdast";
-import type {
-	DirectiveNode,
-	ParsedDirective,
-} from "@/components/artichale/types/plugin.types";
+import type { DirectiveNode } from "@/components/artichale/types/plugin.types";
 
 type UnknownRecord = Record<string, unknown>;
+type ParsedDirective = {
+	id: string;
+	label: string;
+	dataFile: string;
+	caption: string;
+	attributes: Record<string, string>;
+	children: RootContent[];
+};
 
 export function normalizeReferenceKey(value: string): string {
 	return value

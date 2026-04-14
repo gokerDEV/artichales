@@ -21,6 +21,7 @@ import {
 	createRenderDiagnostic,
 } from "@/components/artichale/core/diagnostic";
 import type {
+	DisplayAs,
 	PluginDefinition,
 	PluginRegistryMaps,
 } from "@/components/artichale/types/plugin.types";
@@ -57,6 +58,14 @@ type ParsedDirectiveNode = {
 };
 
 type UnknownRecord = Record<string, unknown>;
+type CaptionDisplayFamily = DisplayAs;
+
+const CAPTION_DISPLAY_FAMILIES: ReadonlySet<CaptionDisplayFamily> = new Set([
+	"figure",
+	"table",
+	"equation",
+	"code",
+]);
 
 function collectNodeText(node: unknown): string {
 	if (!node || typeof node !== "object") return "";
@@ -111,8 +120,18 @@ function parseDirectiveNode(node: {
 
 	return {
 		id: normalized ? `${node.name}:${normalized}` : `${node.name}:unknown`,
-		caption,
+		caption: resolveCaptionText(caption),
 	};
+}
+
+function resolveCaptionText(rawCaption: string): string {
+	const trimmed = rawCaption.trim();
+	if (trimmed === "") return "";
+	const match = trimmed.match(/^caption\s*:\s*(.+)$/i);
+	if (!match) return trimmed;
+	const value = match[1].trim();
+	const quoted = value.match(/^(['"])([\s\S]*)\1$/);
+	return quoted ? quoted[2].trim() : value;
 }
 
 function textValue(node: Text): ReactNode {
@@ -185,9 +204,11 @@ async function renderDirective(
 			resolvedReferences: context.resolvedReferences,
 		});
 		const parsed = parseDirectiveNode(node);
-		const caption = parsed.caption ? (
-			<figcaption className="art-caption">{parsed.caption}</figcaption>
-		) : null;
+		const shouldRenderCaption = CAPTION_DISPLAY_FAMILIES.has(plugin.displayAs);
+		const caption =
+			shouldRenderCaption && parsed.caption ? (
+				<figcaption className="art-caption">{parsed.caption}</figcaption>
+			) : null;
 
 		if (node.type === "textDirective") return rendered;
 

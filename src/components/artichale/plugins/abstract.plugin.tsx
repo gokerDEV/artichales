@@ -1,9 +1,42 @@
+import * as React from "react";
 import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
+import {
+	resolveBlockSpacingStyle,
+	resolveCaptionText,
+	resolveComponentConfig,
+} from "@/components/artichale/base/plugin.shared.ts";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,
 	DisplayAs,
 } from "@/components/artichale/types/plugin.types";
+
+const AbstractBlock = React.memo(
+	function AbstractBlock({
+		content,
+		marginTop,
+		marginBottom,
+	}: {
+		content: string;
+		marginTop?: string;
+		marginBottom?: string;
+	}) {
+		return (
+			<section
+				className="art-abstract"
+				data-flow-span="column"
+				style={{ marginTop, marginBottom }}
+			>
+				<strong className="art-abstract-title">Abstract</strong>
+				{content ? <p>{content}</p> : null}
+			</section>
+		);
+	},
+	(previousProps, nextProps) =>
+		previousProps.content === nextProps.content &&
+		previousProps.marginTop === nextProps.marginTop &&
+		previousProps.marginBottom === nextProps.marginBottom,
+);
 
 export const abstractPlugin: PluginDefinition = {
 	id: "abstract",
@@ -11,13 +44,17 @@ export const abstractPlugin: PluginDefinition = {
 	displayAs: DisplayAs.ABSTRACT,
 	kind: DirectiveKind.CONTAINER,
 	autocomplete: true,
-	render({ node }) {
+	render({ node, template }) {
 		const parsed = parseDirectiveNode(node);
+		const content = resolveCaptionText(parsed.caption);
+		const config = resolveComponentConfig(template, "abstract");
+		const spacing = resolveBlockSpacingStyle(config);
 		return (
-			<section id={parsed.id.replaceAll(":", "-")} className="art-abstract">
-				<strong className="art-abstract-title">Abstract</strong>
-				{parsed.caption ? <p>{parsed.caption}</p> : null}
-			</section>
+			<AbstractBlock
+				content={content}
+				marginTop={spacing.marginTop}
+				marginBottom={spacing.marginBottom}
+			/>
 		);
 	},
 };
