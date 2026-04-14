@@ -72,7 +72,7 @@ Body.`);
 	});
 
 	test("collects citation usage in first-appearance order from article AST", () => {
-		const files = createWorkspace(`Body [cite:knuth1984], then [cite:lamport1994], then [cite:knuth1984].`);
+		const files = createWorkspace(`Body :cite[knuth1984], then :cite[lamport1994], then :cite[knuth1984].`);
 		const result = runDocumentPipeline(files, "web");
 		expect(result.article.citations).toEqual(["knuth1984", "lamport1994"]);
 	});

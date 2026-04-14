@@ -10,6 +10,11 @@ import { plottyDirectivePlugin } from "./plotty.directive.plugin";
 import type { PluginCategory, PluginDefinition } from "./plugin.contract";
 import { refRenderPlugin } from "./ref.render.plugin";
 import { referencesRenderPlugin } from "./references.render.plugin";
+import {
+	sectionDirectivePlugin,
+	subsectionDirectivePlugin,
+	subsubsectionDirectivePlugin,
+} from "./section.directive.plugin";
 import { titleRenderPlugin } from "./title.render.plugin";
 
 // Core plugins always active regardless of template config.
@@ -31,6 +36,9 @@ const DIRECTIVE_PLUGINS: PluginDefinition[] = [
 	abstractDirectivePlugin,
 	datatableDirectivePlugin,
 	plottyDirectivePlugin,
+	sectionDirectivePlugin,
+	subsectionDirectivePlugin,
+	subsubsectionDirectivePlugin,
 ];
 
 const DIRECTIVE_PLUGINS_BY_ID = new Map(

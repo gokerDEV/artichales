@@ -142,6 +142,11 @@ export function EditorPreviewSurface() {
 		latestFilesRef.current = files;
 	}, [files]);
 
+	const commitFiles = React.useCallback((nextFiles: Record<string, string>) => {
+		latestFilesRef.current = nextFiles;
+		setFiles(nextFiles);
+	}, []);
+
 	React.useEffect(() => {
 		try {
 			const stored = localStorage.getItem(WORKSPACE_PREVIEW_DEBOUNCE_KEY);
@@ -227,7 +232,7 @@ export function EditorPreviewSurface() {
 					DEFAULT_WORKSPACE_FILES,
 				);
 				if (cancelled) return;
-				setFiles(loaded);
+				commitFiles(loaded);
 
 				try {
 					const rawState = localStorage.getItem(WORKSPACE_UI_STATE_KEY);
@@ -265,7 +270,7 @@ export function EditorPreviewSurface() {
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [commitFiles]);
 
 	React.useEffect(() => {
 		if (!hasLoadedWorkspaceRef.current || isHydratingRef.current) return;
@@ -302,7 +307,7 @@ export function EditorPreviewSurface() {
 	}, [activeFile, panelSizesOverride, target, scale]);
 
 	const { settings, updateSettings, loading } = useSettings();
-	const docSource = useDocument(files, target);
+	const docSource = useDocument(target);
 	const deferredArticleContent = React.useDeferredValue(
 		files[CORE_ARTICLE_FILE] || "",
 	);
@@ -312,11 +317,10 @@ export function EditorPreviewSurface() {
 
 	const handleFileChange = React.useCallback(
 		(content: string) => {
-			React.startTransition(() => {
-				setFiles((prev) => ({ ...prev, [activeFile]: content }));
-			});
+			const nextFiles = { ...latestFilesRef.current, [activeFile]: content };
+			commitFiles(nextFiles);
 		},
-		[activeFile],
+		[activeFile, commitFiles],
 	);
 	const articleHeadings = React.useMemo(
 		() => collectAlignmentHeadings(deferredArticleContent),
@@ -352,11 +356,11 @@ export function EditorPreviewSurface() {
 			}
 
 			if (nextFiles !== files) {
-				setFiles(nextFiles);
+				commitFiles(nextFiles);
 				toast.success("Asset files were added to the workspace.");
 			}
 		},
-		[files, maxAssetFileSize],
+		[commitFiles, files, maxAssetFileSize],
 	);
 
 	const handleAddAssetsClick = React.useCallback(() => {
@@ -403,16 +407,17 @@ export function EditorPreviewSurface() {
 				return;
 			}
 
-			setFiles((prev) => {
-				const updated = { ...prev, [proposed]: existingContent };
-				delete updated[fileName];
-				return updated;
-			});
+			const updated = {
+				...latestFilesRef.current,
+				[proposed]: existingContent,
+			};
+			delete updated[fileName];
+			commitFiles(updated);
 			if (activeFile === fileName) {
 				setActiveFile(proposed);
 			}
 		},
-		[activeFile, files, maxAssetFileSize],
+		[activeFile, commitFiles, files, maxAssetFileSize],
 	);
 
 	const handleDeleteAsset = React.useCallback(
@@ -420,16 +425,14 @@ export function EditorPreviewSurface() {
 			if (isCoreWorkspaceFile(fileName)) return;
 			const confirmed = window.confirm(`Delete asset "${fileName}"?`);
 			if (!confirmed) return;
-			setFiles((prev) => {
-				const updated = { ...prev };
-				delete updated[fileName];
-				return updated;
-			});
+			const updated = { ...latestFilesRef.current };
+			delete updated[fileName];
+			commitFiles(updated);
 			if (activeFile === fileName) {
 				setActiveFile(CORE_ARTICLE_FILE);
 			}
 		},
-		[activeFile],
+		[activeFile, commitFiles],
 	);
 
 	const handleResetWorkspace = React.useCallback(() => {
@@ -437,10 +440,10 @@ export function EditorPreviewSurface() {
 			"Reset workspace to default files? This will discard current edits.",
 		);
 		if (!confirmed) return;
-		setFiles({ ...DEFAULT_WORKSPACE_FILES });
+		commitFiles({ ...DEFAULT_WORKSPACE_FILES });
 		setActiveFile(CORE_ARTICLE_FILE);
 		toast.success("Workspace reset to defaults.");
-	}, []);
+	}, [commitFiles]);
 
 	const savedSizes = normalizePanelSizes(panelSizesOverride) ||
 		normalizePanelSizes(settings.ux?.editorPanelSizes) || [15, 40, 45];
@@ -849,7 +852,7 @@ export function EditorPreviewSurface() {
 									triggerManualRender();
 								}
 								workspaceRepository
-									.saveWorkspace(files)
+									.saveWorkspace(latestFilesRef.current)
 									.then(() => setSaveError(null))
 									.catch((error) => {
 										console.error("Failed to save workspace on blur:", error);

@@ -45,11 +45,11 @@ export function buildBibliographyCompletions() {
 
 export function buildArticleCompletions(completions: EditorCompletions) {
 	const refOptions = completions.referenceSelectors.map((selector) => ({
-		label: `[ref:${selector}]`,
+		label: `:ref[${selector}]`,
 		type: "variable",
 	}));
 	const citeOptions = completions.bibKeys.map((key) => ({
-		label: `[cite:${key}]`,
+		label: `:cite[${key}]`,
 		type: "variable",
 	}));
 	const directiveOptions = completions.directiveNames.map((directive) => ({
@@ -62,11 +62,9 @@ export function buildArticleCompletions(completions: EditorCompletions) {
 		{ label: "title:", type: "property" },
 		{ label: "authors:", type: "property" },
 		{ label: "keywords:", type: "property" },
-		{ label: "[cite:]", type: "keyword" },
-		{ label: "[ref:type:key]", type: "keyword" },
-		{ label: "[ref:type]", type: "keyword" },
-		{ label: "[caption:type:key]", type: "keyword" },
-		{ label: "[caption:type:key](Title)", type: "keyword" },
+		// { label: ":cite[]", type: "keyword" },
+		// { label: ":ref[type:key]", type: "keyword" },
+		{ label: ":fn[]", type: "keyword" },
 		...directiveOptions,
 		...refOptions,
 		...citeOptions,

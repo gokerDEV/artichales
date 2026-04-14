@@ -54,6 +54,7 @@ function buildDocumentSource(result: PipelineExecutionResult): DocumentSource {
 		parsedArticle: result.article,
 		citationStyle: resolvedTemplate.citationStyle ?? "numeric",
 		assetFiles: [],
+		renderVersion: 1,
 		templateDiagnostics: [...result.template.diagnostics],
 		bibDiagnostics: [...result.bibliography.diagnostics],
 		assetDiagnostics: [],

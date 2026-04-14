@@ -22,7 +22,10 @@ export function useWorkspaceJsonFile<T>(
 
 	const lastUpdated = useWorkspaceStore((state) => {
 		if (!file) return null;
-		return state.assetFiles.find((a) => a.name === file)?.lastUpdated ?? null;
+		return (
+			state.workspaceFiles.find((entry) => entry.name === file)?.lastUpdated ??
+			null
+		);
 	});
 
 	const data = React.useMemo<T | null>(() => {

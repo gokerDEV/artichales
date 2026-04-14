@@ -11,6 +11,7 @@ import type {
 	PipelineDiagnostic,
 } from "@/components/artichales/types/pipeline.types";
 import type { PluginRegistryMaps } from "@/components/artichales/types/plugin.types";
+import type { WorkspaceFileEntry } from "@/components/artichales/types/workspace.types";
 import type { BibtexDiagnostic, CitationEntry } from "@/lib/bibtex";
 import { buildPluginRegistryMaps as createPluginRegistryMaps } from "@/lib/document-pipeline";
 import {
@@ -120,11 +121,8 @@ export interface DocumentSource {
 	parsedBibliography: ParsedBibliography;
 	parsedArticle: ParsedArticle;
 	citationStyle: string;
-	assetFiles: Array<{
-		name: string;
-		kind: string;
-		lastUpdated: number;
-	}>;
+	assetFiles: WorkspaceFileEntry[];
+	renderVersion: number;
 	templateDiagnostics: TemplateDiagnostic[];
 	bibDiagnostics: BibtexDiagnostic[];
 	assetDiagnostics: PipelineDiagnostic[];
@@ -213,10 +211,7 @@ const EMPTY_PARSED_TEMPLATE: ParsedTemplate = {
 	diagnostics: [],
 };
 
-export function useDocument(
-	_files: Record<string, string>,
-	target: PreviewTarget,
-): DocumentSource {
+export function useDocument(target: PreviewTarget): DocumentSource {
 	const parsedTemplate = useWorkspaceStore((state) => state.parsedTemplate);
 	const parsedBibliography = useWorkspaceStore(
 		(state) => state.parsedBibliography,
@@ -224,6 +219,7 @@ export function useDocument(
 	const parsedArticle = useWorkspaceStore((state) => state.parsedArticle);
 	const diagnostics = useWorkspaceStore((state) => state.diagnostics);
 	const activePluginIds = useWorkspaceStore((state) => state.activePluginIds);
+	const workspaceFiles = useWorkspaceStore((state) => state.workspaceFiles);
 	const assetFiles = useWorkspaceStore((state) => state.assetFiles);
 
 	const effectiveParsedTemplate = parsedTemplate ?? EMPTY_PARSED_TEMPLATE;
@@ -323,6 +319,13 @@ export function useDocument(
 		}
 		return result;
 	}, [articleDiagnostics, bibDiagnostics, templateDiagnostics]);
+	const renderVersion = React.useMemo(() => {
+		let max = 0;
+		for (const file of workspaceFiles) {
+			if (file.lastUpdated > max) max = file.lastUpdated;
+		}
+		return max;
+	}, [workspaceFiles]);
 
 	return {
 		ast: articleAst,
@@ -335,6 +338,7 @@ export function useDocument(
 		parsedArticle: effectiveParsedArticle,
 		citationStyle,
 		assetFiles,
+		renderVersion,
 		templateDiagnostics,
 		bibDiagnostics,
 		assetDiagnostics,

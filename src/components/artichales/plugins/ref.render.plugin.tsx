@@ -34,77 +34,12 @@ function normalizeRefId(raw: string): string {
 	return trimmed.replace(/\.[^/.]+$/, "");
 }
 
-function normalizeCaptionId(type: string, key: string): string {
-	const normalizedType = type.trim().toLowerCase();
-	const normalizedKey = normalizeRefId(key).toLowerCase();
-	return `caption-${normalizedType}-${normalizedKey}`;
-}
-
 export function createRefRender(
 	resolvedReferences: Record<string, ResolvedReference>,
 	refClassName: string,
 ): Components["span"] {
 	return function RefRender({ node, children, ...rest }: RefRenderProps) {
 		const restProps = rest as Record<string, unknown>;
-		const rawCaptionType =
-			node?.properties?.dataCaptionType ||
-			node?.properties?.["data-caption-type"] ||
-			restProps.dataCaptionType ||
-			restProps["data-caption-type"];
-		const rawCaptionKey =
-			node?.properties?.dataCaptionKey ||
-			node?.properties?.["data-caption-key"] ||
-			restProps.dataCaptionKey ||
-			restProps["data-caption-key"];
-		const rawCaptionTitle =
-			node?.properties?.dataCaptionTitle ||
-			node?.properties?.["data-caption-title"] ||
-			restProps.dataCaptionTitle ||
-			restProps["data-caption-title"];
-		const captionType =
-			typeof rawCaptionType === "string" ? rawCaptionType.trim() : "";
-		const captionKey =
-			typeof rawCaptionKey === "string" ? rawCaptionKey.trim() : "";
-		const captionTitle =
-			typeof rawCaptionTitle === "string" ? rawCaptionTitle.trim() : "";
-
-		if (captionType && captionKey) {
-			const expectedSelector = `${captionType.toLowerCase()}:${normalizeRefId(
-				captionKey,
-			).toLowerCase()}`;
-			const resolved = resolvedReferences[expectedSelector];
-			const captionId = resolved?.href
-				? resolved.href.replace(/^#/, "")
-				: normalizeCaptionId(captionType, captionKey);
-			const resolvedLabel = resolved?.label;
-			const displayLabel = resolvedLabel ? `${resolvedLabel}. ` : "";
-
-			if (captionTitle) {
-				return (
-					<span
-						{...rest}
-						id={captionId}
-						className="caption-anchor my-2 block text-center text-xs italic"
-					>
-						{displayLabel && (
-							<span className="mr-1 font-semibold text-[var(--art-text-color)] not-italic">
-								{displayLabel}
-							</span>
-						)}
-						{captionTitle}
-					</span>
-				);
-			}
-			return (
-				<span
-					{...rest}
-					id={captionId}
-					aria-hidden="true"
-					className="caption-anchor sr-only"
-				/>
-			);
-		}
-
 		const rawRefId =
 			node?.properties?.dataRefId ||
 			node?.properties?.["data-ref-id"] ||

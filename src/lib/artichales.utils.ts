@@ -89,6 +89,22 @@ function extractDirectiveBody(node: UnknownRecord): string {
 	return bodyParts.join("\n");
 }
 
+function stripDirectiveLabelChildren(node: UnknownRecord): void {
+	const children = node.children;
+	if (!Array.isArray(children)) return;
+	node.children = children.filter((child) => {
+		if (!child || typeof child !== "object") return true;
+		const paragraph = child as UnknownRecord;
+		if (paragraph.type !== "paragraph") return true;
+		const data = paragraph.data;
+		return !(
+			data &&
+			typeof data === "object" &&
+			(data as UnknownRecord).directiveLabel === true
+		);
+	});
+}
+
 function extractDirectiveBodyFromSource(
 	node: UnknownRecord,
 	source: string | undefined,
@@ -119,6 +135,18 @@ function extractDirectiveBodyFromSource(
 	return lines.slice(1, -1).join("\n");
 }
 
+const NARRATIVE_DIRECTIVES = new Set([
+	"abstract",
+	"section",
+	"subsection",
+	"subsubsection",
+]);
+const LABEL_STRIP_DIRECTIVES = new Set([
+	"section",
+	"subsection",
+	"subsubsection",
+]);
+
 function normalizeDirectiveNode(
 	node: UnknownRecord,
 	directiveName: string,
@@ -147,8 +175,11 @@ function normalizeDirectiveNode(
 		"data-directive-params": JSON.stringify(params),
 		...paramProperties,
 	};
-	// Keep prose directive children intact (e.g. abstract body text).
-	if (directiveName === "abstract") {
+	// Keep prose directive children intact for narrative blocks.
+	if (NARRATIVE_DIRECTIVES.has(directiveName)) {
+		if (LABEL_STRIP_DIRECTIVES.has(directiveName)) {
+			stripDirectiveLabelChildren(node);
+		}
 		return;
 	}
 	// Data-driven directives normalize to metadata-only nodes.
@@ -173,58 +204,3 @@ export const remarkNormalizeDirectives: Plugin<[], Root> = () => {
 		});
 	};
 };
-
-function escapeDirectiveAttributeValue(value: string): string {
-	return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
-}
-
-function parseBracketSegments(source: string): string[] {
-	const segments: string[] = [];
-	const segmentRegex = /\[([^\]\n]*)\]/g;
-	let match: RegExpExecArray | null = null;
-	while (true) {
-		match = segmentRegex.exec(source);
-		if (match === null) break;
-		segments.push(match[1] ?? "");
-	}
-	return segments;
-}
-
-/**
- * Rewrites extended header syntax:
- * :::plugin_id[data_file][span_options][reserve]
- * into remark-directive compatible syntax with attributes.
- */
-export function normalizeExtendedDirectiveSyntax(content: string): string {
-	const headerRegex =
-		/^([ \t]*:::[ \t]*)([a-zA-Z][\w-]*)(\[[^\]\n]*\](?:\[[^\]\n]*\]){0,2})([ \t]*)$/gm;
-	return content.replace(
-		headerRegex,
-		(
-			_,
-			prefix: string,
-			pluginId: string,
-			rawSegments: string,
-			suffix: string,
-		) => {
-			const segments = parseBracketSegments(rawSegments);
-			if (segments.length === 0 || segments.length > 3) {
-				return `${prefix}${pluginId}${rawSegments}${suffix}`;
-			}
-			const [dataFileRaw = "", spanOptionsRaw = "", reserveRaw = ""] = segments;
-			const attrs: string[] = [];
-			const spanOptions = spanOptionsRaw.trim();
-			const reserve = reserveRaw.trim();
-			if (spanOptions !== "") {
-				attrs.push(
-					`span_options="${escapeDirectiveAttributeValue(spanOptions)}"`,
-				);
-			}
-			if (reserve !== "") {
-				attrs.push(`reserve="${escapeDirectiveAttributeValue(reserve)}"`);
-			}
-			const attrBlock = attrs.length > 0 ? `{${attrs.join(" ")}}` : "";
-			return `${prefix}${pluginId}[${dataFileRaw}]${attrBlock}${suffix}`;
-		},
-	);
-}

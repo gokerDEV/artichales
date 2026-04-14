@@ -53,10 +53,8 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta t
 Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3). Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 ### Heading Level 3
-Citation tokens: [cite:knuth1984, goker] and [cite: knuth1984, goker].
-Cross refs: [ref:plotty:plot_1], [ref: plotty:plot_1], [ref:datatable:datatable_1], [ref:abstract].
-[caption:section:intro_section](Introduction Section)
-Caption refs: [ref:section:intro_section]. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
+Citation tokens: :cite[knuth1984, goker] and :cite[knuth1984, goker].
+Cross refs: :ref[plotty:plot_1], :ref[datatable:datatable_1], :ref[abstract]. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 #### Heading Level 4
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
@@ -134,11 +132,11 @@ $$
 ## Custom Directives
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
-:::plotty[plot_1.json][span=page breakBefore=page breakAfter=page][]
+:::plotty[plot_1.json]{span_options="page"}
 caption: "Full-width ribbon plot in two-column print layout"
 :::
 
-:::datatable[datatable_1.json][span=column][]
+:::datatable[datatable_1.json]{span_options="column"}
 caption: "Column-flow datatable after full-width figure"
 :::
 

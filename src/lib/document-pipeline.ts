@@ -35,10 +35,7 @@ import type {
 	PluginMetadata,
 	PluginRegistryMaps,
 } from "@/components/artichales/types/plugin.types";
-import {
-	normalizeExtendedDirectiveSyntax,
-	remarkNormalizeDirectives,
-} from "@/lib/artichales.utils";
+import { remarkNormalizeDirectives } from "@/lib/artichales.utils";
 import { parseBibtexDocument } from "@/lib/bibtex";
 import { resolveTemplateFile } from "@/lib/template";
 import {
@@ -329,10 +326,8 @@ function executeParserHooks(
 		});
 	}
 
-	const normalizedArticleContent =
-		normalizeExtendedDirectiveSyntax(articleContent);
 	try {
-		let ast = processor.parse(normalizedArticleContent);
+		let ast = processor.parse(articleContent);
 		ast = processor.runSync(ast) as Root;
 		return { ast, diagnostics };
 	} catch (error) {
@@ -351,16 +346,6 @@ function executeParserHooks(
 			],
 		};
 	}
-}
-
-function extractNodeText(node: unknown): string {
-	if (!node || typeof node !== "object") return "";
-	const record = node as Record<string, unknown>;
-	const ownValue = typeof record.value === "string" ? record.value : "";
-	const children = Array.isArray(record.children) ? record.children : [];
-	return [ownValue, ...children.map((child) => extractNodeText(child))]
-		.join("")
-		.trim();
 }
 
 function normalizeLabelKey(raw: string): string {
@@ -485,7 +470,7 @@ function collectArticleArtifacts(
 			pluginId === "subsubsection"
 		) {
 			if (!normalizedLabel) return;
-			const title = extractNodeText(node) || rawLabel || pluginId;
+			const title = rawLabel || pluginId;
 			const id = `${pluginId}:${normalizedLabel}`;
 			if (seenHeadingIds.has(id)) {
 				diagnostics.push({
@@ -765,17 +750,4 @@ export function runDocumentPipeline(
 			...stageDiagnostics,
 		],
 	};
-}
-
-export function buildDocumentModel(
-	files: Record<string, string>,
-): PipelineExecutionResult {
-	return runDocumentPipeline(files, "web");
-}
-
-export function enrichDocumentModelForTarget(
-	model: PipelineExecutionResult,
-	_target: "web" | "print",
-): PipelineExecutionResult {
-	return model;
 }

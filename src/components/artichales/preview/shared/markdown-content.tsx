@@ -206,15 +206,31 @@ export function MarkdownContent({
 		const divRenderer = components.div as Components["div"] | undefined;
 		components.div = ((props) => {
 			const { node, children, ...rest } = props as ParagraphProps;
-			const directive = getDirectiveProperty(node, "data-directive");
+			const restProps = rest as UnknownRecord;
+			const directiveFromProps =
+				typeof restProps["data-directive"] === "string"
+					? (restProps["data-directive"] as string)
+					: typeof restProps.dataDirective === "string"
+						? (restProps.dataDirective as string)
+						: "";
+			const directive =
+				getDirectiveProperty(node, "data-directive") || directiveFromProps;
 			const directiveRenderer = directiveRenderers.get(directive);
 			if (directiveRenderer) {
 				return directiveRenderer.component({
 					...props,
 					directive,
-					raw: getDirectiveProperty(node, "data-directive-raw"),
+					raw:
+						getDirectiveProperty(node, "data-directive-raw") ||
+						(typeof restProps["data-directive-raw"] === "string"
+							? (restProps["data-directive-raw"] as string)
+							: ""),
 					params: {
-						data_file: getDirectiveProperty(node, "data-directive-data-file"),
+						data_file:
+							getDirectiveProperty(node, "data-directive-data-file") ||
+							(typeof restProps["data-directive-data-file"] === "string"
+								? (restProps["data-directive-data-file"] as string)
+								: ""),
 					},
 					config: pluginConfigs?.[directiveRenderer.category] || {},
 					target,

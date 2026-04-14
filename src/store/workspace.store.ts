@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { WorkspaceFileEntry } from "@/components/artichales/types/workspace.types";
 import type {
 	AppDiagnostic,
 	ParsedArticle,
@@ -11,12 +12,6 @@ import {
 	CORE_BIB_FILE,
 	CORE_TEMPLATE_FILE,
 } from "@/lib/workspace";
-
-type WorkspaceAssetFile = {
-	name: string;
-	kind: string;
-	lastUpdated: number;
-};
 
 function getAssetKind(fileName: string): string {
 	const extension = fileName.includes(".")
@@ -33,16 +28,16 @@ function isAssetFile(fileName: string): boolean {
 	);
 }
 
-function buildAssetFiles(
+function buildWorkspaceFiles(
 	files: Record<string, string>,
 	previousFiles: Record<string, string>,
-	previousAssets: WorkspaceAssetFile[],
-): WorkspaceAssetFile[] {
+	previousEntries: WorkspaceFileEntry[],
+): WorkspaceFileEntry[] {
 	const previousByName = new Map(
-		previousAssets.map((asset) => [asset.name, asset]),
+		previousEntries.map((file) => [file.name, file]),
 	);
+	const now = Date.now();
 	return Object.keys(files)
-		.filter(isAssetFile)
 		.sort((a, b) => a.localeCompare(b))
 		.map((fileName) => {
 			const previous = previousByName.get(fileName);
@@ -50,7 +45,7 @@ function buildAssetFiles(
 			return {
 				name: fileName,
 				kind: getAssetKind(fileName),
-				lastUpdated: previous && !didChange ? previous.lastUpdated : Date.now(),
+				lastUpdated: previous && !didChange ? previous.lastUpdated : now,
 			};
 		});
 }
@@ -58,7 +53,8 @@ function buildAssetFiles(
 interface WorkspaceState {
 	// Slice 1: Input (Read by Editor and Worker only)
 	rawFiles: Record<string, string>;
-	assetFiles: WorkspaceAssetFile[];
+	workspaceFiles: WorkspaceFileEntry[];
+	assetFiles: WorkspaceFileEntry[];
 	setRawFiles: (files: Record<string, string>) => void;
 	updateFile: (fileName: string, content: string) => void;
 
@@ -83,21 +79,35 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	rawFiles: {},
+	workspaceFiles: [],
 	assetFiles: [],
 	setRawFiles: (files) =>
-		set((state) => ({
-			rawFiles: files,
-			assetFiles: buildAssetFiles(files, state.rawFiles, state.assetFiles),
-		})),
-	updateFile: (fileName, content) =>
-		set((state) => ({
-			rawFiles: { ...state.rawFiles, [fileName]: content },
-			assetFiles: buildAssetFiles(
-				{ ...state.rawFiles, [fileName]: content },
+		set((state) => {
+			const workspaceFiles = buildWorkspaceFiles(
+				files,
 				state.rawFiles,
-				state.assetFiles,
-			),
-		})),
+				state.workspaceFiles,
+			);
+			return {
+				rawFiles: files,
+				workspaceFiles,
+				assetFiles: workspaceFiles.filter((file) => isAssetFile(file.name)),
+			};
+		}),
+	updateFile: (fileName, content) =>
+		set((state) => {
+			const rawFiles = { ...state.rawFiles, [fileName]: content };
+			const workspaceFiles = buildWorkspaceFiles(
+				rawFiles,
+				state.rawFiles,
+				state.workspaceFiles,
+			);
+			return {
+				rawFiles,
+				workspaceFiles,
+				assetFiles: workspaceFiles.filter((file) => isAssetFile(file.name)),
+			};
+		}),
 
 	parsedTemplate: null,
 	parsedBibliography: null,
