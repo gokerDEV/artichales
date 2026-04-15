@@ -1,8 +1,5 @@
 import * as React from "react";
-import {
-	normalizeReferenceKey,
-	parseDirectiveNode,
-} from "@/components/artichale/parser/directive.parser.ts";
+import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,
@@ -11,27 +8,12 @@ import {
 import type { ResolvedReference } from "@/components/artichale/types/reference.types";
 
 function resolveReference(
-	resolvedReferences: Record<string, ResolvedReference>,
+	resolvedReferences: ReadonlyMap<string, ResolvedReference>,
 	rawSelector: string,
 ): ResolvedReference | undefined {
-	const trimmedSelector = rawSelector.trim();
-	if (trimmedSelector === "") return undefined;
-	const normalized = normalizeReferenceKey(trimmedSelector);
-	if (normalized === "") return undefined;
-
-	const directCandidates = [trimmedSelector, normalized];
-	for (const candidate of directCandidates) {
-		const resolved = resolvedReferences[candidate];
-		if (resolved) return resolved;
-	}
-
-	const suffixMatches = Object.entries(resolvedReferences).filter(
-		([selector]) => selector.endsWith(`:${normalized}`),
-	);
-	if (suffixMatches.length === 1) return suffixMatches[0][1];
-
-	// Ambiguous selector should not guess a target.
-	return undefined;
+	const selector = rawSelector.trim();
+	if (selector === "") return undefined;
+	return resolvedReferences.get(selector);
 }
 
 const ResolvedReferenceLink = React.memo(

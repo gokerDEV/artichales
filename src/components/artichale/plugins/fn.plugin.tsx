@@ -1,5 +1,5 @@
 import * as React from "react";
-import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
+import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,

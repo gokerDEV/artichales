@@ -1,3 +1,4 @@
+import { collectNodeText } from "@/components/artichale/core/artichale.util";
 import type { DirectiveNode } from "@/components/artichale/types/plugin.types.ts";
 import type { ResolvedReference } from "@/components/artichale/types/reference.types.ts";
 import type {
@@ -5,10 +6,9 @@ import type {
 	TemplateResolved,
 } from "@/components/artichale/types/template.types.ts";
 
-type ComponentKey = "abstract" | "table" | "figure" | "equation" | "code";
+type ComponentKey = keyof TemplateResolved["default"]["components"];
 
 export type FlowSpan = "column" | "page";
-
 type UnknownRecord = Record<string, unknown>;
 
 function toStringAttr(
@@ -63,16 +63,6 @@ export function resolveBlockSpacingStyle(
 	};
 }
 
-export function resolveCaptionText(rawCaption: string): string {
-	const trimmed = rawCaption.trim();
-	if (trimmed === "") return "";
-	const match = trimmed.match(/^caption\s*:\s*(.+)$/i);
-	if (!match) return trimmed;
-	const value = match[1].trim();
-	const quoted = value.match(/^(['"])([\s\S]*)\1$/);
-	return quoted ? quoted[2].trim() : value;
-}
-
 export function toReadableTitle(rawValue: string, fallback: string): string {
 	const cleaned = rawValue
 		.trim()
@@ -90,15 +80,6 @@ export function extractReferenceNumber(
 	if (!label) return "";
 	const match = label.match(/(\d+(?:\.\d+)*)$/);
 	return match?.[1] ?? "";
-}
-
-function collectNodeText(node: unknown): string {
-	if (!node || typeof node !== "object") return "";
-	const record = node as UnknownRecord;
-	if (typeof record.value === "string") return record.value;
-	if (!Array.isArray(record.children)) return "";
-	const parts = record.children.map((child) => collectNodeText(child));
-	return parts.filter((part) => part.trim() !== "").join(" ");
 }
 
 export function extractDirectiveCode(node: DirectiveNode): string {

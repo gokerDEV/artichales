@@ -1,0 +1,239 @@
+{
+	"version": 1,
+	"publisher": {
+		"id": "demo-journal",
+		"name": "Demo Journal"
+	},
+	"default": {
+		"typography": {
+			"fontFamily": {
+				"body": "Source Serif 4",
+				"heading": "Inter",
+				"mono": "JetBrains Mono"
+			},
+			"fontSize": {
+				"body": "11pt",
+				"h1": "20pt",
+				"h2": "15pt",
+				"h3": "12pt"
+			},
+			"lineHeight": 1.55,
+			"textAlign": "justify"
+		},
+		"colors": {
+			"text": "#111111",
+			"muted": "#666666",
+			"border": "#d1d5db",
+			"link": "#0f766e"
+		},
+		"components": {
+			"abstract": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"table": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"figure": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"map": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"equation": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			},
+			"code": {
+				"captionPosition": "bottom",
+				"defaultSpan": "column",
+				"spacingBefore": "0",
+				"spacingAfter": "0"
+			}
+		},
+		"referenceLabels": {
+			"abstract": "Abstract",
+			"section": "Section",
+			"subsection": "Subsection",
+			"subsubsection": "Subsubsection",
+			"figure": "Figure",
+			"table": "Table",
+			"datatable": "Table",
+			"map": "Map",
+			"equation": "Equation",
+			"code": "Code",
+			"codesample": "Code",
+			"plotty": "Figure",
+			"ref": "Reference",
+			"cite": "Citation",
+			"fn": "Footnote",
+			"link": "Link"
+		},
+		"utilities": {
+			"cite": "cite",
+			"ref": "ref",
+			"plot": "plotty",
+			"table": "datatable",
+			"figureCaption": "title mt-2 text-center text-xs italic",
+			"figureCaptionLabel": "label",
+			"tableCaption": "title mt-2 text-center text-xs italic",
+			"tableCaptionLabel": "label"
+		},
+		"citationStyle": "numeric"
+	},
+	"web": {
+		"layout": {
+			"containerWidth": "800px",
+			"containerClass": "shrink-0 rounded-xl border border-border bg-card shadow-sm",
+			"containerPaddingClass": "p-12 md:p-16",
+			"contentClass": "max-w-none"
+		}
+	},
+	"print": {
+		"page": {
+			"size": "A4",
+			"orientation": "portrait",
+			"margin": {
+				"top": "24mm",
+				"right": "20mm",
+				"bottom": "24mm",
+				"left": "20mm"
+			}
+		},
+		"layout": {
+			"firstPageColumns": 1,
+			"defaultPageColumns": 2,
+			"columnGap": "7mm"
+		},
+		"titleBlock": {
+			"enabled": true,
+			"align": "center",
+			"showAuthors": true,
+			"showAffiliations": true,
+			"showKeywords": true,
+			"spacingAfter": "12mm"
+		},
+		"pageMargins": {
+			"header": {
+				"enabled": true,
+				"first": {
+					"left": "Artichales v1",
+					"center": "First Page Header {shortTitle}",
+					"right": "{pageNumber}"
+				},
+				"last": {
+					"left": "",
+					"center": "Artichales v1 - Last Page Header {publisherName}",
+					"right": "{pageNumber}"
+				},
+				"odd": {
+					"left": "",
+					"center": "Artichales v1 - Odd Pages Header {shortTitle}",
+					"right": "{pageNumber}"
+				},
+				"even": {
+					"left": "",
+					"center": "Artichales v1 - Even Pages Header {shortTitle}",
+					"right": "{pageNumber}"
+				}
+			},
+			"footer": {
+				"enabled": true,
+				"first": {
+					"left": "",
+					"center": "Artichales v1 - First Page Footer {shortTitle}",
+					"right": "{pageNumber}"
+				},
+				"last": {
+					"left": "",
+					"center": "Artichales v1 - Last Page Footer {publisherName}",
+					"right": "{pageNumber}"
+				},
+				"odd": {
+					"left": "",
+					"center": "Artichales v1 - Odd Pages Footer {shortTitle}",
+					"right": "{pageNumber}"
+				},
+				"even": {
+					"left": "",
+					"center": "Artichales v1 - Even Pages Footer {shortTitle}",
+					"right": "{pageNumber}"
+				}
+			},
+			"left": {
+				"enabled": true,
+				"first": {
+					"left": "",
+					"center": "Artichales v1 - First Page Left {shortTitle}",
+					"right": ""
+				},
+				"last": {
+					"left": "",
+					"center": "Artichales v1 - Last Page Left {publisherName}",
+					"right": ""
+				},
+				"odd": {
+					"left": "",
+					"center": "Artichales v1 - Odd Pages Left {shortTitle}",
+					"right": ""
+				},
+				"even": {
+					"left": "",
+					"center": "Artichales v1 - Even Pages Left {shortTitle}",
+					"right": ""
+				}
+			},
+			"right": {
+				"enabled": true,
+				"first": {
+					"left": "",
+					"center": "Artichales v1 - First Page Right {shortTitle}",
+					"right": ""
+				},
+				"last": {
+					"left": "",
+					"center": "Artichales v1 - Last Page Right {publisherName}",
+					"right": ""
+				},
+				"odd": {
+					"left": "",
+					"center": "Artichales v1 - Odd Pages Right {shortTitle}",
+					"right": ""
+				},
+				"even": {
+					"left": "",
+					"center": "Artichales v1 - Even Pages Right {shortTitle}",
+					"right": ""
+				}
+			}
+		}
+	},
+	"plugins": [
+		"abstract",
+		"cite",
+		"codesample",
+		"equation",
+		"figure",
+		"fn",
+		"plotty",
+		"ref",
+		"table",
+		"datatable",
+		"section",
+		"subsection",
+		"subsubsection"
+	]
+}

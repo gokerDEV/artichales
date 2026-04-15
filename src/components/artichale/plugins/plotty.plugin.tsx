@@ -1,10 +1,10 @@
 import * as React from "react";
-import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
 import {
 	resolveBlockSpacingStyle,
 	resolveComponentConfig,
 	resolveFlowSpan,
 } from "@/components/artichale/base/plugin.shared.ts";
+import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,
@@ -101,7 +101,8 @@ function PlottyChart({
 
 const MemoizedPlottyChart = React.memo(
 	PlottyChart,
-	(previousProps, nextProps) => previousProps.lastModified === nextProps.lastModified
+	(previousProps, nextProps) =>
+		previousProps.lastModified === nextProps.lastModified,
 );
 
 export const plottyPlugin: PluginDefinition = {

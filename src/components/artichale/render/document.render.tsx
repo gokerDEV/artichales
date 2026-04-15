@@ -16,14 +16,15 @@ import type {
 } from "mdast";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
+import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import {
 	createPluginRenderDiagnostic,
 	createRenderDiagnostic,
 } from "@/components/artichale/core/diagnostic";
-import type {
+import {
 	DisplayAs,
-	PluginDefinition,
-	PluginRegistryMaps,
+	type PluginDefinition,
+	type PluginRegistryMaps,
 } from "@/components/artichale/types/plugin.types";
 import type { ResolvedReference } from "@/components/artichale/types/reference.types";
 import type {
@@ -36,7 +37,7 @@ type RenderDirectiveContext = {
 	target: RenderTarget;
 	template: TemplateResolved;
 	pluginRegistry: PluginRegistryMaps;
-	resolvedReferences: Record<string, ResolvedReference>;
+	resolvedReferences: ReadonlyMap<string, ResolvedReference>;
 	fnJSONAssetReader?: <T = unknown>(
 		fileName: string,
 	) => Promise<{
@@ -52,87 +53,14 @@ type RenderDirectiveContext = {
 	diagnostics: RenderDiagnostic[];
 };
 
-type ParsedDirectiveNode = {
-	id: string;
-	caption: string;
-};
-
-type UnknownRecord = Record<string, unknown>;
 type CaptionDisplayFamily = DisplayAs;
 
 const CAPTION_DISPLAY_FAMILIES: ReadonlySet<CaptionDisplayFamily> = new Set([
-	"figure",
-	"table",
-	"equation",
-	"code",
+	DisplayAs.FIGURE,
+	DisplayAs.TABLE,
+	DisplayAs.EQUATION,
+	DisplayAs.CODE,
 ]);
-
-function collectNodeText(node: unknown): string {
-	if (!node || typeof node !== "object") return "";
-	const record = node as UnknownRecord;
-	const parts: string[] = [];
-
-	if (typeof record.value === "string" && record.value.trim() !== "") {
-		parts.push(record.value.trim());
-	}
-
-	if (Array.isArray(record.children)) {
-		for (const child of record.children) {
-			const childText = collectNodeText(child);
-			if (childText) parts.push(childText);
-		}
-	}
-
-	return parts.join(" ").replace(/\s+/g, " ").trim();
-}
-
-function parseDirectiveNode(node: {
-	name: string;
-	attributes?: Record<string, string | null | undefined>;
-	children?: RootContent[];
-}): ParsedDirectiveNode {
-	const children = Array.isArray(node.children) ? node.children : [];
-	const directiveLabelNode = children.find((child) => {
-		const record = child as unknown as UnknownRecord;
-		if (record.type !== "paragraph") return false;
-		const data =
-			record.data && typeof record.data === "object"
-				? (record.data as UnknownRecord)
-				: undefined;
-		return data?.directiveLabel === true;
-	});
-	const contentChildren = children.filter(
-		(child) => child !== directiveLabelNode,
-	);
-	const caption = contentChildren
-		.map((child) => collectNodeText(child))
-		.join(" ")
-		.trim();
-	const attributes = node.attributes ?? {};
-	const label = directiveLabelNode ? collectNodeText(directiveLabelNode) : "";
-	const dataFile = attributes.data_file ?? attributes.datafile ?? label;
-	const normalized = (dataFile || label || node.name)
-		.trim()
-		.replace(/\.[^/.]+$/, "")
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "");
-
-	return {
-		id: normalized ? `${node.name}:${normalized}` : `${node.name}:unknown`,
-		caption: resolveCaptionText(caption),
-	};
-}
-
-function resolveCaptionText(rawCaption: string): string {
-	const trimmed = rawCaption.trim();
-	if (trimmed === "") return "";
-	const match = trimmed.match(/^caption\s*:\s*(.+)$/i);
-	if (!match) return trimmed;
-	const value = match[1].trim();
-	const quoted = value.match(/^(['"])([\s\S]*)\1$/);
-	return quoted ? quoted[2].trim() : value;
-}
 
 function textValue(node: Text): ReactNode {
 	return node.value;
@@ -343,7 +271,7 @@ export async function renderDocument(input: {
 	target: RenderTarget;
 	template: TemplateResolved;
 	pluginRegistry: PluginRegistryMaps;
-	resolvedReferences: Record<string, ResolvedReference>;
+	resolvedReferences: ReadonlyMap<string, ResolvedReference>;
 	fnJSONAssetReader?: <T = unknown>(
 		fileName: string,
 	) => Promise<{

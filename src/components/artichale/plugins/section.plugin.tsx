@@ -1,9 +1,9 @@
 import * as React from "react";
-import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
 import {
 	extractReferenceNumber,
 	toReadableTitle,
 } from "@/components/artichale/base/plugin.shared.ts";
+import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,
@@ -30,7 +30,7 @@ export const sectionPlugin: PluginDefinition = {
 			parsed.label || parsed.dataFile || parsed.caption,
 			"Section",
 		);
-		const number = extractReferenceNumber(resolvedReferences[parsed.id]);
+		const number = extractReferenceNumber(resolvedReferences.get(parsed.id));
 		const headingText = number ? `${number} ${title}` : title;
 
 		return <SectionHeading headingText={headingText} />;

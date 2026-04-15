@@ -1,10 +1,9 @@
 import * as React from "react";
-import { parseDirectiveNode } from "@/components/artichale/parser/directive.parser.ts";
 import {
 	resolveBlockSpacingStyle,
-	resolveCaptionText,
 	resolveComponentConfig,
 } from "@/components/artichale/base/plugin.shared.ts";
+import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
 	DirectiveKind,
@@ -46,7 +45,7 @@ export const abstractPlugin: PluginDefinition = {
 	autocomplete: true,
 	render({ node, template }) {
 		const parsed = parseDirectiveNode(node);
-		const content = resolveCaptionText(parsed.caption);
+		const content = parsed.caption;
 		const config = resolveComponentConfig(template, "abstract");
 		const spacing = resolveBlockSpacingStyle(config);
 		return (

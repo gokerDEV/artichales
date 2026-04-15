@@ -2,7 +2,7 @@ import type { RootContent } from "mdast";
 import type { DirectiveNode } from "@/components/artichale/types/plugin.types";
 
 type UnknownRecord = Record<string, unknown>;
-type ParsedDirective = {
+export type ParsedDirective = {
 	id: string;
 	label: string;
 	dataFile: string;

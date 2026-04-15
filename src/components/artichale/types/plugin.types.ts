@@ -44,7 +44,7 @@ export type PluginRenderProps = {
 	node: DirectiveNode;
 	fnJSONAssetReader?: JSONAssetReader;
 	fnAssetResolver?: AssetResolver;
-	resolvedReferences: Record<string, ResolvedReference>;
+	resolvedReferences: ReadonlyMap<string, ResolvedReference>;
 };
 
 // Directive plugin entry shape expected by registry/runtime.

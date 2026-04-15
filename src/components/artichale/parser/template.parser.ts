@@ -1,7 +1,5 @@
-import {
-	getDefaultTemplateDirectivePlugins,
-	listTemplateDirectivePlugins,
-} from "@/components/artichale/core/plugin.registry";
+import defaultTemplateJson from "@/components/artichale/base/default.template.json";
+import { listTemplateDirectivePlugins } from "@/components/artichale/core/plugin.registry";
 import { TemplateFileSchema } from "@/components/artichale/schema/template.schema";
 import type {
 	ResolvedMarginConfig,
@@ -12,121 +10,13 @@ import type {
 	TemplateResolved,
 } from "@/components/artichale/types/template.types";
 
-const DEFAULT_MARGIN_SEGMENT: ResolvedMarginSegment = {
-	left: "",
-	center: "",
-	right: "",
-};
-
-const DEFAULT_MARGIN_CONFIG: ResolvedMarginConfig = {
-	enabled: true,
-	first: DEFAULT_MARGIN_SEGMENT,
-	last: DEFAULT_MARGIN_SEGMENT,
-	odd: DEFAULT_MARGIN_SEGMENT,
-	even: DEFAULT_MARGIN_SEGMENT,
-};
-
-const DEFAULT_COMPONENT_CONFIG: ResolvedTemplatePluginConfig = {
-	captionPosition: "bottom",
-	defaultSpan: "column",
-	spacingBefore: "0",
-	spacingAfter: "0",
-};
-
-export const DEFAULT_TEMPLATE: TemplateResolved = {
-	version: 1,
-	publisher: {
-		id: "default",
-		name: "Default Publisher",
-	},
-	default: {
-		typography: {
-			fontFamily: {
-				body: "Source Serif 4",
-				heading: "Inter",
-				mono: "JetBrains Mono",
-			},
-			fontSize: {
-				body: "11pt",
-				h1: "20pt",
-				h2: "15pt",
-				h3: "12pt",
-			},
-			lineHeight: 1.55,
-			textAlign: "justify",
-		},
-		colors: {
-			text: "#111111",
-			muted: "#666666",
-			border: "#d1d5db",
-			link: "#0f766e",
-		},
-		assets: {},
-		components: {
-			abstract: { ...DEFAULT_COMPONENT_CONFIG },
-			table: { ...DEFAULT_COMPONENT_CONFIG },
-			figure: { ...DEFAULT_COMPONENT_CONFIG },
-			map: { ...DEFAULT_COMPONENT_CONFIG },
-			equation: { ...DEFAULT_COMPONENT_CONFIG },
-			code: { ...DEFAULT_COMPONENT_CONFIG },
-		},
-		utilities: {},
-		referenceLabels: {
-			abstract: "Abstract",
-			figure: "Figure",
-			table: "Table",
-			map: "Map",
-			equation: "Equation",
-			code: "Code",
-		},
-		citationStyle: "numeric",
-	},
-	print: {
-		page: {
-			size: "A4",
-			orientation: "portrait",
-			margin: {
-				top: "24mm",
-				right: "20mm",
-				bottom: "24mm",
-				left: "20mm",
-			},
-		},
-		layout: {
-			firstPageColumns: 1,
-			defaultPageColumns: 2,
-			columnGap: "7mm",
-		},
-		pageMargins: {
-			header: { ...DEFAULT_MARGIN_CONFIG },
-			footer: { ...DEFAULT_MARGIN_CONFIG },
-			left: { ...DEFAULT_MARGIN_CONFIG },
-			right: { ...DEFAULT_MARGIN_CONFIG },
-		},
-		titleBlock: {
-			enabled: true,
-			align: "center",
-			showAuthors: true,
-			showAffiliations: true,
-			showKeywords: true,
-			spacingAfter: "12mm",
-		},
-	},
-	web: {
-		layout: {
-			containerWidth: "800px",
-			containerClass:
-				"shrink-0 rounded-xl border border-border bg-card shadow-sm",
-			containerPaddingClass: "p-12 md:p-16",
-			contentClass: "max-w-none",
-		},
-	},
-	plugins: getDefaultTemplateDirectivePlugins(),
-};
+const DEFAULT_TEMPLATE_FILE = TemplateFileSchema.parse(defaultTemplateJson);
+const DEFAULT_TEMPLATE_BASE =
+	defaultTemplateJson as unknown as TemplateResolved;
 
 function resolveMarginSegment(
 	segment: Partial<ResolvedMarginSegment> | undefined,
-	fallback: ResolvedMarginSegment = DEFAULT_MARGIN_SEGMENT,
+	fallback: ResolvedMarginSegment,
 ): ResolvedMarginSegment {
 	return {
 		left: segment?.left ?? fallback.left,
@@ -145,7 +35,7 @@ function resolveMarginConfig(
 				even?: Partial<ResolvedMarginSegment>;
 		  }
 		| undefined,
-	fallback: ResolvedMarginConfig = DEFAULT_MARGIN_CONFIG,
+	fallback: ResolvedMarginConfig,
 ): ResolvedMarginConfig {
 	return {
 		enabled: config?.enabled ?? fallback.enabled,
@@ -163,20 +53,22 @@ function resolveComponentConfig(
 	return { ...fallback, ...override };
 }
 
-function filterKnownPlugins(plugins: string[]): string[] {
+function filterKnownPlugins(
+	plugins: string[],
+	fallback: readonly string[],
+): string[] {
 	const allowed = new Set(listTemplateDirectivePlugins());
 	const unique = [
 		...new Set(plugins.map((pluginId) => pluginId.trim()).filter(Boolean)),
 	];
 	const filtered = unique.filter((pluginId) => allowed.has(pluginId));
-	return filtered.length > 0 ? filtered : getDefaultTemplateDirectivePlugins();
+	return filtered.length > 0 ? filtered : [...fallback];
 }
 
 function mergeTemplateWithDefaults(
 	parsed: TemplateFileInput,
+	defaults: TemplateResolved,
 ): TemplateResolved {
-	const defaults = DEFAULT_TEMPLATE;
-
 	return {
 		version: parsed.version ?? defaults.version,
 		publisher: {
@@ -347,9 +239,17 @@ function mergeTemplateWithDefaults(
 					parsed.web?.layout?.contentClass ?? defaults.web.layout.contentClass,
 			},
 		},
-		plugins: filterKnownPlugins(parsed.plugins ?? defaults.plugins),
+		plugins: filterKnownPlugins(
+			parsed.plugins ?? defaults.plugins,
+			defaults.plugins,
+		),
 	};
 }
+
+export const DEFAULT_TEMPLATE: TemplateResolved = mergeTemplateWithDefaults(
+	DEFAULT_TEMPLATE_FILE,
+	DEFAULT_TEMPLATE_BASE,
+);
 
 const FALLBACK_MESSAGE = "Using internal fallback template defaults.";
 
@@ -409,7 +309,7 @@ export function parseTemplate(rawTemplate?: string): ResolveTemplateResult {
 	}
 
 	return {
-		template: mergeTemplateWithDefaults(parsedTemplate.data),
+		template: mergeTemplateWithDefaults(parsedTemplate.data, DEFAULT_TEMPLATE),
 		diagnostics: [],
 		hasError: false,
 	};
