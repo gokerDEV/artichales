@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
+import { EdithorSurface } from "@/components/edithor";
 import {
 	type ViewerMode,
 	ViewerModeSwitch,
 	type ViewerTab,
-} from "@/app/artichale/viewer-mode-switch";
-import { Viewers } from "@/app/artichale/viewers";
-import { EdithorSurface } from "@/components/edithor";
+} from "./viewer-mode-switch";
+import { Viewers } from "./viewers";
 
-export function EditorPage() {
+export function ArtichalePage() {
 	const [mode, setMode] = useState<ViewerMode>("web");
 	const [tab, setTab] = useState<ViewerTab>("viewer");
 

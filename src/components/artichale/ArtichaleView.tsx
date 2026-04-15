@@ -627,7 +627,7 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 			<div
 				ref={sourceRef}
 				className={
-					props.enablePaged && isPagedReady
+					props.enablePaged && isPagedReady && !pagedError
 						? "pointer-events-none absolute top-0 -left-[200vw] opacity-0"
 						: ""
 				}
@@ -642,11 +642,6 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 			) : null}
 			{props.enablePaged && !isPagedReady && !pagedError ? (
 				<div className="p-2 text-slate-600 text-xs">Preparing pages...</div>
-			) : null}
-			{pagedError ? (
-				<div className="p-2 text-red-600 text-xs">
-					Paged.js failed: {pagedError}
-				</div>
 			) : null}
 		</div>
 	);

@@ -1,14 +1,10 @@
 export {
 	ArtichaleView,
+	ArtichaleView as ArtichalePrintView,
 	type ArtichaleViewProps,
 } from "@/components/artichale/ArtichaleView";
 export { parseArtichale } from "@/components/artichale/core/artichale.parser";
 export { renderArtichale } from "@/components/artichale/core/artichale.render";
-export {
-	buildArtichalePagedStylesheet,
-	printArtichalePages,
-	runArtichalePagedLayout,
-} from "@/components/artichale/pages";
 export type { Frontmatter } from "@/components/artichale/schema/frontmatter.schema";
 export type {
 	ParseArtichaleInput,

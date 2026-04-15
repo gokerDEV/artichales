@@ -13,6 +13,7 @@ import type {
 const DEFAULT_TEMPLATE_FILE = TemplateFileSchema.parse(defaultTemplateJson);
 const DEFAULT_TEMPLATE_BASE =
 	defaultTemplateJson as unknown as TemplateResolved;
+const FALLBACK_ASSET_MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 function resolveMarginSegment(
 	segment: Partial<ResolvedMarginSegment> | undefined,
@@ -119,7 +120,8 @@ function mergeTemplateWithDefaults(
 			assets: {
 				maxFileSize:
 					parsed.default?.assets?.maxFileSize ??
-					defaults.default.assets.maxFileSize,
+					defaults.default.assets?.maxFileSize ??
+					FALLBACK_ASSET_MAX_FILE_SIZE,
 			},
 			components: {
 				abstract: resolveComponentConfig(

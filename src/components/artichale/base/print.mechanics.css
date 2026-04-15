@@ -1,11 +1,20 @@
 /* Paged.js output primitives shared by preview and isolated print document. */
 
 .paged-print-content .pagedjs_pages {
-	@apply flex flex-col items-center gap-8;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2rem;
 }
 
 .paged-print-content .pagedjs_page {
-	@apply relative h-auto w-full bg-white shadow-xl ring-1 ring-gray-300;
+	position: relative;
+	height: auto;
+	width: 100%;
+	background: white;
+	box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+		0 8px 10px -6px rgb(0 0 0 / 0.1);
+	outline: 1px solid rgb(209 213 219);
 }
 
 .paged-print-content .pagedjs_pagebox {

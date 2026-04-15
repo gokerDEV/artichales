@@ -2,8 +2,8 @@ import type { Root } from "mdast";
 import remarkDirective from "remark-directive";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
-import { createParseDiagnostic } from "@/components/artichale/core/diagnostic";
 import { collectArtifacts } from "@/components/artichale/core/artifacts.collector.ts";
+import { createParseDiagnostic } from "@/components/artichale/core/diagnostic";
 import type {
 	HeadingEntry,
 	LabeledBlockEntry,

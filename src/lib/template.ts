@@ -392,6 +392,7 @@ const DEFAULT_FOOTER_MARGIN_CONFIG: ResolvedMarginConfig = {
 	odd: { left: "", center: "{pageNumber}", right: "" },
 	even: { left: "", center: "{pageNumber}", right: "" },
 };
+const FALLBACK_ASSET_MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 export const DEFAULT_TEMPLATE_FILE: TemplateFileResolved = {
 	version: 1,
@@ -618,7 +619,9 @@ function mergeTemplateWithDefaults(parsed: TemplateFile): TemplateFileResolved {
 			},
 			assets: {
 				maxFileSize:
-					o.default?.assets?.maxFileSize ?? def.default.assets.maxFileSize,
+					o.default?.assets?.maxFileSize ??
+					def.default.assets.maxFileSize ??
+					FALLBACK_ASSET_MAX_FILE_SIZE,
 			},
 			components: {
 				abstract: resolveComponentConfig(

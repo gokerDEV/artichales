@@ -43,10 +43,15 @@ type NavItem = {
 const data: { navMain: NavItem[] } = {
 	navMain: [
 		{
-			title: "Dashboard",
-			url: "/",
+			title: "Edithor",
+			url: "/editor",
 			icon: Activity,
 			isActive: true,
+		},
+		{
+			title: "Artichale",
+			url: "/artichale",
+			icon: Activity,
 		},
 		{
 			title: "History",
