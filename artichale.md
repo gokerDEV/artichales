@@ -654,7 +654,7 @@ The following must not remain in the codebase:
 
 ```txt
 /components/artichale/
-  index.ts
+  index.tsx
   ArtichaleView.tsx
 
   base/
@@ -719,7 +719,7 @@ The following must not remain in the codebase:
 
 ## Root
 
-### `index.ts`
+### `index.tsx`
 
 Public export surface only.
 Exports:

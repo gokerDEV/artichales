@@ -28,11 +28,12 @@ export default defineManifest((env) => ({
 		"128": "icons/icon-128.png",
 	},
 	background: {
-		service_worker: "src/background/index.ts",
+		service_worker: "src/background/index.tsx",
 		type: "module",
 	},
 	permissions: [
 		"storage",
+		"debugger",
 		"downloads",
 	],
 	content_security_policy: {

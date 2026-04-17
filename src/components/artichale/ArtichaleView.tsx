@@ -17,6 +17,7 @@ export type ArtichaleViewProps = {
 	enablePaged?: boolean;
 	pagedStylesheets?: string[];
 	pagedTokens?: Record<string, string | number | undefined>;
+	onReady?: () => void;
 };
 
 type PagedPreviewerInstance = {
@@ -27,18 +28,31 @@ type PagedPreviewerInstance = {
 	) => Promise<unknown>;
 };
 
+type PagedModuleShape = {
+	Previewer?: new () => PagedPreviewerInstance;
+	default?: {
+		Previewer?: new () => PagedPreviewerInstance;
+	};
+};
+
+const HIDDEN_SOURCE_STYLE: CSSProperties = {
+	position: "absolute",
+	top: 0,
+	left: "-200vw",
+	opacity: 0,
+	pointerEvents: "none",
+};
+
 function resolvePagedPreviewerFactory(
 	moduleCandidate: unknown,
 ): (() => PagedPreviewerInstance) | null {
 	if (!moduleCandidate || typeof moduleCandidate !== "object") return null;
-	const record = moduleCandidate as {
-		Previewer?: new () => PagedPreviewerInstance;
-		default?: {
-			Previewer?: new () => PagedPreviewerInstance;
-		};
-	};
+
+	const record = moduleCandidate as PagedModuleShape;
 	const previewerCtor = record.Previewer ?? record.default?.Previewer;
+
 	if (!previewerCtor) return null;
+
 	return () => new previewerCtor();
 }
 
@@ -56,15 +70,33 @@ function resolveTokenValue(input: {
 	if (input.tokenName === "pageNumber") {
 		return typeof input.pageNumber === "number" ? String(input.pageNumber) : "";
 	}
+
 	if (input.tokenName === "totalPages") {
 		return typeof input.totalPages === "number" ? String(input.totalPages) : "";
 	}
+
 	if (input.tokenName === "publisherName") {
 		return input.template.publisher.name ?? "";
 	}
-	const value = input.tokens?.[input.tokenName];
-	if (value === undefined || value === null) return "";
-	return String(value);
+
+	if (input.tokenName === "title") {
+		const tokenValue = input.tokens?.title;
+		return tokenValue === undefined || tokenValue === null
+			? ""
+			: String(tokenValue);
+	}
+
+	if (input.tokenName === "shortTitle") {
+		const tokenValue = input.tokens?.shortTitle;
+		return tokenValue === undefined || tokenValue === null
+			? ""
+			: String(tokenValue);
+	}
+
+	const tokenValue = input.tokens?.[input.tokenName];
+	if (tokenValue === undefined || tokenValue === null) return "";
+
+	return String(tokenValue);
 }
 
 function formatMarginContentForCss(input: {
@@ -73,22 +105,27 @@ function formatMarginContentForCss(input: {
 	tokens?: Record<string, string | number | undefined>;
 }): string {
 	if (!input.value || input.value.trim() === "") return "none";
+
 	const pieces = input.value.split(/(\{.*?\})/g).filter(Boolean);
-	const cssParts = pieces.map((piece) => {
-		if (piece === "{pageNumber}") return "counter(page)";
-		if (piece === "{totalPages}") return "counter(pages)";
-		if (piece.startsWith("{") && piece.endsWith("}")) {
-			const tokenName = piece.slice(1, -1).trim();
-			const resolved = resolveTokenValue({
-				tokenName,
-				template: input.template,
-				tokens: input.tokens,
-			});
-			return `"${escapeCssContent(resolved)}"`;
-		}
-		return `"${escapeCssContent(piece)}"`;
-	});
-	return cssParts.join(" ");
+
+	return pieces
+		.map((piece) => {
+			if (piece === "{pageNumber}") return "counter(page)";
+			if (piece === "{totalPages}") return "counter(pages)";
+
+			if (piece.startsWith("{") && piece.endsWith("}")) {
+				const tokenName = piece.slice(1, -1).trim();
+				const resolved = resolveTokenValue({
+					tokenName,
+					template: input.template,
+					tokens: input.tokens,
+				});
+				return `"${escapeCssContent(resolved)}"`;
+			}
+
+			return `"${escapeCssContent(piece)}"`;
+		})
+		.join(" ");
 }
 
 function formatMarginContentForText(input: {
@@ -99,6 +136,7 @@ function formatMarginContentForText(input: {
 	totalPages: number;
 }): string {
 	if (!input.value || input.value.trim() === "") return "";
+
 	return input.value.replace(/\{(.*?)\}/g, (_, rawToken: string) => {
 		const tokenName = rawToken.trim();
 		return resolveTokenValue({
@@ -120,23 +158,37 @@ function buildHorizontalMarginCss(input: {
 	location: "top" | "bottom";
 }): string {
 	if (!input.config.enabled) return "";
+
 	const segment = input.config[input.state];
+
 	return `
 @page ${input.pageSelector} {
 	@${input.location}-left {
-		content: ${formatMarginContentForCss({ template: input.template, value: segment.left, tokens: input.tokens })};
+		content: ${formatMarginContentForCss({
+			template: input.template,
+			value: segment.left,
+			tokens: input.tokens,
+		})};
 		text-align: left;
 		font-size: 9pt;
 		color: #4b5563;
 	}
 	@${input.location}-center {
-		content: ${formatMarginContentForCss({ template: input.template, value: segment.center, tokens: input.tokens })};
+		content: ${formatMarginContentForCss({
+			template: input.template,
+			value: segment.center,
+			tokens: input.tokens,
+		})};
 		text-align: center;
 		font-size: 9pt;
 		color: #4b5563;
 	}
 	@${input.location}-right {
-		content: ${formatMarginContentForCss({ template: input.template, value: segment.right, tokens: input.tokens })};
+		content: ${formatMarginContentForCss({
+			template: input.template,
+			value: segment.right,
+			tokens: input.tokens,
+		})};
 		text-align: right;
 		font-size: 9pt;
 		color: #4b5563;
@@ -153,28 +205,42 @@ function buildVerticalMarginCss(input: {
 	side: "left" | "right";
 }): string {
 	if (!input.config.enabled) return "";
+
 	const segment = input.config[input.state];
 	const locationPrefix = input.side === "left" ? "left" : "right";
 	const rotateCss =
 		input.side === "left" ? "transform: rotate(180deg);" : "transform: none;";
+
 	return `
 @page ${input.pageSelector} {
 	@${locationPrefix}-top {
-		content: ${formatMarginContentForCss({ template: input.template, value: segment.left, tokens: input.tokens })};
+		content: ${formatMarginContentForCss({
+			template: input.template,
+			value: segment.left,
+			tokens: input.tokens,
+		})};
 		writing-mode: vertical-rl;
 		${rotateCss}
 		font-size: 9pt;
 		color: #4b5563;
 	}
 	@${locationPrefix}-middle {
-		content: ${formatMarginContentForCss({ template: input.template, value: segment.center, tokens: input.tokens })};
+		content: ${formatMarginContentForCss({
+			template: input.template,
+			value: segment.center,
+			tokens: input.tokens,
+		})};
 		writing-mode: vertical-rl;
 		${rotateCss}
 		font-size: 9pt;
 		color: #4b5563;
 	}
 	@${locationPrefix}-bottom {
-		content: ${formatMarginContentForCss({ template: input.template, value: segment.right, tokens: input.tokens })};
+		content: ${formatMarginContentForCss({
+			template: input.template,
+			value: segment.right,
+			tokens: input.tokens,
+		})};
 		writing-mode: vertical-rl;
 		${rotateCss}
 		font-size: 9pt;
@@ -333,7 +399,9 @@ function setMarginText(
 	const marginContent = lastPage.querySelector(
 		`${selector} .pagedjs_margin-content`,
 	);
+
 	if (!(marginContent instanceof HTMLElement)) return;
+
 	marginContent.textContent = text;
 	marginContent.classList.add("hasContent");
 }
@@ -345,6 +413,7 @@ function applyLastPageMarginOverrides(input: {
 }): void {
 	const lastPage = input.mountRoot.querySelector(".pagedjs_page:last-child");
 	if (!lastPage) return;
+
 	const pageCount = input.mountRoot.querySelectorAll(".pagedjs_page").length;
 	if (pageCount === 0) return;
 
@@ -506,32 +575,19 @@ async function runArtichalePagedLayout(input: {
 }): Promise<void> {
 	const pagedModule = await import("pagedjs");
 	const createPreviewer = resolvePagedPreviewerFactory(pagedModule);
+
 	if (!createPreviewer) {
 		throw new Error("Paged.js Previewer export is unavailable.");
 	}
 
 	const previewer = createPreviewer();
-	const stagingElement = document.createElement("div");
-	stagingElement.className = "paged-print-content";
 
 	await previewer.preview(
 		input.sourceRoot.innerHTML,
 		input.stylesheets ?? [],
-		stagingElement,
+		input.mountRoot,
 	);
 
-	const pagesRoot = stagingElement.querySelector(".pagedjs_pages");
-	if (pagesRoot) {
-		input.mountRoot.replaceChildren(pagesRoot);
-		applyLastPageMarginOverrides({
-			mountRoot: input.mountRoot,
-			template: input.template,
-			tokens: input.tokens,
-		});
-		return;
-	}
-
-	input.mountRoot.replaceChildren(stagingElement);
 	applyLastPageMarginOverrides({
 		mountRoot: input.mountRoot,
 		template: input.template,
@@ -561,6 +617,8 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 	const pagedMountRef = useRef<HTMLDivElement | null>(null);
 	const [pagedError, setPagedError] = useState<string | null>(null);
 	const [isPagedReady, setIsPagedReady] = useState(false);
+	const enablePaged = props.enablePaged ?? true;
+
 	const pagedCss = useMemo(
 		() =>
 			buildArtichalePagedStylesheet({
@@ -571,10 +629,15 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 	);
 
 	useEffect(() => {
-		if (!props.enablePaged) {
+		if (!enablePaged) {
+			setPagedError(null);
 			setIsPagedReady(false);
+			if (pagedMountRef.current) {
+				pagedMountRef.current.replaceChildren();
+			}
 			return;
 		}
+
 		const sourceElement = sourceRef.current;
 		const mountElement = pagedMountRef.current;
 		if (!sourceElement || !mountElement) return;
@@ -582,6 +645,7 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 		let cancelled = false;
 		setPagedError(null);
 		setIsPagedReady(false);
+		mountElement.replaceChildren();
 
 		const cssBlobUrl = URL.createObjectURL(
 			new Blob([pagedCss], { type: "text/css" }),
@@ -603,33 +667,39 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 				URL.revokeObjectURL(cssBlobUrl);
 				if (cancelled) return;
 				setIsPagedReady(true);
+				if (props.onReady) props.onReady();
 			});
 
 		return () => {
 			cancelled = true;
 		};
 	}, [
-		props.enablePaged,
+		enablePaged,
+		pagedCss,
+		props.article,
+		props.authors,
 		props.pagedStylesheets,
 		props.pagedTokens,
+		props.references,
 		props.template,
-		pagedCss,
+		props.title,
 	]);
+
+	const showSource = !enablePaged || Boolean(pagedError);
+	const hideSourceBecausePagedPreviewIsReady =
+		enablePaged && isPagedReady && !pagedError;
 
 	return (
 		<div
 			id="artichale"
 			className="artichale"
-			// Print-only composition container.
 			data-art-print-document="true"
 			style={buildStyleVars(props.template)}
 		>
 			<div
 				ref={sourceRef}
-				className={
-					props.enablePaged && isPagedReady && !pagedError
-						? "pointer-events-none absolute top-0 -left-[200vw] opacity-0"
-						: ""
+				style={
+					hideSourceBecausePagedPreviewIsReady ? HIDDEN_SOURCE_STYLE : undefined
 				}
 			>
 				{props.title}
@@ -637,11 +707,21 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 				{props.article}
 				{props.references}
 			</div>
-			{props.enablePaged ? (
+
+			{enablePaged && !showSource ? (
 				<div className="paged-print-content" ref={pagedMountRef} />
 			) : null}
-			{props.enablePaged && !isPagedReady && !pagedError ? (
-				<div className="p-2 text-slate-600 text-xs">Preparing pages...</div>
+
+			{enablePaged && !isPagedReady && !pagedError ? (
+				<div style={{ padding: "8px", fontSize: "12px", color: "#475569" }}>
+					Preparing pages...
+				</div>
+			) : null}
+
+			{pagedError ? (
+				<div style={{ padding: "8px", fontSize: "12px", color: "#b91c1c" }}>
+					{pagedError}
+				</div>
 			) : null}
 		</div>
 	);

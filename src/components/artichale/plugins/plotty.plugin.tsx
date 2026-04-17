@@ -112,7 +112,6 @@ export const plottyPlugin: PluginDefinition = {
 	kind: DirectiveKind.CONTAINER,
 	autocomplete: true,
 	async render({ node, fnJSONAssetReader, template, target }) {
-		console.log(target)
 		const parsed = parseDirectiveNode(node);
 		const source = parsed.dataFile || parsed.label;
 		const loaded = source

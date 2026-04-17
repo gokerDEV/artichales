@@ -1,3 +1,4 @@
+import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import * as React from "react";
 import { toast } from "sonner";
 import { EdithorEditor } from "@/components/edithor/editor/edithor-editor";
@@ -547,30 +548,32 @@ export function EdithorSurface({
 							/>
 						</div>
 					</div>
-					<EdithorEditor
-						fileName={activeFile}
-						value={files[activeFile] || ""}
-						onChange={updateActiveFileContent}
-						onBlur={() => {
-							workspaceRepository
-								.saveWorkspace(filesRef.current)
-								.then(() => setSaveError(null))
-								.catch((error) => {
-									console.error("Failed to save workspace on blur:", error);
-									setSaveError(
-										"Failed to save workspace files. Your latest changes may not persist.",
-									);
-								});
-						}}
-						label={activeFile}
-					/>
+					<ScrollArea className="flex-1 min-h-0">
+						<EdithorEditor
+							fileName={activeFile}
+							value={files[activeFile] || ""}
+							onChange={updateActiveFileContent}
+							onBlur={() => {
+								workspaceRepository
+									.saveWorkspace(filesRef.current)
+									.then(() => setSaveError(null))
+									.catch((error) => {
+										console.error("Failed to save workspace on blur:", error);
+										setSaveError(
+											"Failed to save workspace files. Your latest changes may not persist.",
+										);
+									});
+							}}
+							label={activeFile}
+						/>
+					</ScrollArea>
 				</ResizablePanel>
 				<ResizableHandle withHandle />
 				<ResizablePanel
 					id={PREVIEW_PANEL_ID}
 					defaultSize={panelSizes[2] ?? 40}
 					minSize={25}
-					className="flex min-h-0 flex-col overflow-hidden bg-muted/30"
+					className="flex min-h-0 flex-col !overflow-hidden bg-muted/30"
 				>
 					<div className="flex h-12 shrink-0 items-center justify-between border-border border-b bg-card px-4">
 						<div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
@@ -582,12 +585,8 @@ export function EdithorSurface({
 							</div>
 						) : null}
 					</div>
-					<div className="min-h-0 flex-1 overflow-auto p-4">
-						{!isLivePreviewEnabled ? (
-							<div className="flex h-full min-h-[200px] items-center justify-center rounded-md border border-border border-dashed bg-background text-muted-foreground text-sm">
-								Preview paused.
-							</div>
-						) : viewer ? (
+					<ScrollArea className="flex-1 min-h-0">
+						{viewer ? (
 							viewer({
 								files,
 								activeFile,
@@ -598,7 +597,7 @@ export function EdithorSurface({
 								No viewer attached. Pass a `viewer` method to `EdithorSurface`.
 							</div>
 						)}
-					</div>
+					</ScrollArea>
 				</ResizablePanel>
 			</ResizablePanelGroup>
 		</div>

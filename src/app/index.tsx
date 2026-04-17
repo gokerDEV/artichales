@@ -2,8 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import Layout from "@/components/common/app.layout";
-import { ArtichalePage } from "./artichale/page";
-import { EditorPage } from "./editor/page";
+import { WorkspacePage } from "./workspace/page";
 import "@/style.css";
 import { SettingsPage } from "./settings/page";
 
@@ -16,9 +15,7 @@ if (rootElement) {
 			<HashRouter>
 				<Routes>
 					<Route element={<Layout />}>
-						<Route path="/" element={<EditorPage />} />
-						<Route path="/editor" element={<EditorPage />} />
-						<Route path="/artichale" element={<ArtichalePage />} />
+						<Route path="/" element={<WorkspacePage />} />
 						<Route path="/settings" element={<SettingsPage />} />
 					</Route>
 				</Routes>

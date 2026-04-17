@@ -1,0 +1,89 @@
+import * as React from "react";
+import { ArtichaleView } from "@/components/artichale/ArtichaleView";
+import { parseArtichale } from "@/components/artichale/core/artichale.parser";
+import { renderArtichale } from "@/components/artichale/core/artichale.render";
+import type { ArtichaleExecutionResult } from "@/components/artichale/types/pipeline.types";
+import { printJobRepository } from "@/services/print-job.repository";
+import type { PrintJob } from "@/types/print-job";
+
+function getJobIdFromLocation(): string | null {
+	const params = new URLSearchParams(window.location.search);
+	const raw = params.get("job");
+	return raw && raw.trim().length > 0 ? raw : null;
+}
+
+export function PdfApp() {
+	console.log("PdfApp");
+	const [job, setJob] = React.useState<PrintJob | null>(null);
+	const [executionResult, setExecutionResult] =
+		React.useState<ArtichaleExecutionResult | null>(null);
+	const [errorState, setErrorState] = React.useState<string | null>(null);
+
+	React.useEffect(() => {
+		const load = async () => {
+			try {
+				const jobId = getJobIdFromLocation();
+				if (!jobId) return setErrorState("missing_job_id");
+
+				const loaded = await printJobRepository.readPrintJobResult(jobId);
+				if (!loaded.ok) return setErrorState(loaded.state);
+
+				const parsed = parseArtichale({
+					rawMarkdown: loaded.job.files["article.mda"] || "",
+					rawTemplate: loaded.job.files["template.json"],
+					rawBibliography: loaded.job.files["references.bib"],
+				});
+
+				const rendered = await renderArtichale({
+					target: "print",
+					template: parsed.template,
+					bibliography: parsed.bibliography,
+					frontmatter: parsed.frontmatter,
+					ast: parsed.ast,
+					headings: parsed.headings,
+					labeledBlocks: parsed.labeledBlocks,
+					citations: parsed.citations,
+					fnJSONAssetReader: async (fileName) => {
+						const content = loaded.job.files[fileName];
+						return { data: content ? JSON.parse(content) : null };
+					},
+				});
+
+				setJob(loaded.job);
+				setExecutionResult({ parse: parsed, render: rendered });
+			} catch (err) {
+				setErrorState("document_build_failed");
+			}
+		};
+		void load();
+	}, []);
+
+	// Tell the background script to generate the PDF once Paged.js finishes
+	const handleReadyToPrint = React.useCallback(() => {
+		// Add a 1-second delay to let the browser physically render the DOM changes
+		window.setTimeout(() => {
+			chrome.runtime.sendMessage({
+				type: "GENERATE_SILENT_PDF",
+				filename: `artichale-export-${job?.id || "doc"}.pdf`,
+			});
+			if (job?.id) {
+				void printJobRepository.deletePrintJob(job.id);
+			}
+		}, 1000);
+	}, [job?.id]);
+	if (errorState || !executionResult) return null;
+
+	return (
+		<main className="mx-auto min-h-screen w-full bg-white print:m-0 print:min-h-0 print:px-0 print:py-0">
+			<ArtichaleView
+				template={executionResult.parse.template}
+				title={executionResult.render.title}
+				authors={executionResult.render.authors}
+				article={executionResult.render.article}
+				references={executionResult.render.references}
+				enablePaged={true}
+				onReady={handleReadyToPrint}
+			/>
+		</main>
+	);
+}

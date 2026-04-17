@@ -4,14 +4,13 @@ import { markdown } from "@codemirror/lang-markdown";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import * as React from "react";
-import { Label } from "@/components/ui/label";
-import {
-	BIBTEX_LANGUAGE,
-	buildArticleCompletions,
-	buildBibliographyCompletions,
-	buildTemplateCompletions,
-} from "@/editor/config/completions";
-import { getBaseExtensions } from "@/editor/config/extensions";
+// import {
+// 	BIBTEX_LANGUAGE,
+// 	buildArticleCompletions,
+// 	buildBibliographyCompletions,
+// 	buildTemplateCompletions,
+// } from "@/editor/config/completions";
+// import { getBaseExtensions } from "@/editor/config/extensions";
 import { cn } from "@/lib/utils";
 import type { EditorCompletions } from "@/types/editor";
 
@@ -42,30 +41,30 @@ function createEditorState(
 	fileKind: EditorFileKind,
 	onChangeRef: React.MutableRefObject<(value: string) => void>,
 	onBlurRef: React.MutableRefObject<(() => void) | undefined>,
-	completions: EditorCompletions,
+	// completions: EditorCompletions,
 ): EditorState {
 	const languageByFileKind = {
 		article: markdown(),
 		template: json(),
-		bibliography: BIBTEX_LANGUAGE,
+		// bibliography: BIBTEX_LANGUAGE,
 		asset: markdown(),
 	} as const;
 
-	const completionByFileKind = {
-		article: buildArticleCompletions(completions),
-		template: buildTemplateCompletions(),
-		bibliography: buildBibliographyCompletions(),
-		asset: buildTemplateCompletions(),
-	} as const;
+	// const completionByFileKind = {
+	// 	article: buildArticleCompletions(completions),
+	// 	template: buildTemplateCompletions(),
+	// 	bibliography: buildBibliographyCompletions(),
+	// 	asset: buildTemplateCompletions(),
+	// } as const;
 
 	return EditorState.create({
 		doc: content,
 		extensions: [
-			...getBaseExtensions(),
-			languageCompartment.of(languageByFileKind[fileKind]),
-			completionCompartment.of(
-				autocompletion({ override: [completionByFileKind[fileKind]] }),
-			),
+			// ...getBaseExtensions(),
+			// languageCompartment.of(languageByFileKind[fileKind]),
+			// completionCompartment.of(
+			// 	autocompletion({ override: [completionByFileKind[fileKind]] }),
+			// ),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
 					onChangeRef.current(update.state.doc.toString());
@@ -84,7 +83,6 @@ export function EdithorEditor({
 	onChange,
 	onBlur,
 	className,
-	label = "Source",
 	completions = { bibKeys: [], referenceSelectors: [], directiveNames: [] },
 }: EdithorEditorProps) {
 	const id = React.useId();
@@ -147,23 +145,24 @@ export function EdithorEditor({
 				? markdown()
 				: fileKind === "template"
 					? json()
-					: fileKind === "bibliography"
-						? BIBTEX_LANGUAGE
-						: markdown();
-		const completionSource =
-			fileKind === "article"
-				? buildArticleCompletions(completions)
-				: fileKind === "template"
-					? buildTemplateCompletions()
-					: fileKind === "bibliography"
-						? buildBibliographyCompletions()
-						: buildTemplateCompletions();
+					: // : fileKind === "bibliography"
+						// ? BIBTEX_LANGUAGE
+						markdown();
+		// const completionSource =
+		// 	fileKind === "article"
+		// 		? buildArticleCompletions(completions)
+		// 		: fileKind === "template"
+		// 			? buildTemplateCompletions()
+		// 			: fileKind === "bibliography"
+		// 				? buildBibliographyCompletions()
+		// 				: buildTemplateCompletions();
 
 		view.dispatch({
 			effects: [
 				languageCompartment.reconfigure(languageExtension),
 				completionCompartment.reconfigure(
-					autocompletion({ override: [completionSource] }),
+					// autocompletion({ override: [completionSource] }),
+					autocompletion(),
 				),
 			],
 		});
@@ -196,14 +195,6 @@ export function EdithorEditor({
 
 	return (
 		<div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
-			<div className="flex h-[48px] w-full shrink-0 items-center justify-between border-border border-b bg-card px-4">
-				<Label
-					htmlFor={id}
-					className="text-muted-foreground text-xs uppercase tracking-wide"
-				>
-					{label}
-				</Label>
-			</div>
 			<div
 				id={id}
 				ref={editorHostRef}

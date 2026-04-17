@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom/client";
 import "@/style.css";
-import { PrintApp } from "@/print/print-app";
+import { PrintApp } from "@/print/print.app";
 
 const rootElement = document.getElementById("print-root");
 
