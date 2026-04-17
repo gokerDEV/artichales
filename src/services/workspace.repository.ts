@@ -165,16 +165,22 @@ class WorkspaceRepository {
 			} satisfies WorkspaceSnapshot);
 		const normalized = normalizeWorkspaceSnapshot(candidate, defaultFiles);
 		try {
-			await this.saveWorkspace(normalized.files);
+			await this.saveWorkspace(
+				normalized.files,
+				normalized.lastModifiedByName,
+			);
 		} catch {
 			// Workspace can still be opened in-memory; save errors are surfaced by caller.
 		}
 		return normalized;
 	}
 
-	async saveWorkspace(files: WorkspaceFiles): Promise<void> {
+	async saveWorkspace(
+		files: WorkspaceFiles,
+		lastModifiedByName: WorkspaceLastModifiedMap = {},
+	): Promise<void> {
 		const normalized = normalizeWorkspaceSnapshot(
-			{ files, lastModifiedByName: {} },
+			{ files, lastModifiedByName },
 			files,
 		);
 		const savedToOpfs = await writeWorkspaceToOpfs(normalized.files);

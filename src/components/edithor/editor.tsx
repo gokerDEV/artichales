@@ -43,10 +43,10 @@ export function EdithorEditor({
 
 		adapter
 			.onReadFile(file.id)
-			.then((data) => {
+			.then((loaded) => {
 				if (isMounted) {
-					setContent(data);
-					latestContentRef.current = data;
+					setContent(loaded.data);
+					latestContentRef.current = loaded.data;
 					setIsLoading(false);
 				}
 			})

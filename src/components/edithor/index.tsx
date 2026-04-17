@@ -167,8 +167,8 @@ export function Edithor({
 				const { data, lastModified } = await adapter.onReadFile(fileName);
 				if (!data)
 					return { data: {} as T, resolvedFileName: "", lastModified: "" };
-				const raw = lastModified.startsWith("data:")
-					? (decodeDataUrlPayload(lastModified) ?? data)
+				const raw = data.startsWith("data:")
+					? (decodeDataUrlPayload(data) ?? data)
 					: data;
 				try {
 					return {

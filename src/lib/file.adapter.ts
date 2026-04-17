@@ -23,12 +23,17 @@ export const workspaceFileAdapter: EdithorAdapter = {
 	onReadFile: async (fileId: string) => {
 		const state = useWorkspaceStore.getState();
 		const content = state.rawFiles[fileId];
+		const lastModified = state.fileLastModified[fileId];
 
 		if (content === undefined) {
 			throw new Error(`File not found in workspace: ${fileId}`);
 		}
 
-		return content;
+		return {
+			data: content,
+			lastModified:
+				typeof lastModified === "number" ? String(lastModified) : "",
+		};
 	},
 
 	onSave: async (fileId: string, content: string) => {
@@ -36,8 +41,11 @@ export const workspaceFileAdapter: EdithorAdapter = {
 
 		store.updateFile(fileId, content, Date.now());
 
-		const updatedFiles = useWorkspaceStore.getState().rawFiles;
-		await workspaceRepository.saveWorkspace(updatedFiles);
+		const nextState = useWorkspaceStore.getState();
+		await workspaceRepository.saveWorkspace(
+			nextState.rawFiles,
+			nextState.fileLastModified,
+		);
 	},
 
 	onDelete: async (fileId: string) => {
@@ -54,9 +62,11 @@ export const workspaceFileAdapter: EdithorAdapter = {
 		}
 
 		delete rawFiles[fileId];
-		store.setRawFiles(rawFiles);
+		const nextLastModified = { ...store.fileLastModified };
+		delete nextLastModified[fileId];
+		store.setRawFiles(rawFiles, nextLastModified);
 
-		await workspaceRepository.saveWorkspace(rawFiles);
+		await workspaceRepository.saveWorkspace(rawFiles, nextLastModified);
 	},
 
 	onRename: async (fileId: string, newName: string) => {
@@ -89,7 +99,7 @@ export const workspaceFileAdapter: EdithorAdapter = {
 		delete renamedLastModified[fileId];
 
 		store.setRawFiles(rawFiles, renamedLastModified);
-		await workspaceRepository.saveWorkspace(rawFiles);
+		await workspaceRepository.saveWorkspace(rawFiles, renamedLastModified);
 	},
 
 	onUpload: async (files: File[]) => {
@@ -112,6 +122,6 @@ export const workspaceFileAdapter: EdithorAdapter = {
 		}
 
 		store.setRawFiles(rawFiles, lastModifiedByName);
-		await workspaceRepository.saveWorkspace(rawFiles);
+		await workspaceRepository.saveWorkspace(rawFiles, lastModifiedByName);
 	},
 };
