@@ -1,6 +1,16 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Edithor } from "@/components/edithor";
+import { workspaceFileAdapter } from "@/lib/file.adapter";
+import {
+	CORE_ARTICLE_FILE,
+	CORE_BIB_FILE,
+	CORE_TEMPLATE_FILE,
+} from "@/lib/workspace";
+import { DEFAULT_WORKSPACE_FILES } from "@/lib/workspace-default-files";
+import { workspaceRepository } from "@/services/workspace.repository";
+import { useWorkspaceStore } from "@/store/workspace.store";
 import { ExportPrintButton } from "./export-print.button";
 // import { ExportPdfButton } from "./export-pdf.button";
 import {
@@ -10,23 +20,45 @@ import {
 } from "./viewer-mode-switch";
 import { Viewers } from "./viewers";
 
-import { Edithor } from "@/components/edithor";
-import { workspaceFileAdapter } from "@/lib/file.adapter";
-import { useWorkspaceStore } from "@/store/workspace.store";
-import { getCoreFileNames } from "@/services/workspace.repository";
-
 export default function WorkspacePage() {
 	const [mode, setMode] = useState<ViewerMode>("print");
 	const [tab, setTab] = useState<ViewerTab>("viewer");
 
 	const workspaceFiles = useWorkspaceStore((state) => state.workspaceFiles);
+	const setRawFiles = useWorkspaceStore((state) => state.setRawFiles);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const loadWorkspace = async () => {
+			try {
+				const loadedFiles = await workspaceRepository.loadWorkspace(
+					DEFAULT_WORKSPACE_FILES,
+				);
+				if (isMounted) {
+					setRawFiles(loadedFiles);
+				}
+			} catch {
+				if (isMounted) {
+					setRawFiles({ ...DEFAULT_WORKSPACE_FILES });
+				}
+			}
+		};
+
+		loadWorkspace();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [setRawFiles]);
 
 	useEffect(() => {
 		try {
 			let stored = localStorage.getItem("artichale-viewer-mode-v1");
 			if (stored === "web" || stored === "print") setMode(stored as ViewerMode);
 			stored = localStorage.getItem("artichale-viewer-tab-v1");
-			if (stored === "viewer" || stored === "diagnostics") setTab(stored as ViewerTab);
+			if (stored === "viewer" || stored === "diagnostics")
+				setTab(stored as ViewerTab);
 		} catch {
 			// ignore storage errors
 		}
@@ -49,23 +81,27 @@ export default function WorkspacePage() {
 	}, [tab]);
 
 	const files = useMemo(() => {
-		const coreFiles = Object.values(getCoreFileNames());
+		const pinnedStaticFiles = new Set([
+			CORE_TEMPLATE_FILE,
+			CORE_ARTICLE_FILE,
+			CORE_BIB_FILE,
+		]);
 		return workspaceFiles.map((f) => ({
 			id: f.name,
 			name: f.name,
 			lastModified: f.lastUpdated,
 			// Core files (article, template, bib) are not deletable
-			deletable: !coreFiles.includes(f.name),
+			deletable: !pinnedStaticFiles.has(f.name),
 			editable: true,
 			// Core files are pinned to the top
-			pinned: coreFiles.includes(f.name),
+			pinned: pinnedStaticFiles.has(f.name),
 		}));
 	}, [workspaceFiles]);
 
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
 			<Edithor
-				open='article.mda'
+				open={CORE_ARTICLE_FILE}
 				config={{
 					maxFileSize: 5 * 1024 * 1024, // 5MB
 					maxWorkspaceSize: 50 * 1024 * 1024, // 50MB
@@ -95,7 +131,7 @@ export default function WorkspacePage() {
 						{/*<ExportPdfButton />*/}
 					</div>
 				}
-				previewContent={<Viewers mode={mode} tab={tab} />}
+				viewer={(props) => <Viewers {...props} mode={mode} tab={tab} />}
 			/>
 		</div>
 	);
@@ -165,5 +201,3 @@ export default function WorkspacePage() {
 // 		</div>
 // 	);
 // }
-
-

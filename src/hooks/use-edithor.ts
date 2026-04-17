@@ -1,17 +1,30 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { EdithorAdapter } from "@/components/edithor/types";
 
 interface Props {
 	open?: string;
 	adapter: EdithorAdapter;
-	defaultLayout?: number[];
 	storageKey?: string;
 }
 
-const  defaultLayout = {
-	'edithor-file-tree':20,
-	'edithor-editor': 40,
-	'edithor-view': 40
+const defaultLayout = {
+	"edithor-file-tree": 20,
+	"edithor-editor": 40,
+	"editor-preview": 40,
+};
+
+function normalizeLayout(
+	layout: Record<string, number>,
+): Record<string, number> {
+	const next = { ...layout };
+	if (typeof next["edithor-view"] === "number") {
+		next["editor-preview"] = next["edithor-view"];
+		delete next["edithor-view"];
+	}
+	return {
+		...defaultLayout,
+		...next,
+	};
 }
 
 export function useEdithor({
@@ -19,14 +32,14 @@ export function useEdithor({
 	adapter,
 	storageKey = "edithor-layout",
 }: Props) {
-
 	const [layout, setLayout] = useState<{ [id: string]: number }>(() => {
 		if (typeof window === "undefined") return defaultLayout;
 		try {
 			const stored = window.localStorage.getItem(storageKey);
-			return  stored ? JSON.parse(stored) : defaultLayout;
+			if (!stored) return defaultLayout;
+			return normalizeLayout(JSON.parse(stored) as Record<string, number>);
 		} catch {
-			return  defaultLayout
+			return defaultLayout;
 		}
 	});
 
@@ -34,9 +47,10 @@ export function useEdithor({
 
 	const handleLayoutChanged = useCallback(
 		(layout: Record<string, number>) => {
-			setLayout(layout);
+			const normalized = normalizeLayout(layout);
+			setLayout(normalized);
 			if (typeof window !== "undefined") {
-				window.localStorage.setItem(storageKey, JSON.stringify(layout));
+				window.localStorage.setItem(storageKey, JSON.stringify(normalized));
 			}
 		},
 		[storageKey],

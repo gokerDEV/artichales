@@ -58,6 +58,7 @@ export interface EdithorConfig {
 	maxFileSize?: number;
 	maxFileCount?: number;
 	maxWorkspaceSize?: number;
+	softWrap?: boolean;
 	validateFileName?: (name: string) => boolean | string;
 	autocompleteRules?: AutocompleteRule[];
 }

@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { WORKSPACE_UI_STATE_KEY } from "@/lib/workspace";
 
 type EdithorUiState = {
 	panelSizes: number[];
@@ -9,11 +11,22 @@ type EdithorUiState = {
 	setLivePreviewEnabled: (value: boolean) => void;
 };
 
-export const useEdithorUiStore = create<EdithorUiState>()((set) => ({
-	panelSizes: [16, 44, 40],
-	isDraggingAssets: false,
-	isLivePreviewEnabled: true,
-	setPanelSizes: (sizes) => set({ panelSizes: sizes }),
-	setDraggingAssets: (value) => set({ isDraggingAssets: value }),
-	setLivePreviewEnabled: (value) => set({ isLivePreviewEnabled: value }),
-}));
+export const useEdithorUiStore = create<EdithorUiState>()(
+	persist(
+		(set) => ({
+			panelSizes: [16, 44, 40],
+			isDraggingAssets: false,
+			isLivePreviewEnabled: true,
+			setPanelSizes: (sizes) => set({ panelSizes: sizes }),
+			setDraggingAssets: (value) => set({ isDraggingAssets: value }),
+			setLivePreviewEnabled: (value) => set({ isLivePreviewEnabled: value }),
+		}),
+		{
+			name: WORKSPACE_UI_STATE_KEY,
+			storage: createJSONStorage(() => localStorage),
+			partialize: (state) => ({
+				isLivePreviewEnabled: state.isLivePreviewEnabled,
+			}),
+		},
+	),
+);

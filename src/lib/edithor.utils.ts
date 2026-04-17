@@ -16,7 +16,7 @@ export function formatBytes(bytes: number, decimals = 2): string {
 
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+	return `${parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
 }
 
 export function getFileExtension(filename: string): string {
@@ -61,4 +61,34 @@ export function getBaseName(filename: string): string {
 	const ext = getFileExtension(filename);
 	if (!ext) return filename;
 	return filename.slice(0, -(ext.length + 1));
+}
+
+type DebouncedFn<TArgs extends unknown[]> = ((...args: TArgs) => void) & {
+	cancel: () => void;
+};
+
+export function debounce<TArgs extends unknown[]>(
+	fn: (...args: TArgs) => void,
+	waitMs: number,
+): DebouncedFn<TArgs> {
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	const debounced = (...args: TArgs) => {
+		if (timeoutId !== null) {
+			clearTimeout(timeoutId);
+		}
+		timeoutId = setTimeout(() => {
+			timeoutId = null;
+			fn(...args);
+		}, waitMs);
+	};
+
+	debounced.cancel = () => {
+		if (timeoutId !== null) {
+			clearTimeout(timeoutId);
+			timeoutId = null;
+		}
+	};
+
+	return debounced;
 }
