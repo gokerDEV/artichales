@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import CodeMirror, { Extension } from "@uiw/react-codemirror";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import type { Extension } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { languages } from "@codemirror/language-data";
 import { json } from "@codemirror/lang-json";
 
 import type { EdithorFile, EdithorAdapter, EdithorConfig } from "./types";
@@ -83,7 +83,7 @@ export function EdithorEditor({ file, adapter, config }: EdithorEditorProps) {
         const lang = getEditorLanguage(file.name);
 
         if (lang === "markdown") {
-            exts.push(markdown({ base: markdownLanguage, codeLanguages: languages }));
+            exts.push(markdown({ base: markdownLanguage }));
         } else if (lang === "json") {
             exts.push(json());
         }

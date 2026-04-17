@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import Layout from "@/components/common/app.layout";
-import { WorkspacePage } from "./workspace/page";
+import WorkspacePage from "./workspace/page";
 import "@/style.css";
 import { SettingsPage } from "./settings/page";
 

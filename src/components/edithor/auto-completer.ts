@@ -1,10 +1,9 @@
 import {
 	autocompletion,
 	CompletionContext,
-	CompletionResult,
-	CompletionSource,
+	type Completion,
 } from "@codemirror/autocomplete";
-import { Extension } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import type { AutocompleteRule, AutocompleteItem } from "./types";
 
 function escapeRegExp(str: string): string {
@@ -18,10 +17,8 @@ export function createAutocompleteExtension(
 		return [];
 	}
 
-	const completionSources: CompletionSource[] = rules.map((rule) => {
-		return async (
-			context: CompletionContext,
-		): Promise<CompletionResult | null> => {
+	const completionSources = rules.map((rule) => {
+		return async (context: CompletionContext) => {
 			const triggerRegex =
 				typeof rule.trigger === "string"
 					? new RegExp(`${escapeRegExp(rule.trigger)}[\\w-]*$`)
@@ -59,21 +56,15 @@ export function createAutocompleteExtension(
 				return null;
 			}
 
-			const validForRegex =
-				typeof rule.trigger === "string"
-					? new RegExp(`^${escapeRegExp(rule.trigger)}[\\w-]*$`)
-					: rule.trigger;
-
 			return {
 				from: match.from,
-				validFor: validForRegex,
 				options: items.map((item) => ({
 					label: item.label,
 					detail: item.detail,
 					apply: item.insertText,
-					type: "variable",
-				})),
-			};
+					type: "variable" as const,
+				} satisfies Completion)),
+			} as const;
 		};
 	});
 

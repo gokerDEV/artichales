@@ -1,12 +1,14 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { FileText, Trash2, Edit2, UploadCloud, Pin } from "lucide-react";
-import type { EdithorFile } from "@/components/edithor/types.ts";
+import { FileText, Trash2, Edit2, UploadCloud, Pin, AlertCircle } from "lucide-react";
+import type { EdithorFile } from "@/components/edithor/types";
+import { formatDate } from "@/lib/edithor.utils";
+import { toast } from "sonner";
 
 import {
 	ContextMenu,
+	ContextMenuTrigger,
 	ContextMenuContent,
 	ContextMenuItem,
-	ContextMenuTrigger,
 	ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -42,15 +45,23 @@ export function FileTree({
 	const [renameFile, setRenameFile] = useState<EdithorFile | null>(null);
 	const [newName, setNewName] = useState("");
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [uploadError, setUploadError] = useState<string | null>(null);
 
 	const displayFiles = useMemo(() => {
-		const pinned = files.filter((f) => f.pinned);
-		const assets = files
+		// Create a stable list: pinned files first (preserve pinned order),
+		// then non-pinned files sorted by name. Annotate each entry with
+		// UI flags so rendering can rely on consistent properties.
+		const pinnedFiles = files
+			.filter((f) => f.pinned)
+			.map((f) => ({ ...f, isPinned: true, deletable: f.deletable, editable: f.editable }));
 
+		const assetFiles = files
+			.filter((f) => !f.pinned)
+			.slice() // avoid mutating the original array
 			.sort((a, b) => a.name.localeCompare(b.name))
-			.map((f) => ({ ...f, isPinned: false, deletable: true, editable: true }));
+			.map((f) => ({ ...f, isPinned: false, deletable: f.deletable, editable: f.editable }));
 
-		return [...pinned, ...assets];
+		return [...pinnedFiles, ...assetFiles];
 	}, [files]);
 
 	const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -70,12 +81,18 @@ export function FileTree({
 			e.preventDefault();
 			e.stopPropagation();
 			setIsDragging(false);
+			setUploadError(null);
 
 			const droppedFiles = Array.from(e.dataTransfer.files);
 			if (droppedFiles.length > 0) {
 				setIsProcessing(true);
 				try {
 					await onUpload(droppedFiles);
+					toast.success(`${droppedFiles.length} file(s) uploaded successfully`);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : "Upload failed";
+					setUploadError(message);
+					toast.error(message);
 				} finally {
 					setIsProcessing(false);
 				}
@@ -94,6 +111,25 @@ export function FileTree({
 		setNewName("");
 	}, []);
 
+	const handleDeleteFile = useCallback(
+		async (file: EdithorFile) => {
+			const confirmed = window.confirm(`Delete "${file.name}"?`);
+			if (!confirmed) return;
+
+			setIsProcessing(true);
+			try {
+				await onDelete(file.id);
+				toast.success(`File "${file.name}" deleted`);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : "Delete failed";
+				toast.error(message);
+			} finally {
+				setIsProcessing(false);
+			}
+		},
+		[onDelete],
+	);
+
 	const handleRenameSubmit = useCallback(async () => {
 		if (!renameFile || !newName.trim() || newName.trim() === renameFile.name) {
 			closeRenameDialog();
@@ -103,7 +139,11 @@ export function FileTree({
 		setIsProcessing(true);
 		try {
 			await onRename(renameFile.id, newName.trim());
+			toast.success(`File renamed to "${newName.trim()}"`);
 			closeRenameDialog();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Rename failed";
+			toast.error(message);
 		} finally {
 			setIsProcessing(false);
 		}
@@ -129,11 +169,20 @@ export function FileTree({
 				/>
 			</div>
 
+			{uploadError && (
+				<div className="px-3 pt-2">
+					<Alert variant="destructive">
+						<AlertCircle className="h-4 w-4" />
+						<AlertDescription>{uploadError}</AlertDescription>
+					</Alert>
+				</div>
+			)}
+
 			<ScrollArea className="flex-1">
 				<div className="p-2 space-y-0.5">
 					{displayFiles.map((file) => (
 						<ContextMenu key={file.id}>
-							<ContextMenuTrigger>
+							<ContextMenuTrigger asChild>
 								<button
 									onClick={() => onSelect(file.id)}
 									disabled={isProcessing}
@@ -152,24 +201,29 @@ export function FileTree({
 									<div className="flex flex-col flex-1 overflow-hidden">
 										<span className="truncate">{file.name}</span>
 										<span className="text-[10px] text-muted-foreground truncate">
-											{formatDate(new Date(file.lastModified))}
+											{formatDate(new Date(file.lastModified).getTime())}
 										</span>
 									</div>
 								</button>
 							</ContextMenuTrigger>
+
 							<ContextMenuContent className="w-48">
 								<ContextMenuItem
-									onClick={() => openRenameDialog(file)}
-									disabled={isProcessing || !file.editable}
+									onClick={() => {
+										if (file.editable && !isProcessing) openRenameDialog(file);
+									}}
+									disabled={!file.editable || isProcessing}
 								>
 									<Edit2 className="w-4 h-4 mr-2" />
 									Rename
 								</ContextMenuItem>
 								<ContextMenuSeparator />
 								<ContextMenuItem
-									onClick={() => onDelete(file.id)}
-									disabled={isProcessing || !file.deletable}
-									className="text-destructive focus:text-destructive focus:bg-destructive/10"
+									onClick={() => {
+										if (file.deletable && !isProcessing) handleDeleteFile(file);
+									}}
+									disabled={!file.deletable || isProcessing}
+									variant="destructive"
 								>
 									<Trash2 className="w-4 h-4 mr-2" />
 									Delete
@@ -183,6 +237,8 @@ export function FileTree({
 							Drop files here to upload
 						</div>
 					)}
+
+
 				</div>
 			</ScrollArea>
 

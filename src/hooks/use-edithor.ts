@@ -1,35 +1,40 @@
 import { useState, useCallback } from "react";
 import type { EdithorAdapter } from "@/components/edithor/types";
 
-export interface UseEdithorProps {
+interface Props {
 	adapter: EdithorAdapter;
 	defaultLayout?: number[];
 	storageKey?: string;
 }
 
+const  defaultLayout = {
+	'edithor-file-tree':20,
+	'edithor-editor': 40,
+	'edithor-view': 40
+}
+
 export function useEdithor({
 	adapter,
-	defaultLayout = [20, 40, 40],
 	storageKey = "edithor-layout",
-}: UseEdithorProps) {
-	const [layout, setLayout] = useState<number[]>(() => {
-		if (typeof window === "undefined") return defaultLayout;
+}: Props) {
 
+	const [layout, setLayout] = useState<{ [id: string]: number }>(() => {
+		if (typeof window === "undefined") return defaultLayout;
 		try {
 			const stored = window.localStorage.getItem(storageKey);
-			return stored ? JSON.parse(stored) : defaultLayout;
+			return  stored ? JSON.parse(stored) : defaultLayout;
 		} catch {
-			return defaultLayout;
+			return  defaultLayout
 		}
 	});
 
 	const [activeFileId, setActiveFileId] = useState<string | null>(null);
 
 	const handleLayoutChanged = useCallback(
-		(sizes: number[]) => {
-			setLayout(sizes);
+		(layout: Record<string, number>) => {
+			setLayout(layout);
 			if (typeof window !== "undefined") {
-				window.localStorage.setItem(storageKey, JSON.stringify(sizes));
+				window.localStorage.setItem(storageKey, JSON.stringify(layout));
 			}
 		},
 		[storageKey],
@@ -66,6 +71,7 @@ export function useEdithor({
 	return {
 		layout,
 		handleLayoutChanged,
+		defaultLayout,
 		activeFileId,
 		setActiveFileId,
 		handleFileSelect,

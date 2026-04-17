@@ -28,7 +28,8 @@ export default defineManifest((env) => ({
 		"128": "icons/icon-128.png",
 	},
 	background: {
-		service_worker: "src/background/index.tsx",
+		// background entry is a TypeScript module (no JSX), point to .ts
+		service_worker: "src/background/index.ts",
 		type: "module",
 	},
 	permissions: [
