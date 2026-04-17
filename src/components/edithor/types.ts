@@ -1,21 +1,21 @@
 import type * as React from "react";
 
 export type EdithorViewerMethods = {
-	listFiles: () => string[];
-	listAssetFiles: () => string[];
-	readFile: (fileName: string) => string | null;
-	readAssetText: (fileName: string) => string | null;
-	readAssetDataUrl: (fileName: string) => string | null;
+	// listFiles: () => string[];
+	// listAssetFiles: () => string[];
+	// readFile: (fileName: string) => string | null;
+	readAssetText: (fileName: string) => Promise<string | null>;
+	readAssetDataUrl: (fileName: string) => Promise<string | null>;
 	readJsonAsset: <T = unknown>(
 		fileName: string,
-	) => {
+	) => Promise<{
 		data: T;
 		resolvedFileName: string;
-	} | null;
+	} | null>;
 };
 
 export type EdithorViewerProps = {
-	files: Record<string, string>;
+	files: EdithorFile[];
 	activeFile: string;
 	methods: EdithorViewerMethods;
 };

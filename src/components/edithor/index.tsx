@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEdithor } from "@/hooks/use-edithor";
-import { debounce } from "@/lib/edithor.utils";
 import { EdithorEditor } from "./editor";
 import { FileTree } from "./file-tree";
 import { useEdithorUiStore } from "./stores/edithor-ui.store";
@@ -50,6 +49,7 @@ export function Edithor({
 		layout,
 		handleLayoutChanged,
 		activeFileId,
+		setActiveFileId,
 		handleFileSelect,
 		handleFileDelete,
 		handleFileRename,
@@ -59,10 +59,12 @@ export function Edithor({
 		adapter,
 		storageKey: "edithor-layout",
 	});
-	const [previewSnapshot, setPreviewSnapshot] = useState<
-		Record<string, string>
-	>({});
+	// const [previewSnapshot, setPreviewSnapshot] = useState<
+	// 	Record<string, string>
+	// >({});
+	const [lastModified, setLastModified] = useState<number>(0);
 	const fileContentsRef = useRef<Record<string, string>>({});
+
 	const isLivePreviewEnabled = useEdithorUiStore(
 		(state) => state.isLivePreviewEnabled,
 	);
@@ -70,60 +72,52 @@ export function Edithor({
 		(state) => state.setLivePreviewEnabled,
 	);
 
-	useEffect(() => {
-		let isMounted = true;
-
-		const loadAllFiles = async () => {
-			const entries = await Promise.all(
-				files.map(async (file) => {
-					try {
-						const content = await adapter.onReadFile(file.id);
-						return [file.name, content] as const;
-					} catch {
-						return [file.name, ""] as const;
-					}
-				}),
-			);
-
-			if (!isMounted) return;
-			const next = Object.fromEntries(entries);
-			fileContentsRef.current = next;
-			setPreviewSnapshot(next);
-		};
-
-		void loadAllFiles();
-
-		return () => {
-			isMounted = false;
-		};
-	}, [adapter, files]);
-
 	const activeFile = useMemo(
 		() => files.find((f) => f.id === activeFileId) || null,
 		[files, activeFileId],
 	);
+	const activeEditorFile = useMemo(() => {
+		return activeFile || null;
+	}, [
+		activeFile?.id,
+		activeFile?.name,
+		activeFile?.deletable,
+		activeFile?.editable,
+		activeFile?.pinned,
+	]);
+
+	useEffect(() => {
+		if (files.length === 0) return;
+		if (activeFileId && files.some((file) => file.id === activeFileId)) return;
+
+		const fallbackId =
+			(open && files.some((file) => file.id === open) && open) || files[0]?.id;
+
+
+		if (fallbackId) {
+			setActiveFileId(fallbackId);
+		}
+	}, [activeFileId, files, open, setActiveFileId]);
+
 	const fileIdToName = useMemo(
 		() => Object.fromEntries(files.map((file) => [file.id, file.name])),
 		[files],
 	);
-	const triggerPreview = useCallback(
-		() => setPreviewSnapshot({ ...fileContentsRef.current }),
-		[],
-	);
-	const debouncedTriggerPreview = useMemo(
-		() => debounce(triggerPreview, 250),
-		[triggerPreview],
-	);
+
 	const handleLivePreviewChange = useCallback(
 		(enabled: boolean) => {
 			setLivePreviewEnabled(enabled);
-			if (enabled) {
-				debouncedTriggerPreview();
-			}
 		},
-		[debouncedTriggerPreview, setLivePreviewEnabled],
+		[setLivePreviewEnabled],
 	);
-	const handleContentChange = useCallback(
+
+	const triggerPreview = useCallback(() => {
+		// setPreviewSnapshot({ ...fileContentsRef.current });
+		// setPreviewLastModified(Date.now());
+		setLastModified(Date.now());
+	}, []);
+
+	const handleFileSaved = useCallback(
 		(fileId: string, content: string) => {
 			const fileName = fileIdToName[fileId] ?? fileId;
 			fileContentsRef.current = {
@@ -131,50 +125,46 @@ export function Edithor({
 				[fileName]: content,
 			};
 			if (isLivePreviewEnabled) {
-				debouncedTriggerPreview();
+				// triggerPreview();
+				setLastModified(Date.now());
+			}
+
+		},
+		[fileIdToName, isLivePreviewEnabled, triggerPreview],
+	);
+	const handleEditorBlur = useCallback(
+		(fileId: string, content: string) => {
+			const fileName = fileIdToName[fileId] ?? fileId;
+			fileContentsRef.current = {
+				...fileContentsRef.current,
+				[fileName]: content,
+			};
+			if (!isLivePreviewEnabled) {
+				triggerPreview();
 			}
 		},
-		[debouncedTriggerPreview, fileIdToName, isLivePreviewEnabled],
-	);
-	const handleEditorBlur = useCallback(() => {
-		if (!isLivePreviewEnabled) {
-			triggerPreview();
-		}
-	}, [isLivePreviewEnabled, triggerPreview]);
-
-	useEffect(() => {
-		return () => {
-			debouncedTriggerPreview.cancel();
-		};
-	}, [debouncedTriggerPreview]);
-
-	const viewerFiles = useMemo(
-		() =>
-			Object.fromEntries(
-				files.map((file) => [file.name, previewSnapshot[file.name] ?? ""]),
-			),
-		[files, previewSnapshot],
+		[fileIdToName, isLivePreviewEnabled, triggerPreview],
 	);
 
 	// Viewer methods implementation
 	const viewerMethods = useMemo<EdithorViewerMethods>(() => {
 		return {
-			listFiles: () => files.map((f) => f.name),
-			listAssetFiles: () =>
-				files.filter((f) => f.editable && f.deletable).map((f) => f.name),
-			readFile: (fileName) => {
-				return previewSnapshot[fileName] ?? null;
-			},
+			// listFiles: () => files.map((f) => f.name),
+			// listAssetFiles: () =>
+			// 	files.filter((f) => f.editable && f.deletable).map((f) => f.name),
+			// readFile: (fileName) => {
+			// 	return previewSnapshot[fileName] ?? null;
+			// },
 			readAssetText: (fileName) => {
-				return previewSnapshot[fileName] ?? null;
+				return adapter.onReadFile(fileName) ?? null;
 			},
-			readAssetDataUrl: (fileName) => {
-				const content = previewSnapshot[fileName];
+			readAssetDataUrl: async (fileName) => {
+				const content = await  adapter.onReadFile(fileName);
 				if (!content) return null;
 				return content.startsWith("data:") ? content : null;
 			},
-			readJsonAsset: <T,>(fileName: string) => {
-				const content = previewSnapshot[fileName];
+			readJsonAsset: async <T,>(fileName: string) => {
+				const content = await adapter.onReadFile(fileName);
 				if (!content) return null;
 				const raw = content.startsWith("data:")
 					? (decodeDataUrlPayload(content) ?? content)
@@ -189,7 +179,25 @@ export function Edithor({
 				}
 			},
 		};
-	}, [files, previewSnapshot]);
+	}, [files]);
+
+	const  view  = useMemo(() => {
+
+		console.log("view triggered", { files, activeFile, open, viewer });
+
+		return viewer
+			? viewer({
+				files: files,
+				activeFile: activeFile?.name ?? open ?? files[0]?.name ?? "",
+				methods: viewerMethods,
+			})
+			: previewContent
+	}, [lastModified]);
+
+
+	console.log('Edithor',{activeFileId, files}, lastModified);
+
+
 
 	return (
 		<ResizablePanelGroup
@@ -213,14 +221,14 @@ export function Edithor({
 
 			<ResizablePanel id="edithor-editor" minSize={25}>
 				<div className="flex h-full flex-col bg-background">
-					{activeFile ? (
+					{activeEditorFile ? (
 						<EdithorEditor
-							file={activeFile}
+							file={activeEditorFile}
 							adapter={adapter}
 							config={config}
 							isLivePreviewEnabled={isLivePreviewEnabled}
 							onLivePreviewChange={handleLivePreviewChange}
-							onContentChange={handleContentChange}
+							onFileSaved={handleFileSaved}
 							onEditorBlur={handleEditorBlur}
 						/>
 					) : (
@@ -252,13 +260,7 @@ export function Edithor({
 						) : null}
 					</div>
 					<ScrollArea className="flex-1 overflow-auto">
-						{viewer
-							? viewer({
-									files: viewerFiles,
-									activeFile: activeFile?.name ?? open ?? files[0]?.name ?? "",
-									methods: viewerMethods,
-								})
-							: previewContent}
+						{view}
 					</ScrollArea>
 				</div>
 			</ResizablePanel>

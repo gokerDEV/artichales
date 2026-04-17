@@ -23,6 +23,7 @@ import { Viewers } from "./viewers";
 export default function WorkspacePage() {
 	const [mode, setMode] = useState<ViewerMode>("print");
 	const [tab, setTab] = useState<ViewerTab>("viewer");
+	const [isWorkspaceReady, setIsWorkspaceReady] = useState(false);
 
 	const workspaceFiles = useWorkspaceStore((state) => state.workspaceFiles);
 	const setRawFiles = useWorkspaceStore((state) => state.setRawFiles);
@@ -37,10 +38,12 @@ export default function WorkspacePage() {
 				);
 				if (isMounted) {
 					setRawFiles(loadedFiles);
+					setIsWorkspaceReady(true);
 				}
 			} catch {
 				if (isMounted) {
 					setRawFiles({ ...DEFAULT_WORKSPACE_FILES });
+					setIsWorkspaceReady(true);
 				}
 			}
 		};
@@ -97,6 +100,14 @@ export default function WorkspacePage() {
 			pinned: pinnedStaticFiles.has(f.name),
 		}));
 	}, [workspaceFiles]);
+
+	if (!isWorkspaceReady) {
+		return (
+			<div className="flex h-full min-h-0 w-full items-center justify-center text-sm text-muted-foreground">
+				Preparing workspace...
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">

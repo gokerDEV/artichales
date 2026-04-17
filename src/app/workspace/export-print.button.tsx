@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useEdithorWorkspaceStore } from "@/components/edithor/stores/edithor-workspace.store";
 import { printJobRepository } from "@/services/print-job.repository";
+import { useWorkspaceStore } from "@/store/workspace.store";
 
 export function ExportPrintButton() {
 	const [isExporting, setIsExporting] = useState(false);
 	const [activeJobId, setActiveJobId] = useState<string | null>(null);
-	const files = useEdithorWorkspaceStore((state) => state.files);
+	const files = useWorkspaceStore((state) => state.rawFiles);
 
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
@@ -41,7 +41,7 @@ export function ExportPrintButton() {
 				disabled={isExporting}
 				variant="default"
 				size="sm"
-				className="h-7 px-3 text-xs flex-shrink-0"
+				className="h-7 px-3 text-xs shrink-0"
 			>
 				<Download className="mr-1 h-3 w-3" />
 				{isExporting ? "Preparing..." : "Export PDF"}

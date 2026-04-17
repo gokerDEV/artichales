@@ -62,9 +62,9 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 		const run = async () => {
 			try {
 				const parse = parseArtichale({
-					rawMarkdown: deferredFiles[CORE_ARTICLE_FILE] ?? "",
-					rawTemplate: deferredFiles[CORE_TEMPLATE_FILE] ?? "",
-					rawBibliography: deferredFiles[CORE_BIB_FILE] ?? "",
+					rawMarkdown: await methods.readAssetText(CORE_ARTICLE_FILE) ?? "",
+					rawTemplate: await methods.readAssetText(CORE_TEMPLATE_FILE) ?? "",
+					rawBibliography: await methods.readAssetText(CORE_BIB_FILE) ?? "",
 				});
 
 				const render = await renderArtichale({
@@ -77,12 +77,12 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 					labeledBlocks: parse.labeledBlocks,
 					citations: parse.citations,
 					fnJSONAssetReader: async <T,>(fileName: string) => {
-						const loaded = methods.readJsonAsset<T>(fileName);
+						const loaded = await methods.readJsonAsset<T>(fileName);
 						if (!loaded) throw new Error(`Missing JSON asset: ${fileName}`);
 						return { data: loaded.data };
 					},
 					fnAssetResolver: async (fileName: string) => {
-						const resolvedSrc = methods.readAssetDataUrl(fileName);
+						const resolvedSrc = await methods.readAssetDataUrl(fileName);
 						if (!resolvedSrc) return null;
 						return {
 							fileName,

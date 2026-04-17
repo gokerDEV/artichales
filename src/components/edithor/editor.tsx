@@ -6,7 +6,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import { Switch } from "@/components/ui/switch";
-import { getEditorLanguage } from "@/lib/edithor.utils";
+import { debounce, getEditorLanguage } from "@/lib/edithor.utils";
 import { createAutocompleteExtension } from "./auto-completer";
 import type { EdithorAdapter, EdithorConfig, EdithorFile } from "./types";
 
@@ -17,7 +17,8 @@ export interface EdithorEditorProps {
 	isLivePreviewEnabled: boolean;
 	onLivePreviewChange: (enabled: boolean) => void;
 	onContentChange?: (fileId: string, content: string) => void;
-	onEditorBlur?: () => void;
+	onFileSaved?: (fileId: string, content: string) => void;
+	onEditorBlur?: (fileId: string, content: string) => void;
 }
 
 export function EdithorEditor({
@@ -27,13 +28,13 @@ export function EdithorEditor({
 	isLivePreviewEnabled,
 	onLivePreviewChange,
 	onContentChange,
+	onFileSaved,
 	onEditorBlur,
 }: EdithorEditorProps) {
 	const [content, setContent] = useState<string>("");
 	const [isLoading, setIsLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
-
-	const saveTimeoutRef = useRef<number | null>(null);
+	const latestContentRef = useRef<string>("");
 
 	useEffect(() => {
 		let isMounted = true;
@@ -45,6 +46,7 @@ export function EdithorEditor({
 			.then((data) => {
 				if (isMounted) {
 					setContent(data);
+					latestContentRef.current = data;
 					setIsLoading(false);
 				}
 			})
@@ -61,37 +63,40 @@ export function EdithorEditor({
 	}, [file.id, adapter]);
 
 	const handleSave = useCallback(
-		(newContent: string) => {
-			adapter.onSave(file.id, newContent).catch((err) => {
+		async (newContent: string) => {
+			try {
+				await adapter.onSave(file.id, newContent);
+				onFileSaved?.(file.id, newContent);
+			} catch (err) {
 				console.error("Auto-save failed:", err);
-			});
+			}
 		},
-		[file.id, adapter],
+		[file.id, adapter, onFileSaved],
+	);
+
+	const debouncedSave = useMemo(
+		() =>
+			debounce((value: string) => {
+				void handleSave(value);
+			}, 800),
+		[handleSave],
 	);
 
 	const handleChange = useCallback(
 		(value: string) => {
 			setContent(value);
+			latestContentRef.current = value;
 			onContentChange?.(file.id, value);
-
-			if (saveTimeoutRef.current !== null) {
-				window.clearTimeout(saveTimeoutRef.current);
-			}
-
-			saveTimeoutRef.current = window.setTimeout(() => {
-				handleSave(value);
-			}, 800);
+			debouncedSave(value);
 		},
-		[file.id, handleSave, onContentChange],
+		[debouncedSave, file.id, onContentChange],
 	);
 
 	useEffect(() => {
 		return () => {
-			if (saveTimeoutRef.current !== null) {
-				window.clearTimeout(saveTimeoutRef.current);
-			}
+			debouncedSave.cancel();
 		};
-	}, []);
+	}, [debouncedSave]);
 
 	const extensions = useMemo(() => {
 		const exts: Extension[] = [];
@@ -154,7 +159,11 @@ export function EdithorEditor({
 				<CodeMirror
 					value={content}
 					onChange={handleChange}
-					onBlur={() => onEditorBlur?.()}
+					onBlur={() => {
+						debouncedSave.cancel();
+						void handleSave(latestContentRef.current);
+						onEditorBlur?.(file.id, latestContentRef.current);
+					}}
 					extensions={extensions}
 					theme="none"
 					className="inset-0 [&>.cm-editor]:max-w-full text-sm [&>.cm-editor]:h-full [&>.cm-editor]:outline-none [&_.cm-scroller]:font-mono"

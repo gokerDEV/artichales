@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { Download } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useEdithorWorkspaceStore } from "@/components/edithor/stores/edithor-workspace.store";
 import { printJobRepository } from "@/services/print-job.repository";
+import { useWorkspaceStore } from "@/store/workspace.store";
 
 export function ExportPdfButton() {
 	const [isExporting, setIsExporting] = useState(false);
-	const files = useEdithorWorkspaceStore((state) => state.files);
+	const files = useWorkspaceStore((state) => state.rawFiles);
 
 	const handleExport = async () => {
 		try {

@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect } from "react";
+import { edithorDefaultLayout, useEdithorStore } from "@/lib/edithor.store";
 import type { EdithorAdapter } from "@/components/edithor/types";
 
 interface Props {
@@ -7,58 +8,37 @@ interface Props {
 	storageKey?: string;
 }
 
-const defaultLayout = {
-	"edithor-file-tree": 20,
-	"edithor-editor": 40,
-	"editor-preview": 40,
-};
-
-function normalizeLayout(
-	layout: Record<string, number>,
-): Record<string, number> {
-	const next = { ...layout };
-	if (typeof next["edithor-view"] === "number") {
-		next["editor-preview"] = next["edithor-view"];
-		delete next["edithor-view"];
-	}
-	return {
-		...defaultLayout,
-		...next,
-	};
-}
-
 export function useEdithor({
 	open,
 	adapter,
-	storageKey = "edithor-layout",
+	storageKey: _storageKey = "edithor-layout",
 }: Props) {
-	const [layout, setLayout] = useState<{ [id: string]: number }>(() => {
-		if (typeof window === "undefined") return defaultLayout;
-		try {
-			const stored = window.localStorage.getItem(storageKey);
-			if (!stored) return defaultLayout;
-			return normalizeLayout(JSON.parse(stored) as Record<string, number>);
-		} catch {
-			return defaultLayout;
-		}
-	});
+	void _storageKey;
 
-	const [activeFileId, setActiveFileId] = useState<string | null>(open || null);
+	const layout = useEdithorStore((state) => state.layout);
+	const setLayout = useEdithorStore((state) => state.setLayout);
+	const activeFileId = useEdithorStore((state) => state.activeFileId);
+	const setActiveFileId = useEdithorStore((state) => state.setActiveFileId);
+
+	useEffect(() => {
+		if (!activeFileId && open) {
+			setActiveFileId(open);
+		}
+	}, [activeFileId, open, setActiveFileId]);
 
 	const handleLayoutChanged = useCallback(
 		(layout: Record<string, number>) => {
-			const normalized = normalizeLayout(layout);
-			setLayout(normalized);
-			if (typeof window !== "undefined") {
-				window.localStorage.setItem(storageKey, JSON.stringify(normalized));
-			}
+			setLayout(layout);
 		},
-		[storageKey],
+		[setLayout],
 	);
 
-	const handleFileSelect = useCallback((fileId: string) => {
-		setActiveFileId(fileId);
-	}, []);
+	const handleFileSelect = useCallback(
+		(fileId: string) => {
+			setActiveFileId(fileId);
+		},
+		[setActiveFileId],
+	);
 
 	const handleFileDelete = useCallback(
 		async (fileId: string) => {
@@ -67,7 +47,7 @@ export function useEdithor({
 				setActiveFileId(null);
 			}
 		},
-		[adapter, activeFileId],
+		[adapter, activeFileId, setActiveFileId],
 	);
 
 	const handleFileRename = useCallback(
@@ -87,7 +67,7 @@ export function useEdithor({
 	return {
 		layout,
 		handleLayoutChanged,
-		defaultLayout,
+		defaultLayout: edithorDefaultLayout,
 		activeFileId,
 		setActiveFileId,
 		handleFileSelect,
