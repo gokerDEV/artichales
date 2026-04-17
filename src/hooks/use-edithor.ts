@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { EdithorAdapter } from "@/components/edithor/types";
 
 interface Props {
+	open?: string;
 	adapter: EdithorAdapter;
 	defaultLayout?: number[];
 	storageKey?: string;
@@ -14,6 +15,7 @@ const  defaultLayout = {
 }
 
 export function useEdithor({
+	open,
 	adapter,
 	storageKey = "edithor-layout",
 }: Props) {
@@ -28,7 +30,7 @@ export function useEdithor({
 		}
 	});
 
-	const [activeFileId, setActiveFileId] = useState<string | null>(null);
+	const [activeFileId, setActiveFileId] = useState<string | null>(open || null);
 
 	const handleLayoutChanged = useCallback(
 		(layout: Record<string, number>) => {

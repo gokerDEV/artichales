@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { ExportPrintButton } from "./export-print.button";
-import { ExportPdfButton } from "./export-pdf.button";
+// import { ExportPdfButton } from "./export-pdf.button";
 import {
 	type ViewerMode,
 	ViewerModeSwitch,
@@ -65,6 +65,19 @@ export default function WorkspacePage() {
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
 			<Edithor
+				open='article.mda'
+				config={{
+					maxFileSize: 5 * 1024 * 1024, // 5MB
+					maxWorkspaceSize: 50 * 1024 * 1024, // 50MB
+					maxFileCount: 20,
+					validateFileName: (name) => {
+						if (!name.endsWith(".json")) {
+							console.log("Only .txt files are allowed");
+							return false;
+						}
+						return true;
+					},
+				}}
 				files={files}
 				adapter={workspaceFileAdapter}
 				previewHeaderExtras={
@@ -79,7 +92,7 @@ export default function WorkspacePage() {
 							onTabChange={setTab}
 						/>
 						<ExportPrintButton />
-						<ExportPdfButton />
+						{/*<ExportPdfButton />*/}
 					</div>
 				}
 				previewContent={<Viewers mode={mode} tab={tab} />}

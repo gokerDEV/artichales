@@ -274,17 +274,3 @@ export function FileTree({
 		</div>
 	);
 }
-
-//src/
-// ├── components/
-// │   └── edithor/
-// │       ├── index.tsx           # Ana Layout (3 Panel + Preview Slot)
-// │       ├── editor.tsx          # CodeMirror (MD, JSON, BibTeX)
-// │       ├── file-tree.tsx       # Tree View (Drag&Drop + Context Menu)
-// │       ├── auto-completer.ts   # Autocomplete logic
-// │       └── types.ts            # Shared Interfaces
-// ├── hooks/
-// │   └── use-edithor.ts          # State, FS yönetimi ve Layout persistence
-// └── utils/
-//     ├── edithor.utils.ts        # Helper'lar
-//     └── edithor.validators.ts   # Dosya ve boyut kontrolleri

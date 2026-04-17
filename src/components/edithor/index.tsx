@@ -19,12 +19,12 @@ import type { EdithorProps, EdithorViewerMethods } from "./types";
 
 export function Edithor({
 	files = [],
+	open,
 	adapter,
 	config,
 	previewContent,
 	previewHeaderExtras,
 	viewer,
-	storageKey = "edithor-layout",
 }: EdithorProps) {
 	const {
 		layout,
@@ -35,8 +35,9 @@ export function Edithor({
 		handleFileRename,
 		handleUpload,
 	} = useEdithor({
+		open,
 		adapter,
-		storageKey,
+		storageKey: "edithor-layout"
 	});
 
 	const activeFile = useMemo(

@@ -55,7 +55,7 @@ export interface AutocompleteRule {
 }
 
 export interface EdithorConfig {
-	maxUploadedFileSize?: number;
+	maxFileSize?: number;
 	maxFileCount?: number;
 	maxWorkspaceSize?: number;
 	validateFileName?: (name: string) => boolean | string;
@@ -63,9 +63,8 @@ export interface EdithorConfig {
 }
 
 export interface EdithorProps {
-	files?: EdithorFile[];
-	defaultLayout?: number[];
-	storageKey?: string;
+	files: EdithorFile[];
+	open?: string;
 	adapter: EdithorAdapter;
 	config?: EdithorConfig;
 	previewContent?: React.ReactNode;
