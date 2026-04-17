@@ -1,3 +1,4 @@
+import type { PluginDefinition } from "@/components/artichale/types/plugin.types.ts";
 import type { Root } from "mdast";
 import type { ReactNode } from "react";
 import type { Frontmatter } from "@/components/artichale/schema/frontmatter.schema";
@@ -11,23 +12,22 @@ export type RenderTarget = "web" | "print";
 
 export type JSONAssetReadResult<T = unknown> = {
 	data: T;
-	lastModified?: number;
+	lastModified: string;
 };
 
 export type JSONAssetReader = <T = unknown>(
 	fileName: string,
+	lastModified: string,
 ) => Promise<JSONAssetReadResult<T>>;
 
 export type AssetResolverResult = {
 	fileName: string;
 	resolvedSrc: string;
 	mimeType?: string;
-	lastModified?: number;
+	lastModified: string;
 };
 
-export type AssetResolver = (
-	fileName: string,
-) => Promise<AssetResolverResult | null>;
+export type AssetResolver = (fileName: string) => Promise<AssetResolverResult>;
 
 export type BibliographyEntry = {
 	key: string;
@@ -66,6 +66,7 @@ export type RenderArtichaleInput = {
 	headings: readonly HeadingEntry[];
 	labeledBlocks: readonly LabeledBlockEntry[];
 	citations: readonly string[];
+	plugins: PluginDefinition[];
 };
 
 export type RenderArtichaleResult = {

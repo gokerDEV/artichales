@@ -42,8 +42,8 @@ export type PluginRenderProps = {
 	target: RenderTarget;
 	template: TemplateResolved;
 	node: DirectiveNode;
-	fnJSONAssetReader?: JSONAssetReader;
-	fnAssetResolver?: AssetResolver;
+	fnJSONAssetReader: JSONAssetReader;
+	fnAssetResolver: AssetResolver;
 	resolvedReferences: ReadonlyMap<string, ResolvedReference>;
 };
 

@@ -29,19 +29,29 @@ function splitFrontmatter(rawMarkdown: string): {
 	};
 }
 
-export function parseArtichale(
-	input: ParseArtichaleInput,
-): ParseArtichaleResult {
-	const templateResult = parseTemplate(input.rawTemplate);
+export function parseArtichale({
+	template,
+	bibliography,
+	markdown,
+}: ParseArtichaleInput): ParseArtichaleResult {
+	const templateResult = parseTemplate(template);
 	const plugins = resolveEnabledPluginsFromTemplate(
 		templateResult.template.plugins,
+		template?.lastModified || "",
 	);
 	const pluginRegistry = buildPluginRegistryMaps(plugins);
-	const bibliographyResult = parseBibliography(input.rawBibliography);
+	const bibliographyResult = parseBibliography(bibliography);
 
-	const split = splitFrontmatter(input.rawMarkdown);
-	const frontmatterResult = parseFrontmatter(split.rawFrontmatter);
-	const documentResult = parseDocument(split.content, pluginRegistry);
+	const split = splitFrontmatter(markdown.data);
+	const frontmatterResult = parseFrontmatter(
+		split.rawFrontmatter,
+		markdown.lastModified,
+	);
+	const documentResult = parseDocument(
+		split.content,
+		pluginRegistry,
+		markdown.lastModified,
+	);
 
 	return {
 		template: templateResult.template,
@@ -51,6 +61,7 @@ export function parseArtichale(
 		headings: documentResult.headings,
 		labeledBlocks: documentResult.labeledBlocks,
 		citations: documentResult.citations,
+		plugins,
 		diagnostics: [
 			...frontmatterResult.diagnostics,
 			...documentResult.diagnostics,

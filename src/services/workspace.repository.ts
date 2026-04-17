@@ -6,7 +6,13 @@ import {
 	LEGACY_ARTICLE_FILE,
 } from "@/lib/workspace";
 
-type WorkspaceFiles = Record<string, string>;
+export type WorkspaceFiles = Record<string, string>;
+export type WorkspaceLastModifiedMap = Record<string, number>;
+
+export interface WorkspaceSnapshot {
+	files: WorkspaceFiles;
+	lastModifiedByName: WorkspaceLastModifiedMap;
+}
 
 const WORKSPACE_DIRECTORY = "artichales-workspace-v1";
 
@@ -36,41 +42,51 @@ async function getWorkspaceDirectory(): Promise<FileSystemDirectoryHandle | null
 	}
 }
 
-async function readWorkspaceFromOpfs(): Promise<WorkspaceFiles | null> {
+async function readWorkspaceFromOpfs(): Promise<WorkspaceSnapshot | null> {
 	const directory = await getWorkspaceDirectory();
 	if (!directory) return null;
 
 	const files: WorkspaceFiles = {};
+	const lastModifiedByName: WorkspaceLastModifiedMap = {};
 	const directoryEntries = directory as FileSystemDirectoryHandleWithRemove;
-	if (!directoryEntries.entries) return files;
+	if (!directoryEntries.entries) return { files, lastModifiedByName };
 	for await (const [name, handle] of directoryEntries.entries()) {
 		if (handle.kind !== "file") continue;
 		const fileHandle = handle as FileSystemFileHandle;
 		const file = await fileHandle.getFile();
 		files[name] = await file.text();
+		lastModifiedByName[name] = file.lastModified;
 	}
 
-	return files;
+	return { files, lastModifiedByName };
 }
 
 async function writeWorkspaceToOpfs(files: WorkspaceFiles): Promise<boolean> {
 	const directory = await getWorkspaceDirectory();
 	if (!directory) return false;
 
-	for (const [name, content] of Object.entries(files)) {
-		const handle = await directory.getFileHandle(name, { create: true });
-		const writable = await handle.createWritable();
-		await writable.write(content);
-		await writable.close();
-	}
-
+	const existingFiles = new Map<string, string>();
 	const staleCandidates: string[] = [];
 	const directoryEntries = directory as FileSystemDirectoryHandleWithRemove;
 	if (directoryEntries.entries) {
 		for await (const [name, handle] of directoryEntries.entries()) {
 			if (handle.kind !== "file") continue;
-			if (!(name in files)) staleCandidates.push(name);
+			if (!(name in files)) {
+				staleCandidates.push(name);
+				continue;
+			}
+			const fileHandle = handle as FileSystemFileHandle;
+			const file = await fileHandle.getFile();
+			existingFiles.set(name, await file.text());
 		}
+	}
+
+	for (const [name, content] of Object.entries(files)) {
+		if (existingFiles.get(name) === content) continue;
+		const handle = await directory.getFileHandle(name, { create: true });
+		const writable = await handle.createWritable();
+		await writable.write(content);
+		await writable.close();
 	}
 
 	const removableDirectory = directoryEntries;
@@ -83,36 +99,73 @@ async function writeWorkspaceToOpfs(files: WorkspaceFiles): Promise<boolean> {
 	return true;
 }
 
-function normalizeWorkspaceFiles(
-	files: WorkspaceFiles,
+function normalizeWorkspaceSnapshot(
+	snapshot: WorkspaceSnapshot,
 	defaultFiles: WorkspaceFiles,
-): WorkspaceFiles {
-	const normalized: WorkspaceFiles = { ...defaultFiles, ...files };
-	const legacyArticle = normalized[LEGACY_ARTICLE_FILE];
+): WorkspaceSnapshot {
+	const normalizedFiles: WorkspaceFiles = {
+		...defaultFiles,
+		...snapshot.files,
+	};
+	const normalizedLastModifiedByName: WorkspaceLastModifiedMap = {
+		...snapshot.lastModifiedByName,
+	};
+	const now = Date.now();
+	const legacyArticle = normalizedFiles[LEGACY_ARTICLE_FILE];
 
-	if (!normalized[CORE_ARTICLE_FILE] && typeof legacyArticle === "string") {
-		normalized[CORE_ARTICLE_FILE] = legacyArticle;
-	}
-
-	delete normalized[LEGACY_ARTICLE_FILE];
-
-	for (const coreFile of CORE_FILES) {
-		if (typeof normalized[coreFile] !== "string") {
-			normalized[coreFile] = defaultFiles[coreFile] ?? "";
+	if (
+		!normalizedFiles[CORE_ARTICLE_FILE] &&
+		typeof legacyArticle === "string"
+	) {
+		normalizedFiles[CORE_ARTICLE_FILE] = legacyArticle;
+		if (
+			typeof normalizedLastModifiedByName[LEGACY_ARTICLE_FILE] === "number" &&
+			typeof normalizedLastModifiedByName[CORE_ARTICLE_FILE] !== "number"
+		) {
+			normalizedLastModifiedByName[CORE_ARTICLE_FILE] =
+				normalizedLastModifiedByName[LEGACY_ARTICLE_FILE];
 		}
 	}
 
-	return normalized;
+	delete normalizedFiles[LEGACY_ARTICLE_FILE];
+	delete normalizedLastModifiedByName[LEGACY_ARTICLE_FILE];
+
+	for (const coreFile of CORE_FILES) {
+		if (typeof normalizedFiles[coreFile] !== "string") {
+			normalizedFiles[coreFile] = defaultFiles[coreFile] ?? "";
+		}
+		if (typeof normalizedLastModifiedByName[coreFile] !== "number") {
+			normalizedLastModifiedByName[coreFile] = now;
+		}
+	}
+
+	for (const fileName of Object.keys(normalizedFiles)) {
+		if (typeof normalizedLastModifiedByName[fileName] !== "number") {
+			normalizedLastModifiedByName[fileName] = now;
+		}
+	}
+
+	return {
+		files: normalizedFiles,
+		lastModifiedByName: normalizedLastModifiedByName,
+	};
 }
 
 class WorkspaceRepository {
-	async loadWorkspace(defaultFiles: WorkspaceFiles): Promise<WorkspaceFiles> {
-		const opfsFiles = await readWorkspaceFromOpfs();
+	async loadWorkspace(
+		defaultFiles: WorkspaceFiles,
+	): Promise<WorkspaceSnapshot> {
+		const opfsSnapshot = await readWorkspaceFromOpfs();
 
-		const candidate = opfsFiles ?? { ...defaultFiles };
-		const normalized = normalizeWorkspaceFiles(candidate, defaultFiles);
+		const candidate =
+			opfsSnapshot ??
+			({
+				files: { ...defaultFiles },
+				lastModifiedByName: {},
+			} satisfies WorkspaceSnapshot);
+		const normalized = normalizeWorkspaceSnapshot(candidate, defaultFiles);
 		try {
-			await this.saveWorkspace(normalized);
+			await this.saveWorkspace(normalized.files);
 		} catch {
 			// Workspace can still be opened in-memory; save errors are surfaced by caller.
 		}
@@ -120,8 +173,11 @@ class WorkspaceRepository {
 	}
 
 	async saveWorkspace(files: WorkspaceFiles): Promise<void> {
-		const normalized = normalizeWorkspaceFiles(files, files);
-		const savedToOpfs = await writeWorkspaceToOpfs(normalized);
+		const normalized = normalizeWorkspaceSnapshot(
+			{ files, lastModifiedByName: {} },
+			files,
+		);
+		const savedToOpfs = await writeWorkspaceToOpfs(normalized.files);
 		if (!savedToOpfs) {
 			throw new Error("OPFS is unavailable. Workspace save failed.");
 		}

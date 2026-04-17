@@ -58,12 +58,15 @@ export function createAutocompleteExtension(
 
 			return {
 				from: match.from,
-				options: items.map((item) => ({
-					label: item.label,
-					detail: item.detail,
-					apply: item.insertText,
-					type: "variable" as const,
-				} satisfies Completion)),
+				options: items.map(
+					(item) =>
+						({
+							label: item.label,
+							detail: item.detail,
+							apply: item.insertText,
+							type: "variable" as const,
+						}) satisfies Completion,
+				),
 			} as const;
 		};
 	});

@@ -33,11 +33,11 @@ export default function WorkspacePage() {
 
 		const loadWorkspace = async () => {
 			try {
-				const loadedFiles = await workspaceRepository.loadWorkspace(
+				const workspace = await workspaceRepository.loadWorkspace(
 					DEFAULT_WORKSPACE_FILES,
 				);
 				if (isMounted) {
-					setRawFiles(loadedFiles);
+					setRawFiles(workspace.files, workspace.lastModifiedByName);
 					setIsWorkspaceReady(true);
 				}
 			} catch {

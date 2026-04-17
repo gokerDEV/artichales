@@ -28,7 +28,9 @@ export type ParseFrontmatterResult = {
 
 export function parseFrontmatter(
 	rawFrontmatter?: string,
+	lastModified: string,
 ): ParseFrontmatterResult {
+	//  TODO:   memoize  by lastModified
 	if (!rawFrontmatter || rawFrontmatter.trim() === "") {
 		return {
 			frontmatter: EMPTY_FRONTMATTER,

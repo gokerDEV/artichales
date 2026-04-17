@@ -29,9 +29,9 @@ export type ParseDiagnostic = {
 };
 
 export type ParseArtichaleInput = {
-	rawTemplate?: string;
-	rawBibliography?: string;
-	rawMarkdown: string;
+	template: { data: string; lastModified: string };
+	bibliography: { data: string; lastModified: string };
+	markdown: { data: string; lastModified: string };
 };
 
 export type ParseArtichaleResult = {

@@ -93,7 +93,6 @@ export function Edithor({
 		const fallbackId =
 			(open && files.some((file) => file.id === open) && open) || files[0]?.id;
 
-
 		if (fallbackId) {
 			setActiveFileId(fallbackId);
 		}
@@ -128,7 +127,6 @@ export function Edithor({
 				// triggerPreview();
 				setLastModified(Date.now());
 			}
-
 		},
 		[fileIdToName, isLivePreviewEnabled, triggerPreview],
 	);
@@ -156,48 +154,48 @@ export function Edithor({
 			// 	return previewSnapshot[fileName] ?? null;
 			// },
 			readAssetText: (fileName) => {
-				return adapter.onReadFile(fileName) ?? null;
+				return adapter.onReadFile(fileName);
 			},
 			readAssetDataUrl: async (fileName) => {
-				const content = await  adapter.onReadFile(fileName);
-				if (!content) return null;
-				return content.startsWith("data:") ? content : null;
+				const { data, lastModified } = await adapter.onReadFile(fileName);
+				if (!data) return { data: "", lastModified: "" };
+				return data.startsWith("data:")
+					? { data, lastModified }
+					: { data: "", lastModified: "" };
 			},
 			readJsonAsset: async <T,>(fileName: string) => {
-				const content = await adapter.onReadFile(fileName);
-				if (!content) return null;
-				const raw = content.startsWith("data:")
-					? (decodeDataUrlPayload(content) ?? content)
-					: content;
+				const { data, lastModified } = await adapter.onReadFile(fileName);
+				if (!data)
+					return { data: {} as T, resolvedFileName: "", lastModified: "" };
+				const raw = lastModified.startsWith("data:")
+					? (decodeDataUrlPayload(lastModified) ?? data)
+					: data;
 				try {
 					return {
 						data: JSON.parse(raw) as T,
 						resolvedFileName: fileName,
+						lastModified,
 					};
 				} catch {
-					return null;
+					return { data: {} as T, resolvedFileName: "", lastModified: "" };
 				}
 			},
 		};
 	}, [files]);
 
-	const  view  = useMemo(() => {
-
+	const view = useMemo(() => {
 		console.log("view triggered", { files, activeFile, open, viewer });
 
 		return viewer
 			? viewer({
-				files: files,
-				activeFile: activeFile?.name ?? open ?? files[0]?.name ?? "",
-				methods: viewerMethods,
-			})
-			: previewContent
+					files: files,
+					activeFile: activeFile?.name ?? open ?? files[0]?.name ?? "",
+					methods: viewerMethods,
+				})
+			: previewContent;
 	}, [lastModified]);
 
-
-	console.log('Edithor',{activeFileId, files}, lastModified);
-
-
+	console.log("Edithor", { activeFileId, files }, lastModified);
 
 	return (
 		<ResizablePanelGroup
@@ -259,9 +257,7 @@ export function Edithor({
 							</div>
 						) : null}
 					</div>
-					<ScrollArea className="flex-1 overflow-auto">
-						{view}
-					</ScrollArea>
+					<ScrollArea className="flex-1 overflow-auto">{view}</ScrollArea>
 				</div>
 			</ResizablePanel>
 		</ResizablePanelGroup>

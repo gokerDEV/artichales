@@ -255,8 +255,15 @@ export const DEFAULT_TEMPLATE: TemplateResolved = mergeTemplateWithDefaults(
 
 const FALLBACK_MESSAGE = "Using internal fallback template defaults.";
 
-export function parseTemplate(rawTemplate?: string): ResolveTemplateResult {
-	if (!rawTemplate || rawTemplate.trim() === "") {
+export function parseTemplate({
+	data,
+	lastModified,
+}: {
+	data?: string;
+	lastModified: string;
+}): ResolveTemplateResult {
+	//  TODO:  memoize  by lastModified
+	if (!data || data.trim() === "") {
 		return {
 			template: DEFAULT_TEMPLATE,
 			diagnostics: [
@@ -273,7 +280,7 @@ export function parseTemplate(rawTemplate?: string): ResolveTemplateResult {
 
 	let parsedJson: unknown;
 	try {
-		parsedJson = JSON.parse(rawTemplate);
+		parsedJson = JSON.parse(data);
 	} catch (error) {
 		const details = error instanceof Error ? error.message : undefined;
 		return {

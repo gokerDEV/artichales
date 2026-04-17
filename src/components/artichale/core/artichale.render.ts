@@ -1,7 +1,4 @@
-import {
-	buildPluginRegistryMaps,
-	resolveEnabledPluginsFromTemplate,
-} from "@/components/artichale/core/plugin.registry";
+import { buildPluginRegistryMaps } from "@/components/artichale/core/plugin.registry";
 import { buildReferenceLookup } from "@/components/artichale/core/reference.lookup";
 import { renderAuthors } from "@/components/artichale/render/author.render";
 import { renderBibliography } from "@/components/artichale/render/bibliography.render";
@@ -16,8 +13,8 @@ import type {
 export async function renderArtichale(
 	input: RenderArtichaleInput,
 ): Promise<RenderArtichaleResult> {
-	const plugins = resolveEnabledPluginsFromTemplate(input.template.plugins);
-	const pluginRegistry = buildPluginRegistryMaps(plugins);
+	// const plugins = resolveEnabledPluginsFromTemplate(input.template.plugins);
+	const pluginRegistry = buildPluginRegistryMaps(input.plugins);
 
 	const referenceLookup = buildReferenceLookup({
 		template: input.template,

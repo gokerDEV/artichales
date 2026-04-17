@@ -1,5 +1,12 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { FileText, Trash2, Edit2, UploadCloud, Pin, AlertCircle } from "lucide-react";
+import {
+	FileText,
+	Trash2,
+	Edit2,
+	UploadCloud,
+	Pin,
+	AlertCircle,
+} from "lucide-react";
 import type { EdithorFile } from "@/components/edithor/types";
 import { formatDate } from "@/lib/edithor.utils";
 import { toast } from "sonner";
@@ -53,13 +60,23 @@ export function FileTree({
 		// UI flags so rendering can rely on consistent properties.
 		const pinnedFiles = files
 			.filter((f) => f.pinned)
-			.map((f) => ({ ...f, isPinned: true, deletable: f.deletable, editable: f.editable }));
+			.map((f) => ({
+				...f,
+				isPinned: true,
+				deletable: f.deletable,
+				editable: f.editable,
+			}));
 
 		const assetFiles = files
 			.filter((f) => !f.pinned)
 			.slice() // avoid mutating the original array
 			.sort((a, b) => a.name.localeCompare(b.name))
-			.map((f) => ({ ...f, isPinned: false, deletable: f.deletable, editable: f.editable }));
+			.map((f) => ({
+				...f,
+				isPinned: false,
+				deletable: f.deletable,
+				editable: f.editable,
+			}));
 
 		return [...pinnedFiles, ...assetFiles];
 	}, [files]);
@@ -90,7 +107,8 @@ export function FileTree({
 					await onUpload(droppedFiles);
 					toast.success(`${droppedFiles.length} file(s) uploaded successfully`);
 				} catch (error) {
-					const message = error instanceof Error ? error.message : "Upload failed";
+					const message =
+						error instanceof Error ? error.message : "Upload failed";
 					setUploadError(message);
 					toast.error(message);
 				} finally {
@@ -121,7 +139,8 @@ export function FileTree({
 				await onDelete(file.id);
 				toast.success(`File "${file.name}" deleted`);
 			} catch (error) {
-				const message = error instanceof Error ? error.message : "Delete failed";
+				const message =
+					error instanceof Error ? error.message : "Delete failed";
 				toast.error(message);
 			} finally {
 				setIsProcessing(false);
@@ -237,8 +256,6 @@ export function FileTree({
 							Drop files here to upload
 						</div>
 					)}
-
-
 				</div>
 			</ScrollArea>
 

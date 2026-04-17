@@ -276,13 +276,13 @@ export async function renderDocument(input: {
 		fileName: string,
 	) => Promise<{
 		data: T;
-		lastModified?: number;
+		lastModified: string;
 	}>;
 	fnAssetResolver?: (fileName: string) => Promise<{
 		fileName: string;
 		resolvedSrc: string;
 		mimeType?: string;
-		lastModified?: number;
+		lastModified: string;
 	} | null>;
 }): Promise<{ article: ReactNode; diagnostics: RenderDiagnostic[] }> {
 	const diagnostics: RenderDiagnostic[] = [];

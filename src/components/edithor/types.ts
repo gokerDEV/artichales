@@ -4,14 +4,19 @@ export type EdithorViewerMethods = {
 	// listFiles: () => string[];
 	// listAssetFiles: () => string[];
 	// readFile: (fileName: string) => string | null;
-	readAssetText: (fileName: string) => Promise<string | null>;
-	readAssetDataUrl: (fileName: string) => Promise<string | null>;
+	readAssetText: (
+		fileName: string,
+	) => Promise<{ data: string; lastModified: string }>;
+	readAssetDataUrl: (
+		fileName: string,
+	) => Promise<{ data: string; lastModified: string }>;
 	readJsonAsset: <T = unknown>(
 		fileName: string,
 	) => Promise<{
 		data: T;
 		resolvedFileName: string;
-	} | null>;
+		lastModified: string;
+	}>;
 };
 
 export type EdithorViewerProps = {
@@ -38,7 +43,9 @@ export interface EdithorAdapter {
 	onDelete: (fileId: string) => Promise<void>;
 	onRename: (fileId: string, newName: string) => Promise<void>;
 	onSave: (fileId: string, content: string) => Promise<void>;
-	onReadFile: (fileId: string) => Promise<string>;
+	onReadFile: (
+		fileId: string,
+	) => Promise<{ data: string; lastModified: string }>;
 }
 
 export interface AutocompleteItem {

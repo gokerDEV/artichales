@@ -12,6 +12,10 @@ import {
 	CORE_BIB_FILE,
 	CORE_TEMPLATE_FILE,
 } from "@/lib/workspace";
+import type {
+	WorkspaceFiles,
+	WorkspaceLastModifiedMap,
+} from "@/services/workspace.repository";
 
 function getAssetKind(fileName: string): string {
 	const extension = fileName.includes(".")
@@ -29,34 +33,41 @@ function isAssetFile(fileName: string): boolean {
 }
 
 function buildWorkspaceFiles(
-	files: Record<string, string>,
-	previousFiles: Record<string, string>,
+	files: WorkspaceFiles,
+	lastModifiedByName: WorkspaceLastModifiedMap,
 	previousEntries: WorkspaceFileEntry[],
 ): WorkspaceFileEntry[] {
 	const previousByName = new Map(
 		previousEntries.map((file) => [file.name, file]),
 	);
-	const now = Date.now();
 	return Object.keys(files)
 		.sort((a, b) => a.localeCompare(b))
 		.map((fileName) => {
 			const previous = previousByName.get(fileName);
-			const didChange = previousFiles[fileName] !== files[fileName];
 			return {
 				name: fileName,
 				kind: getAssetKind(fileName),
-				lastUpdated: previous && !didChange ? previous.lastUpdated : now,
+				lastUpdated:
+					lastModifiedByName[fileName] ?? previous?.lastUpdated ?? Date.now(),
 			};
 		});
 }
 
 interface WorkspaceState {
 	// Slice 1: Input (Read by Editor and Worker only)
-	rawFiles: Record<string, string>;
+	rawFiles: WorkspaceFiles;
+	fileLastModified: WorkspaceLastModifiedMap;
 	workspaceFiles: WorkspaceFileEntry[];
 	assetFiles: WorkspaceFileEntry[];
-	setRawFiles: (files: Record<string, string>) => void;
-	updateFile: (fileName: string, content: string) => void;
+	setRawFiles: (
+		files: WorkspaceFiles,
+		lastModifiedByName?: WorkspaceLastModifiedMap,
+	) => void;
+	updateFile: (
+		fileName: string,
+		content: string,
+		lastModified?: number,
+	) => void;
 
 	// Slice 2: Parsed Output
 	parsedTemplate: ParsedTemplate | null;
@@ -79,31 +90,51 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
 	rawFiles: {},
+	fileLastModified: {},
 	workspaceFiles: [],
 	assetFiles: [],
-	setRawFiles: (files) =>
+	setRawFiles: (files, lastModifiedByName = {}) =>
 		set((state) => {
+			const nextLastModified = { ...state.fileLastModified };
+			const timestamp = Date.now();
+			for (const fileName of Object.keys(files)) {
+				nextLastModified[fileName] =
+					lastModifiedByName[fileName] ??
+					state.fileLastModified[fileName] ??
+					timestamp;
+			}
+			for (const fileName of Object.keys(nextLastModified)) {
+				if (!(fileName in files)) {
+					delete nextLastModified[fileName];
+				}
+			}
 			const workspaceFiles = buildWorkspaceFiles(
 				files,
-				state.rawFiles,
+				nextLastModified,
 				state.workspaceFiles,
 			);
 			return {
 				rawFiles: files,
+				fileLastModified: nextLastModified,
 				workspaceFiles,
 				assetFiles: workspaceFiles.filter((file) => isAssetFile(file.name)),
 			};
 		}),
-	updateFile: (fileName, content) =>
+	updateFile: (fileName, content, lastModified = Date.now()) =>
 		set((state) => {
 			const rawFiles = { ...state.rawFiles, [fileName]: content };
+			const fileLastModified = {
+				...state.fileLastModified,
+				[fileName]: lastModified,
+			};
 			const workspaceFiles = buildWorkspaceFiles(
 				rawFiles,
-				state.rawFiles,
+				fileLastModified,
 				state.workspaceFiles,
 			);
 			return {
 				rawFiles,
+				fileLastModified,
 				workspaceFiles,
 				assetFiles: workspaceFiles.filter((file) => isAssetFile(file.name)),
 			};

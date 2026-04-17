@@ -47,12 +47,17 @@ function toBibliographyEntry(
 	};
 }
 
-export function parseBibliography(
-	rawBibliography?: string,
-): ParseBibliographyResult {
+export function parseBibliography({
+	data,
+	lastModified,
+}: {
+	data: string;
+	lastModified: string;
+}): ParseBibliographyResult {
+	//  TODO:   memoize  by lastModified
 	const bibliography: Record<string, BibliographyEntry> = {};
 	const diagnostics: ParseDiagnostic[] = [];
-	const source = rawBibliography ?? "";
+	const source = data ?? "";
 
 	for (const match of source.matchAll(ENTRY_PATTERN)) {
 		const entryType = match[1]?.trim();

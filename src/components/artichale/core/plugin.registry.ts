@@ -50,7 +50,9 @@ export function getDefaultTemplateDirectivePlugins(): string[] {
 // Resolves enabled plugin runtime from `template.plugins`.
 export function resolveEnabledPluginsFromTemplate(
 	templatePlugins: readonly string[],
+	lastModified: string,
 ): PluginDefinition[] {
+	//  TODO:  memoize  by lastModified
 	if (templatePlugins.length === 0) return [...BUILTIN_PLUGINS];
 
 	const result: PluginDefinition[] = [];

@@ -22,7 +22,9 @@ export type ParseDocumentResult = {
 export function parseDocument(
 	rawMarkdown: string,
 	pluginRegistry: PluginRegistryMaps,
+	lastModified: string,
 ): ParseDocumentResult {
+	//  TODO:   memoize  by lastModified
 	try {
 		const processor = unified().use(remarkParse).use(remarkDirective);
 		const ast = processor.parse(rawMarkdown) as Root;

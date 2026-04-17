@@ -62,9 +62,18 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 		const run = async () => {
 			try {
 				const parse = parseArtichale({
-					rawMarkdown: await methods.readAssetText(CORE_ARTICLE_FILE) ?? "",
-					rawTemplate: await methods.readAssetText(CORE_TEMPLATE_FILE) ?? "",
-					rawBibliography: await methods.readAssetText(CORE_BIB_FILE) ?? "",
+					markdown: (await methods.readAssetText(CORE_ARTICLE_FILE)) ?? {
+						data: "",
+						lastModified: "",
+					},
+					template: (await methods.readAssetText(CORE_TEMPLATE_FILE)) ?? {
+						data: "",
+						lastModified: "",
+					},
+					bibliography: (await methods.readAssetText(CORE_BIB_FILE)) ?? {
+						data: "",
+						lastModified: "",
+					},
 				});
 
 				const render = await renderArtichale({
@@ -77,17 +86,18 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 					labeledBlocks: parse.labeledBlocks,
 					citations: parse.citations,
 					fnJSONAssetReader: async <T,>(fileName: string) => {
-						const loaded = await methods.readJsonAsset<T>(fileName);
-						if (!loaded) throw new Error(`Missing JSON asset: ${fileName}`);
-						return { data: loaded.data };
+						const asset = await methods.readJsonAsset<T>(fileName);
+						// if (!asset) throw new Error(`Missing JSON asset: ${fileName}`);
+						return { data: asset.data, lastModified: asset.lastModified };
 					},
 					fnAssetResolver: async (fileName: string) => {
-						const resolvedSrc = await methods.readAssetDataUrl(fileName);
-						if (!resolvedSrc) return null;
+						const asset = await methods.readAssetDataUrl(fileName);
+						// if (!asset) return null;
 						return {
 							fileName,
-							resolvedSrc,
+							resolvedSrc: asset.data,
 							mimeType: inferMimeType(fileName),
+							lastModified: asset.lastModified,
 						};
 					},
 				});
