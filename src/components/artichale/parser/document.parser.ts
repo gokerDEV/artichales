@@ -4,6 +4,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { collectArtifacts } from "@/components/artichale/core/artifacts.collector.ts";
 import { createParseDiagnostic } from "@/components/artichale/core/diagnostic";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache.ts";
 import type {
 	HeadingEntry,
 	LabeledBlockEntry,
@@ -19,17 +20,23 @@ export type ParseDocumentResult = {
 	diagnostics: ParseDiagnostic[];
 };
 
+const documentCache = createLastModifiedCache<ParseDocumentResult>();
+
 export function parseDocument(
 	rawMarkdown: string,
 	pluginRegistry: PluginRegistryMaps,
 	lastModified: string,
 ): ParseDocumentResult {
-	//  TODO:   memoize  by lastModified
+	const cached = documentCache.get(lastModified);
+	if (cached) return cached;
+
+	let result: ParseDocumentResult;
+
 	try {
 		const processor = unified().use(remarkParse).use(remarkDirective);
 		const ast = processor.parse(rawMarkdown) as Root;
 		const artifacts = collectArtifacts(ast, pluginRegistry);
-		return {
+		result = {
 			ast,
 			headings: artifacts.headings,
 			labeledBlocks: artifacts.labeledBlocks,
@@ -38,7 +45,7 @@ export function parseDocument(
 		};
 	} catch (error) {
 		const detail = error instanceof Error ? error.message : String(error);
-		return {
+		result = {
 			ast: null,
 			headings: [],
 			labeledBlocks: [],
@@ -52,4 +59,7 @@ export function parseDocument(
 			],
 		};
 	}
+
+	documentCache.set(lastModified, result);
+	return result;
 }

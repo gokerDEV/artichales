@@ -1,6 +1,5 @@
 export {
 	ArtichaleView,
-	ArtichaleView as ArtichalePrintView,
 	type ArtichaleViewProps,
 } from "@/components/artichale/ArtichaleView";
 export { parseArtichale } from "@/components/artichale/core/artichale.parser";

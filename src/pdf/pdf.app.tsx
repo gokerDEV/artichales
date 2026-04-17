@@ -28,14 +28,32 @@ export function PdfApp() {
 				const loaded = await printJobRepository.readPrintJobResult(jobId);
 				if (!loaded.ok) return setErrorState(loaded.state);
 
+				const markdown = {
+					data: loaded.job.files["article.mda"] || "",
+					lastModified: "",
+				};
+				const template = {
+					data: loaded.job.files["template.json"] || "",
+					lastModified: "",
+				};
+				const bibliography = {
+					data: loaded.job.files["references.bib"] || "",
+					lastModified: "",
+				};
+
 				const parsed = parseArtichale({
-					rawMarkdown: loaded.job.files["article.mda"] || "",
-					rawTemplate: loaded.job.files["template.json"],
-					rawBibliography: loaded.job.files["references.bib"],
+					markdown,
+					template,
+					bibliography,
 				});
 
 				const rendered = await renderArtichale({
 					target: "print",
+					lastModified: {
+						markdown: markdown.lastModified,
+						template: template.lastModified,
+						bibliography: bibliography.lastModified,
+					},
 					template: parsed.template,
 					bibliography: parsed.bibliography,
 					frontmatter: parsed.frontmatter,
@@ -43,10 +61,20 @@ export function PdfApp() {
 					headings: parsed.headings,
 					labeledBlocks: parsed.labeledBlocks,
 					citations: parsed.citations,
+					plugins: parsed.plugins,
 					fnJSONAssetReader: async (fileName) => {
 						const content = loaded.job.files[fileName];
-						return { data: content ? JSON.parse(content) : null };
+						return {
+							data: content ? JSON.parse(content) : {},
+							lastModified: "",
+						};
 					},
+					fnAssetResolver: async (fileName) => ({
+						fileName,
+						resolvedSrc: loaded.job.files[fileName] || "",
+						mimeType: "",
+						lastModified: "",
+					}),
 				});
 
 				setJob(loaded.job);

@@ -59,6 +59,11 @@ export type RenderArtichaleInput = {
 	target: RenderTarget;
 	fnJSONAssetReader?: JSONAssetReader;
 	fnAssetResolver?: AssetResolver;
+	lastModified?: {
+		markdown?: string;
+		template?: string;
+		bibliography?: string;
+	};
 	template: TemplateResolved;
 	bibliography: BibliographyById;
 	frontmatter: Frontmatter;

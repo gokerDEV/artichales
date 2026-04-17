@@ -18,7 +18,7 @@ function splitFrontmatter(rawMarkdown: string): {
 	rawFrontmatter?: string;
 	content: string;
 } {
-	const match = rawMarkdown.match(FRONTMATTER_BLOCK_PATTERN);
+	const match = rawMarkdown?.match(FRONTMATTER_BLOCK_PATTERN);
 	if (!match) {
 		return { content: rawMarkdown };
 	}
@@ -34,17 +34,21 @@ export function parseArtichale({
 	bibliography,
 	markdown,
 }: ParseArtichaleInput): ParseArtichaleResult {
+
+
+	console.log('parseArtichale', {markdown})
+
 	const templateResult = parseTemplate(template);
 	const plugins = resolveEnabledPluginsFromTemplate(
 		templateResult.template.plugins,
-		template?.lastModified || "",
+		// template?.lastModified || "",
 	);
 	const pluginRegistry = buildPluginRegistryMaps(plugins);
 	const bibliographyResult = parseBibliography(bibliography);
 
 	const split = splitFrontmatter(markdown.data);
 	const frontmatterResult = parseFrontmatter(
-		split.rawFrontmatter,
+		split.rawFrontmatter || "",
 		markdown.lastModified,
 	);
 	const documentResult = parseDocument(

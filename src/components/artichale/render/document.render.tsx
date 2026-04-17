@@ -21,6 +21,7 @@ import {
 	createPluginRenderDiagnostic,
 	createRenderDiagnostic,
 } from "@/components/artichale/core/diagnostic";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache";
 import {
 	DisplayAs,
 	type PluginDefinition,
@@ -28,6 +29,8 @@ import {
 } from "@/components/artichale/types/plugin.types";
 import type { ResolvedReference } from "@/components/artichale/types/reference.types";
 import type {
+	AssetResolver,
+	JSONAssetReader,
 	RenderDiagnostic,
 	RenderTarget,
 } from "@/components/artichale/types/render.types";
@@ -38,18 +41,8 @@ type RenderDirectiveContext = {
 	template: TemplateResolved;
 	pluginRegistry: PluginRegistryMaps;
 	resolvedReferences: ReadonlyMap<string, ResolvedReference>;
-	fnJSONAssetReader?: <T = unknown>(
-		fileName: string,
-	) => Promise<{
-		data: T;
-		lastModified?: number;
-	}>;
-	fnAssetResolver?: (fileName: string) => Promise<{
-		fileName: string;
-		resolvedSrc: string;
-		mimeType?: string;
-		lastModified?: number;
-	} | null>;
+	fnJSONAssetReader: JSONAssetReader;
+	fnAssetResolver: AssetResolver;
 	diagnostics: RenderDiagnostic[];
 };
 
@@ -61,6 +54,9 @@ const CAPTION_DISPLAY_FAMILIES: ReadonlySet<CaptionDisplayFamily> = new Set([
 	DisplayAs.EQUATION,
 	DisplayAs.CODE,
 ]);
+const documentRenderCache = createLastModifiedCache<
+	Promise<{ article: ReactNode; diagnostics: RenderDiagnostic[] }>
+>();
 
 function textValue(node: Text): ReactNode {
 	return node.value;
@@ -269,43 +265,42 @@ async function renderNode(
 export async function renderDocument(input: {
 	ast: Root | null;
 	target: RenderTarget;
+	lastModified: string;
 	template: TemplateResolved;
 	pluginRegistry: PluginRegistryMaps;
 	resolvedReferences: ReadonlyMap<string, ResolvedReference>;
-	fnJSONAssetReader?: <T = unknown>(
-		fileName: string,
-	) => Promise<{
-		data: T;
-		lastModified: string;
-	}>;
-	fnAssetResolver?: (fileName: string) => Promise<{
-		fileName: string;
-		resolvedSrc: string;
-		mimeType?: string;
-		lastModified: string;
-	} | null>;
+	fnJSONAssetReader: JSONAssetReader;
+	fnAssetResolver: AssetResolver;
 }): Promise<{ article: ReactNode; diagnostics: RenderDiagnostic[] }> {
-	const diagnostics: RenderDiagnostic[] = [];
+	const cached = documentRenderCache.get(input.lastModified);
+	if (cached) return cached;
 
-	if (!input.ast) {
+	const resultPromise = (async () => {
+		const diagnostics: RenderDiagnostic[] = [];
+
+		if (!input.ast) {
+			return {
+				article: null,
+				diagnostics,
+			};
+		}
+
+		const children = await renderChildren(input.ast.children, {
+			target: input.target,
+			template: input.template,
+			pluginRegistry: input.pluginRegistry,
+			resolvedReferences: input.resolvedReferences,
+			fnJSONAssetReader: input.fnJSONAssetReader,
+			fnAssetResolver: input.fnAssetResolver,
+			diagnostics,
+		});
+
 		return {
-			article: null,
+			article: <article>{children}</article>,
 			diagnostics,
 		};
-	}
+	})();
 
-	const children = await renderChildren(input.ast.children, {
-		target: input.target,
-		template: input.template,
-		pluginRegistry: input.pluginRegistry,
-		resolvedReferences: input.resolvedReferences,
-		fnJSONAssetReader: input.fnJSONAssetReader,
-		fnAssetResolver: input.fnAssetResolver,
-		diagnostics,
-	});
-
-	return {
-		article: <article>{children}</article>,
-		diagnostics,
-	};
+	documentRenderCache.set(input.lastModified, resultPromise);
+	return resultPromise;
 }

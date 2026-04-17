@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache";
 import type { BibliographyById } from "@/components/artichale/types/render.types";
 import type { TemplateResolved } from "@/components/artichale/types/template.types";
+
+const bibliographyRenderCache = createLastModifiedCache<ReactNode>();
 
 function sortCitations(
 	citationIds: readonly string[],
@@ -16,7 +19,11 @@ export function renderBibliography(input: {
 	bibliography: BibliographyById;
 	citations: readonly string[];
 	template: TemplateResolved;
+	lastModified: string;
 }): ReactNode {
+	const cached = bibliographyRenderCache.get(input.lastModified);
+	if (cached !== undefined) return cached;
+
 	const orderedIds = sortCitations(
 		input.citations,
 		input.template.default.citationStyle,
@@ -25,9 +32,12 @@ export function renderBibliography(input: {
 		.map((id) => input.bibliography[id])
 		.filter((entry) => Boolean(entry));
 
-	if (entries.length === 0) return null;
+	if (entries.length === 0) {
+		bibliographyRenderCache.set(input.lastModified, null);
+		return null;
+	}
 
-	return (
+	const result = (
 		<section className="art-references">
 			<h2 className="art-references-title">References</h2>
 			<ol>
@@ -50,4 +60,7 @@ export function renderBibliography(input: {
 			</ol>
 		</section>
 	);
+
+	bibliographyRenderCache.set(input.lastModified, result);
+	return result;
 }

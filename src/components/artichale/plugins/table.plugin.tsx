@@ -71,7 +71,7 @@ export const tablePlugin: PluginDefinition = {
 		const parsed = parseDirectiveNode(node);
 		const source = parsed.dataFile || parsed.label;
 		const loaded = source
-			? await fnJSONAssetReader?.<unknown>(source).catch(() => null)
+			? await fnJSONAssetReader(source, "").catch(() => null)
 			: null;
 		const config = resolveComponentConfig(template, "table");
 		const fallbackSpan = config.defaultSpan === "page" ? "page" : "column";

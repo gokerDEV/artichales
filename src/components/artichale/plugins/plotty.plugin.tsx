@@ -115,7 +115,7 @@ export const plottyPlugin: PluginDefinition = {
 		const parsed = parseDirectiveNode(node);
 		const source = parsed.dataFile || parsed.label;
 		const loaded = source
-			? await fnJSONAssetReader?.<unknown>(source).catch(() => null)
+			? await fnJSONAssetReader(source, "").catch(() => null)
 			: null;
 		const plot = resolvePlotDefinition(loaded?.data);
 		const config = resolveComponentConfig(template, "figure");

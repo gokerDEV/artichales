@@ -45,16 +45,34 @@ export function PrintApp() {
 				}
 
 				try {
+					const markdown = {
+						data: loaded.job.files["article.mda"] || "",
+						lastModified: "",
+					};
+					const template = {
+						data: loaded.job.files["template.json"] || "",
+						lastModified: "",
+					};
+					const bibliography = {
+						data: loaded.job.files["references.bib"] || "",
+						lastModified: "",
+					};
+
 					// Parse the files from the job
 					const parsed = parseArtichale({
-						rawMarkdown: loaded.job.files["article.mda"] || "",
-						rawTemplate: loaded.job.files["template.json"],
-						rawBibliography: loaded.job.files["references.bib"],
+						markdown,
+						template,
+						bibliography,
 					});
 
 					// Render the document
 					const rendered = await renderArtichale({
 						target: "print",
+						lastModified: {
+							markdown: markdown.lastModified,
+							template: template.lastModified,
+							bibliography: bibliography.lastModified,
+						},
 						template: parsed.template,
 						bibliography: parsed.bibliography,
 						frontmatter: parsed.frontmatter,
@@ -62,11 +80,21 @@ export function PrintApp() {
 						headings: parsed.headings,
 						labeledBlocks: parsed.labeledBlocks,
 						citations: parsed.citations,
+						plugins: parsed.plugins,
 						// Mock asset readers if needed, or implement them to read from job.files
 						fnJSONAssetReader: async (fileName) => {
 							const content = loaded.job.files[fileName];
-							return { data: content ? JSON.parse(content) : null };
+							return {
+								data: content ? JSON.parse(content) : {},
+								lastModified: "",
+							};
 						},
+						fnAssetResolver: async (fileName) => ({
+							fileName,
+							resolvedSrc: loaded.job.files[fileName] || "",
+							mimeType: "",
+							lastModified: "",
+						}),
 					});
 
 					if (cancelled) return;

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache";
 import type { Frontmatter } from "@/components/artichale/schema/frontmatter.schema";
 import type { TemplateResolved } from "@/components/artichale/types/template.types";
+
+const authorsRenderCache = createLastModifiedCache<ReactNode>();
 
 type NormalizedAuthor = {
 	name: string;
@@ -35,14 +38,24 @@ function normalizeAuthors(authors: Frontmatter["authors"]): NormalizedAuthor[] {
 export function renderAuthors(input: {
 	frontmatter: Frontmatter;
 	template: TemplateResolved;
+	lastModified: string;
 }): ReactNode {
+	const cached = authorsRenderCache.get(input.lastModified);
+	if (cached !== undefined) return cached;
+
 	const titleBlock = input.template.print.titleBlock;
-	if (!titleBlock.enabled || !titleBlock.showAuthors) return null;
+	if (!titleBlock.enabled || !titleBlock.showAuthors) {
+		authorsRenderCache.set(input.lastModified, null);
+		return null;
+	}
 
 	const authors = normalizeAuthors(input.frontmatter.authors);
-	if (authors.length === 0) return null;
+	if (authors.length === 0) {
+		authorsRenderCache.set(input.lastModified, null);
+		return null;
+	}
 
-	return (
+	const result = (
 		<section className="art-author">
 			{authors.map((author) => (
 				<div key={`${author.name}-${author.email ?? ""}`}>
@@ -54,4 +67,7 @@ export function renderAuthors(input: {
 			))}
 		</section>
 	);
+
+	authorsRenderCache.set(input.lastModified, result);
+	return result;
 }

@@ -50,7 +50,7 @@ export function getDefaultTemplateDirectivePlugins(): string[] {
 // Resolves enabled plugin runtime from `template.plugins`.
 export function resolveEnabledPluginsFromTemplate(
 	templatePlugins: readonly string[],
-	lastModified: string,
+	// lastModified: string,
 ): PluginDefinition[] {
 	//  TODO:  memoize  by lastModified
 	if (templatePlugins.length === 0) return [...BUILTIN_PLUGINS];
@@ -68,11 +68,11 @@ export function resolveEnabledPluginsFromTemplate(
 	return result.length > 0 ? result : [...BUILTIN_PLUGINS];
 }
 
-export function resolvePlugins(
-	templatePlugins: readonly string[],
-): PluginDefinition[] {
-	return resolveEnabledPluginsFromTemplate(templatePlugins);
-}
+// export function resolvePlugins(
+// 	templatePlugins: readonly string[],
+// ): PluginDefinition[] {
+// 	return resolveEnabledPluginsFromTemplate(templatePlugins);
+// }
 
 // Exposes fast plugin lookup maps consumed by parser and renderer.
 export function buildPluginRegistryMaps(

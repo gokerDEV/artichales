@@ -1,4 +1,5 @@
 import { createParseDiagnostic } from "@/components/artichale/core/diagnostic";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache.ts";
 import type { ParseDiagnostic } from "@/components/artichale/types/pipeline.types";
 import type {
 	BibliographyById,
@@ -13,6 +14,7 @@ type ParseBibliographyResult = {
 const ENTRY_PATTERN = /@(\w+)\s*\{\s*([^,\s]+)\s*,([\s\S]*?)\}\s*/g;
 const FIELD_PATTERN =
 	/(\w+)\s*=\s*(?:\{((?:[^{}]|\{[^{}]*\})*)\}|"([^"]*)"|([^,\n]+))\s*,?/g;
+const bibliographyCache = createLastModifiedCache<ParseBibliographyResult>();
 
 function cleanValue(value: string): string {
 	return value.trim().replace(/\s+/g, " ");
@@ -54,8 +56,12 @@ export function parseBibliography({
 	data: string;
 	lastModified: string;
 }): ParseBibliographyResult {
-	//  TODO:   memoize  by lastModified
+	const cached = bibliographyCache.get(lastModified);
+	if (cached) return cached;
+
 	const bibliography: Record<string, BibliographyEntry> = {};
+
+	console.log('bibliography', data);
 	const diagnostics: ParseDiagnostic[] = [];
 	const source = data ?? "";
 
@@ -90,8 +96,11 @@ export function parseBibliography({
 		bibliography[key] = toBibliographyEntry(entryType, key, fields);
 	}
 
-	return {
+	const result = {
 		bibliography,
 		diagnostics,
 	};
+
+	bibliographyCache.set(lastModified, result);
+	return result;
 }

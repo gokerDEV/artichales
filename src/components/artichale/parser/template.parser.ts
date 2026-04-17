@@ -1,5 +1,6 @@
 import defaultTemplateJson from "@/components/artichale/base/default.template.json";
 import { listTemplateDirectivePlugins } from "@/components/artichale/core/plugin.registry";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache.ts";
 import { TemplateFileSchema } from "@/components/artichale/schema/template.schema";
 import type {
 	ResolvedMarginConfig,
@@ -14,6 +15,7 @@ const DEFAULT_TEMPLATE_FILE = TemplateFileSchema.parse(defaultTemplateJson);
 const DEFAULT_TEMPLATE_BASE =
 	defaultTemplateJson as unknown as TemplateResolved;
 const FALLBACK_ASSET_MAX_FILE_SIZE = 2 * 1024 * 1024;
+const templateCache = createLastModifiedCache<ResolveTemplateResult>();
 
 function resolveMarginSegment(
 	segment: Partial<ResolvedMarginSegment> | undefined,
@@ -262,9 +264,13 @@ export function parseTemplate({
 	data?: string;
 	lastModified: string;
 }): ResolveTemplateResult {
-	//  TODO:  memoize  by lastModified
+	const cached = templateCache.get(lastModified);
+	if (cached) return cached;
+
+	let result: ResolveTemplateResult;
+
 	if (!data || data.trim() === "") {
-		return {
+		result = {
 			template: DEFAULT_TEMPLATE,
 			diagnostics: [
 				{
@@ -276,6 +282,8 @@ export function parseTemplate({
 			],
 			hasError: true,
 		};
+		templateCache.set(lastModified, result);
+		return result;
 	}
 
 	let parsedJson: unknown;
@@ -283,7 +291,7 @@ export function parseTemplate({
 		parsedJson = JSON.parse(data);
 	} catch (error) {
 		const details = error instanceof Error ? error.message : undefined;
-		return {
+		result = {
 			template: DEFAULT_TEMPLATE,
 			diagnostics: [
 				{
@@ -297,13 +305,15 @@ export function parseTemplate({
 			],
 			hasError: true,
 		};
+		templateCache.set(lastModified, result);
+		return result;
 	}
 
 	const parsedTemplate = TemplateFileSchema.safeParse(parsedJson);
 	if (!parsedTemplate.success) {
 		const firstIssue = parsedTemplate.error.issues[0];
 		const issuePath = firstIssue?.path.join(".") || "Unknown path";
-		return {
+		result = {
 			template: DEFAULT_TEMPLATE,
 			diagnostics: [
 				{
@@ -315,11 +325,16 @@ export function parseTemplate({
 			],
 			hasError: true,
 		};
+		templateCache.set(lastModified, result);
+		return result;
 	}
 
-	return {
+	result = {
 		template: mergeTemplateWithDefaults(parsedTemplate.data, DEFAULT_TEMPLATE),
 		diagnostics: [],
 		hasError: false,
 	};
+
+	templateCache.set(lastModified, result);
+	return result;
 }

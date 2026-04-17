@@ -19,7 +19,7 @@ type FigureResolvedAsset = {
 	fileName: string;
 	resolvedSrc: string;
 	mimeType?: string;
-	lastModified?: number;
+	lastModified: string;
 };
 
 const FigureVisual = React.memo(
@@ -80,10 +80,8 @@ export const figurePlugin: PluginDefinition = {
 	autocomplete: true,
 	async render({ node, fnAssetResolver, template }) {
 		const parsed = parseDirectiveNode(node);
-		const source = parsed.dataFile || parsed.label;
-		const resolved = fnAssetResolver
-			? ((await fnAssetResolver(source)) as FigureResolvedAsset | null)
-			: null;
+		const source = parsed.dataFile || parsed.label || "";
+		const resolved = (await fnAssetResolver(source)) as FigureResolvedAsset;
 		const config = resolveComponentConfig(template, "figure");
 		const fallbackSpan = config.defaultSpan === "page" ? "page" : "column";
 		const span = resolveFlowSpan(node, fallbackSpan);

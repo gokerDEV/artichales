@@ -1,5 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { createParseDiagnostic } from "@/components/artichale/core/diagnostic";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache.ts";
 import {
 	type Frontmatter,
 	type FrontmatterAuthor,
@@ -10,6 +11,7 @@ import type { ParseDiagnostic } from "@/components/artichale/types/pipeline.type
 const EMPTY_FRONTMATTER: Frontmatter = {
 	title: "Untitled",
 };
+const frontmatterCache = createLastModifiedCache<ParseFrontmatterResult>();
 
 function normalizeAuthors(
 	authors: Frontmatter["authors"],
@@ -27,12 +29,16 @@ export type ParseFrontmatterResult = {
 };
 
 export function parseFrontmatter(
-	rawFrontmatter?: string,
+	rawFrontmatter: string,
 	lastModified: string,
 ): ParseFrontmatterResult {
-	//  TODO:   memoize  by lastModified
+	const cached = frontmatterCache.get(lastModified);
+	if (cached) return cached;
+
+	let result: ParseFrontmatterResult;
+
 	if (!rawFrontmatter || rawFrontmatter.trim() === "") {
-		return {
+		result = {
 			frontmatter: EMPTY_FRONTMATTER,
 			diagnostics: [
 				createParseDiagnostic({
@@ -42,6 +48,8 @@ export function parseFrontmatter(
 				}),
 			],
 		};
+		frontmatterCache.set(lastModified, result);
+		return result;
 	}
 
 	try {
@@ -56,7 +64,7 @@ export function parseFrontmatter(
 			const issueMessage =
 				validated.error.issues[0]?.message ||
 				"Frontmatter does not match required schema.";
-			return {
+			result = {
 				frontmatter: EMPTY_FRONTMATTER,
 				diagnostics: [
 					createParseDiagnostic({
@@ -66,9 +74,11 @@ export function parseFrontmatter(
 					}),
 				],
 			};
+			frontmatterCache.set(lastModified, result);
+			return result;
 		}
 
-		return {
+		result = {
 			frontmatter: {
 				...validated.data,
 				authors: normalizeAuthors(
@@ -78,7 +88,7 @@ export function parseFrontmatter(
 			diagnostics: [],
 		};
 	} catch {
-		return {
+		result = {
 			frontmatter: EMPTY_FRONTMATTER,
 			diagnostics: [
 				createParseDiagnostic({
@@ -89,4 +99,7 @@ export function parseFrontmatter(
 			],
 		};
 	}
+
+	frontmatterCache.set(lastModified, result);
+	return result;
 }

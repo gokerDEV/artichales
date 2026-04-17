@@ -1,15 +1,26 @@
 import type { ReactNode } from "react";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache";
 import type { RenderTarget } from "@/components/artichale/types/render.types";
+
+const pageRenderCache = createLastModifiedCache<ReactNode>();
 
 export function renderPage(input: {
 	target: RenderTarget;
 	children: ReactNode;
+	lastModified: string;
 }): ReactNode {
+	const cached = pageRenderCache.get(input.lastModified);
+	if (cached !== undefined) return cached;
+
+	let result: ReactNode;
+
 	if (input.target === "web") {
-		return <div className="art-web">{input.children}</div>;
+		result = <div className="art-web">{input.children}</div>;
+		pageRenderCache.set(input.lastModified, result);
+		return result;
 	}
 
-	return (
+	result = (
 		<div
 			data-art-print-document="true"
 			className="art--print paged-print-content"
@@ -17,4 +28,7 @@ export function renderPage(input: {
 			{input.children}
 		</div>
 	);
+
+	pageRenderCache.set(input.lastModified, result);
+	return result;
 }
