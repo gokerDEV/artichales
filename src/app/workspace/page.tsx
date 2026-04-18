@@ -24,9 +24,25 @@ export default function WorkspacePage() {
 	const [mode, setMode] = useState<ViewerMode>("print");
 	const [tab, setTab] = useState<ViewerTab>("viewer");
 	const [isWorkspaceReady, setIsWorkspaceReady] = useState(false);
+	const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
 
 	const workspaceFiles = useWorkspaceStore((state) => state.workspaceFiles);
 	const setRawFiles = useWorkspaceStore((state) => state.setRawFiles);
+
+	const handleResetWorkspace = async () => {
+		const nextFiles = { ...DEFAULT_WORKSPACE_FILES };
+		const timestamp = Date.now();
+		const nextLastModified = Object.fromEntries(
+			Object.keys(nextFiles).map((fileName, index) => [
+				fileName,
+				timestamp + index,
+			]),
+		);
+
+		setRawFiles(nextFiles, nextLastModified);
+		await workspaceRepository.saveWorkspace(nextFiles, nextLastModified);
+		setWorkspaceEpoch((value) => value + 1);
+	};
 
 	useEffect(() => {
 		let isMounted = true;
@@ -112,7 +128,9 @@ export default function WorkspacePage() {
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
 			<Edithor
+				key={workspaceEpoch}
 				open={CORE_ARTICLE_FILE}
+				onResetWorkspace={handleResetWorkspace}
 				config={{
 					maxFileSize: 5 * 1024 * 1024, // 5MB
 					maxWorkspaceSize: 50 * 1024 * 1024, // 50MB

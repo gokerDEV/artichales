@@ -6,6 +6,7 @@ import {
 	UploadCloud,
 	Pin,
 	AlertCircle,
+	RotateCcw,
 } from "lucide-react";
 import type { EdithorFile } from "@/components/edithor/types";
 import { formatDate } from "@/lib/edithor.utils";
@@ -29,6 +30,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -38,6 +49,7 @@ interface Props {
 	onDelete: (id: string) => Promise<void>;
 	onRename: (id: string, newName: string) => Promise<void>;
 	onUpload: (files: File[]) => Promise<void>;
+	onResetWorkspace?: () => Promise<void>;
 }
 
 export function FileTree({
@@ -47,12 +59,15 @@ export function FileTree({
 	onDelete,
 	onRename,
 	onUpload,
+	onResetWorkspace,
 }: Props) {
 	const [isDragging, setIsDragging] = useState(false);
 	const [renameFile, setRenameFile] = useState<EdithorFile | null>(null);
 	const [newName, setNewName] = useState("");
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [uploadError, setUploadError] = useState<string | null>(null);
+	const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+	const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
 	const displayFiles = useMemo(() => {
 		// Create a stable list: pinned files first (preserve pinned order),
@@ -119,6 +134,29 @@ export function FileTree({
 		[onUpload],
 	);
 
+	const handleFileInputChange = useCallback(
+		async (e: React.ChangeEvent<HTMLInputElement>) => {
+			const selectedFiles = Array.from(e.target.files ?? []);
+			if (selectedFiles.length === 0) return;
+
+			setUploadError(null);
+			setIsProcessing(true);
+			try {
+				await onUpload(selectedFiles);
+				toast.success(`${selectedFiles.length} file(s) uploaded successfully`);
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "Upload failed";
+				setUploadError(message);
+				toast.error(message);
+			} finally {
+				setIsProcessing(false);
+				e.target.value = "";
+			}
+		},
+		[onUpload],
+	);
+
 	const openRenameDialog = useCallback((file: EdithorFile) => {
 		setRenameFile(file);
 		setNewName(file.name);
@@ -168,6 +206,25 @@ export function FileTree({
 		}
 	}, [renameFile, newName, onRename, closeRenameDialog]);
 
+	const handleResetWorkspace = useCallback(async () => {
+		if (!onResetWorkspace) return;
+
+		setIsProcessing(true);
+		setUploadError(null);
+		try {
+			await onResetWorkspace();
+			toast.success("Workspace reset to defaults");
+			setIsResetDialogOpen(false);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Workspace reset failed";
+			setUploadError(message);
+			toast.error(message);
+		} finally {
+			setIsProcessing(false);
+		}
+	}, [onResetWorkspace]);
+
 	return (
 		<div
 			className={cn(
@@ -178,14 +235,45 @@ export function FileTree({
 			onDragLeave={handleDragLeave}
 			onDrop={handleDrop}
 		>
+			<input
+				ref={fileInputRef}
+				type="file"
+				multiple
+				accept=".json,.svg,.png,.jpg,.jpeg,.gif"
+				className="hidden"
+				onChange={handleFileInputChange}
+			/>
 			<div className="p-3 border-b flex items-center justify-between text-sm font-medium text-muted-foreground select-none">
 				<span>Workspace</span>
-				<UploadCloud
-					className={cn(
-						"w-4 h-4 transition-opacity",
-						isDragging ? "opacity-100 text-primary" : "opacity-50",
-					)}
-				/>
+				<div className="flex items-center gap-1">
+					<Button
+						type="button"
+						size="icon"
+						variant="ghost"
+						className="h-7 w-7"
+						disabled={isProcessing}
+						onClick={() => fileInputRef.current?.click()}
+						aria-label="Upload files"
+					>
+						<UploadCloud
+							className={cn(
+								"w-4 h-4 transition-opacity",
+								isDragging ? "opacity-100 text-primary" : "opacity-70",
+							)}
+						/>
+					</Button>
+					<Button
+						type="button"
+						size="icon"
+						variant="ghost"
+						className="h-7 w-7"
+						disabled={isProcessing || !onResetWorkspace}
+						onClick={() => setIsResetDialogOpen(true)}
+						aria-label="Reset workspace"
+					>
+						<RotateCcw className="w-4 h-4 opacity-70" />
+					</Button>
+				</div>
 			</div>
 
 			{uploadError && (
@@ -288,6 +376,36 @@ export function FileTree({
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog
+				open={isResetDialogOpen}
+				onOpenChange={setIsResetDialogOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Reset workspace?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will replace the current workspace files with the default
+							template, article, and bibliography files. Uploaded asset files
+							will be removed.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isProcessing}>
+							Cancel
+						</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault();
+								void handleResetWorkspace();
+							}}
+							disabled={isProcessing}
+						>
+							Reset
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

@@ -74,6 +74,7 @@ export interface EdithorProps {
 	files: EdithorFile[];
 	open?: string;
 	adapter: EdithorAdapter;
+	onResetWorkspace?: () => Promise<void>;
 	config?: EdithorConfig;
 	previewContent?: React.ReactNode;
 	previewHeaderExtras?: React.ReactNode;

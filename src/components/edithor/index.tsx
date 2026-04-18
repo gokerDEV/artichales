@@ -40,6 +40,7 @@ export function Edithor({
 	files = [],
 	open,
 	adapter,
+	onResetWorkspace,
 	config,
 	previewContent,
 	previewHeaderExtras,
@@ -54,9 +55,11 @@ export function Edithor({
 		handleFileDelete,
 		handleFileRename,
 		handleUpload,
+		handleResetWorkspace,
 	} = useEdithor({
 		open,
 		adapter,
+		onResetWorkspace,
 		storageKey: "edithor-layout",
 	});
 	// const [previewSnapshot, setPreviewSnapshot] = useState<
@@ -212,6 +215,7 @@ export function Edithor({
 					onDelete={handleFileDelete}
 					onRename={handleFileRename}
 					onUpload={handleUpload}
+					onResetWorkspace={handleResetWorkspace}
 				/>
 			</ResizablePanel>
 
@@ -221,6 +225,7 @@ export function Edithor({
 				<div className="flex h-full flex-col bg-background">
 					{activeEditorFile ? (
 						<EdithorEditor
+							key={`${activeEditorFile.id}:${activeEditorFile.lastModified}`}
 							file={activeEditorFile}
 							adapter={adapter}
 							config={config}

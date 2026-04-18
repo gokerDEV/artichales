@@ -1,16 +1,19 @@
 import { useCallback, useEffect } from "react";
 import { edithorDefaultLayout, useEdithorStore } from "@/lib/edithor.store";
+import type { EdithorFile } from "@/components/edithor/types";
 import type { EdithorAdapter } from "@/components/edithor/types";
 
 interface Props {
 	open?: string;
 	adapter: EdithorAdapter;
 	storageKey?: string;
+	onResetWorkspace?: () => Promise<void>;
 }
 
 export function useEdithor({
 	open,
 	adapter,
+	onResetWorkspace,
 	storageKey: _storageKey = "edithor-layout",
 }: Props) {
 	void _storageKey;
@@ -64,6 +67,12 @@ export function useEdithor({
 		[adapter],
 	);
 
+	const handleResetWorkspace = useCallback(async () => {
+		if (!onResetWorkspace) return;
+		await onResetWorkspace();
+		setActiveFileId(open ?? null);
+	}, [onResetWorkspace, open, setActiveFileId]);
+
 	return {
 		layout,
 		handleLayoutChanged,
@@ -74,5 +83,6 @@ export function useEdithor({
 		handleFileDelete,
 		handleFileRename,
 		handleUpload,
+		handleResetWorkspace,
 	};
 }

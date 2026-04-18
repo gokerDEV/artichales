@@ -60,7 +60,7 @@ export function EdithorEditor({
 		return () => {
 			isMounted = false;
 		};
-	}, [file.id, adapter]);
+	}, [file.id, file.lastModified, adapter]);
 
 	const handleSave = useCallback(
 		async (newContent: string) => {
