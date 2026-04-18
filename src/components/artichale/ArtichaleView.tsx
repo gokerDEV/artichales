@@ -653,6 +653,7 @@ function buildStyleVars(template: TemplateResolved): CSSProperties {
 export function ArtichaleView(props: ArtichaleViewProps) {
 	const sourceRef = useRef<HTMLDivElement | null>(null);
 	const pagedMountRef = useRef<HTMLDivElement | null>(null);
+	const scratchPagedMountRef = useRef<HTMLDivElement | null>(null);
 	const hasPagedContentRef = useRef(false);
 	const [pagedError, setPagedError] = useState<string | null>(null);
 	const [isPagedReady, setIsPagedReady] = useState(false);
@@ -681,7 +682,8 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 
 		const sourceElement = sourceRef.current;
 		const mountElement = pagedMountRef.current;
-		if (!sourceElement || !mountElement) return;
+		const scratchMount = scratchPagedMountRef.current;
+		if (!sourceElement || !mountElement || !scratchMount) return;
 
 		let cancelled = false;
 		let layoutSucceeded = false;
@@ -690,14 +692,7 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 			setIsPagedReady(false);
 		}
 
-		const scratchMount = document.createElement("div");
-		scratchMount.className = "paged-print-content";
-		scratchMount.style.position = "absolute";
-		scratchMount.style.left = "-200vw";
-		scratchMount.style.top = "0";
-		scratchMount.style.visibility = "hidden";
-		scratchMount.style.pointerEvents = "none";
-		document.body.appendChild(scratchMount);
+		scratchMount.replaceChildren();
 
 		const cssBlobUrl = URL.createObjectURL(
 			new Blob([pagedCss], { type: "text/css" }),
@@ -725,14 +720,14 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 					mountElement.replaceChildren(...Array.from(scratchMount.childNodes));
 					hasPagedContentRef.current = mountElement.childNodes.length > 0;
 				}
-				scratchMount.remove();
+				scratchMount.replaceChildren();
 				setIsPagedReady(true);
 				if (props.onReady) props.onReady();
 			});
 
 		return () => {
 			cancelled = true;
-			scratchMount.remove();
+			scratchMount.replaceChildren();
 		};
 	}, [
 		enablePaged,
@@ -777,6 +772,15 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 					className="paged-print-content"
 					ref={pagedMountRef}
 					style={pagedMountStyle}
+				/>
+			) : null}
+
+			{enablePaged ? (
+				<div
+					className="paged-print-content"
+					ref={scratchPagedMountRef}
+					style={HIDDEN_SOURCE_STYLE}
+					aria-hidden="true"
 				/>
 			) : null}
 
