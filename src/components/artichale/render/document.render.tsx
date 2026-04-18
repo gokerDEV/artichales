@@ -54,9 +54,14 @@ const CAPTION_DISPLAY_FAMILIES: ReadonlySet<CaptionDisplayFamily> = new Set([
 	DisplayAs.EQUATION,
 	DisplayAs.CODE,
 ]);
-const documentRenderCache = createLastModifiedCache<
-	Promise<{ article: ReactNode; diagnostics: RenderDiagnostic[] }>
->();
+const documentRenderCache =
+	createLastModifiedCache<
+		Promise<{ article: ReactNode; diagnostics: RenderDiagnostic[] }>
+	>();
+
+function getSourceLine(node: RootContent): number | undefined {
+	return node.position?.start.line;
+}
 
 function textValue(node: Text): ReactNode {
 	return node.value;
@@ -67,8 +72,9 @@ function inlineCodeValue(node: InlineCode): ReactNode {
 }
 
 function codeValue(node: Code): ReactNode {
+	const sourceLine = getSourceLine(node as unknown as RootContent);
 	return (
-		<pre>
+		<pre data-source-line={sourceLine}>
 			<code>{node.value}</code>
 		</pre>
 	);
@@ -141,6 +147,7 @@ async function renderDirective(
 				id={parsed.id.replaceAll(":", "-")}
 				className={`art-${plugin.id}`}
 				data-plugin-id={plugin.id}
+				data-source-line={getSourceLine(node)}
 			>
 				{directiveBlockWithCaption(plugin, rendered)}
 				{caption}
@@ -196,7 +203,11 @@ async function renderNode(
 			(node as Paragraph).children,
 			context,
 		);
-		return <p key={key}>{children}</p>;
+		return (
+			<p key={key} data-source-line={getSourceLine(node)}>
+				{children}
+			</p>
+		);
 	}
 	if (node.type === "heading") {
 		const headingNode = node as Heading;
@@ -208,7 +219,11 @@ async function renderNode(
 			| "h5"
 			| "h6";
 		const children = await renderChildren(headingNode.children, context);
-		return <HeadingTag key={key}>{children}</HeadingTag>;
+		return (
+			<HeadingTag key={key} data-source-line={getSourceLine(node)}>
+				{children}
+			</HeadingTag>
+		);
 	}
 	if (node.type === "strong") {
 		const children = await renderChildren((node as Strong).children, context);
@@ -227,20 +242,32 @@ async function renderNode(
 			(node as Blockquote).children,
 			context,
 		);
-		return <blockquote key={key}>{children}</blockquote>;
+		return (
+			<blockquote key={key} data-source-line={getSourceLine(node)}>
+				{children}
+			</blockquote>
+		);
 	}
 	if (node.type === "list") {
 		const list = node as List;
 		const children = await renderChildren(list.children, context);
 		return list.ordered ? (
-			<ol key={key}>{children}</ol>
+			<ol key={key} data-source-line={getSourceLine(node)}>
+				{children}
+			</ol>
 		) : (
-			<ul key={key}>{children}</ul>
+			<ul key={key} data-source-line={getSourceLine(node)}>
+				{children}
+			</ul>
 		);
 	}
 	if (node.type === "listItem") {
 		const children = await renderChildren((node as ListItem).children, context);
-		return <li key={key}>{children}</li>;
+		return (
+			<li key={key} data-source-line={getSourceLine(node)}>
+				{children}
+			</li>
+		);
 	}
 	if (node.type === "link") {
 		const link = node as Link;

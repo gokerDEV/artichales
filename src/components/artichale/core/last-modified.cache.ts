@@ -3,9 +3,7 @@ const DEFAULT_LAST_MODIFIED_CACHE_SIZE = 32;
 export class LastModifiedLruCache<T> {
 	private readonly entries = new Map<string, T>();
 
-	constructor(
-		private readonly maxSize = DEFAULT_LAST_MODIFIED_CACHE_SIZE,
-	) {}
+	constructor(private readonly maxSize = DEFAULT_LAST_MODIFIED_CACHE_SIZE) {}
 
 	get(lastModified: string): T | undefined {
 		const cached = this.entries.get(lastModified);

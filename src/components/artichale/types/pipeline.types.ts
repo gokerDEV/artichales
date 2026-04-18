@@ -1,4 +1,4 @@
-import type {PluginDefinition} from "@/components/artichale/types/plugin.types.ts";
+import type { PluginDefinition } from "@/components/artichale/types/plugin.types.ts";
 import type { Root } from "mdast";
 import type { Frontmatter } from "@/components/artichale/schema/frontmatter.schema";
 import type {

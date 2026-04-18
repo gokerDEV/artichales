@@ -41,6 +41,10 @@ const HIDDEN_SOURCE_STYLE: CSSProperties = {
 	position: "absolute",
 	top: 0,
 	left: "-200vw",
+	width: 0,
+	height: 0,
+	overflow: "hidden",
+	visibility: "hidden",
 	opacity: 0,
 	pointerEvents: "none",
 };
@@ -49,6 +53,18 @@ const HIDDEN_PAGED_MOUNT_STYLE: CSSProperties = {
 	visibility: "hidden",
 	height: 0,
 	overflow: "hidden",
+};
+
+const HIDDEN_SCRATCH_MOUNT_STYLE: CSSProperties = {
+	position: "absolute",
+	top: 0,
+	left: "-200vw",
+	width: 0,
+	height: 0,
+	overflow: "hidden",
+	visibility: "hidden",
+	opacity: 0,
+	pointerEvents: "none",
 };
 
 const VISIBLE_PAGED_MOUNT_STYLE: CSSProperties = {
@@ -779,12 +795,10 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 				<div
 					className="paged-print-content"
 					ref={scratchPagedMountRef}
-					style={HIDDEN_SOURCE_STYLE}
+					style={HIDDEN_SCRATCH_MOUNT_STYLE}
 					aria-hidden="true"
 				/>
 			) : null}
-
-
 
 			{pagedError ? (
 				<div style={{ padding: "8px", fontSize: "12px", color: "#b91c1c" }}>

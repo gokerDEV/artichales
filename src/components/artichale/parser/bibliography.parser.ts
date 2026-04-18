@@ -61,7 +61,6 @@ export function parseBibliography({
 
 	const bibliography: Record<string, BibliographyEntry> = {};
 
-	console.log('bibliography', data);
 	const diagnostics: ParseDiagnostic[] = [];
 	const source = data ?? "";
 

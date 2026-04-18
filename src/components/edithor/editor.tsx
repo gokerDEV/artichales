@@ -19,6 +19,8 @@ export interface EdithorEditorProps {
 	onContentChange?: (fileId: string, content: string) => void;
 	onFileSaved?: (fileId: string, content: string) => void;
 	onEditorBlur?: (fileId: string, content: string) => void;
+	onScrollElementReady?: (element: HTMLElement | null) => void;
+	onEditorViewReady?: (view: EditorView | null) => void;
 }
 
 export function EdithorEditor({
@@ -30,11 +32,23 @@ export function EdithorEditor({
 	onContentChange,
 	onFileSaved,
 	onEditorBlur,
+	onScrollElementReady,
+	onEditorViewReady,
 }: EdithorEditorProps) {
 	const [content, setContent] = useState<string>("");
 	const [isLoading, setIsLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 	const latestContentRef = useRef<string>("");
+	const scrollReadyCallbackRef = useRef(onScrollElementReady);
+	const editorReadyCallbackRef = useRef(onEditorViewReady);
+
+	useEffect(() => {
+		scrollReadyCallbackRef.current = onScrollElementReady;
+	}, [onScrollElementReady]);
+
+	useEffect(() => {
+		editorReadyCallbackRef.current = onEditorViewReady;
+	}, [onEditorViewReady]);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -98,6 +112,13 @@ export function EdithorEditor({
 		};
 	}, [debouncedSave]);
 
+	useEffect(() => {
+		return () => {
+			scrollReadyCallbackRef.current?.(null);
+			editorReadyCallbackRef.current?.(null);
+		};
+	}, []);
+
 	const extensions = useMemo(() => {
 		const exts: Extension[] = [];
 		const lang = getEditorLanguage(file.name);
@@ -158,6 +179,10 @@ export function EdithorEditor({
 			<ScrollArea className="relative flex-1 overflow-auto">
 				<CodeMirror
 					value={content}
+					onCreateEditor={(view) => {
+						scrollReadyCallbackRef.current?.(view.scrollDOM);
+						editorReadyCallbackRef.current?.(view);
+					}}
 					onChange={handleChange}
 					onBlur={() => {
 						debouncedSave.cancel();

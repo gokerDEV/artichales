@@ -12,7 +12,7 @@ import type {
 	RenderArtichaleResult,
 } from "@/components/artichale/types/render.types";
 
-const defaultJsonAssetReader: JSONAssetReader = async <T,>() => ({
+const defaultJsonAssetReader: JSONAssetReader = async <T>() => ({
 	data: {} as T,
 	lastModified: "",
 });

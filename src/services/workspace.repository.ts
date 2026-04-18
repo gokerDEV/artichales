@@ -165,10 +165,7 @@ class WorkspaceRepository {
 			} satisfies WorkspaceSnapshot);
 		const normalized = normalizeWorkspaceSnapshot(candidate, defaultFiles);
 		try {
-			await this.saveWorkspace(
-				normalized.files,
-				normalized.lastModifiedByName,
-			);
+			await this.saveWorkspace(normalized.files, normalized.lastModifiedByName);
 		} catch {
 			// Workspace can still be opened in-memory; save errors are surfaced by caller.
 		}

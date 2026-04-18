@@ -377,10 +377,7 @@ export function FileTree({
 				</DialogContent>
 			</Dialog>
 
-			<AlertDialog
-				open={isResetDialogOpen}
-				onOpenChange={setIsResetDialogOpen}
-			>
+			<AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Reset workspace?</AlertDialogTitle>

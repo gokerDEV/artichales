@@ -21,12 +21,7 @@ export function renderPage(input: {
 	}
 
 	result = (
-		<div
-			data-art-print-document="true"
-			className="art--print paged-print-content"
-		>
-			{input.children}
-		</div>
+		<div className="art--print">{input.children}</div>
 	);
 
 	pageRenderCache.set(input.lastModified, result);

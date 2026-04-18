@@ -35,9 +35,6 @@ export function parseArtichale({
 	markdown,
 }: ParseArtichaleInput): ParseArtichaleResult {
 
-
-	console.log('parseArtichale', {markdown})
-
 	const templateResult = parseTemplate(template);
 	const plugins = resolveEnabledPluginsFromTemplate(
 		templateResult.template.plugins,

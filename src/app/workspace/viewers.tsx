@@ -153,18 +153,17 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 		const run = async () => {
 			try {
 				const markdown = (await methods.readAssetText(CORE_ARTICLE_FILE)) ?? {
-						data: "",
-						lastModified: "",
-					};
+					data: "",
+					lastModified: "",
+				};
 				const template = (await methods.readAssetText(CORE_TEMPLATE_FILE)) ?? {
-						data: "",
-						lastModified: "",
-					};
-				const bibliography =
-					(await methods.readAssetText(CORE_BIB_FILE)) ?? {
-						data: "",
-						lastModified: "",
-					};
+					data: "",
+					lastModified: "",
+				};
+				const bibliography = (await methods.readAssetText(CORE_BIB_FILE)) ?? {
+					data: "",
+					lastModified: "",
+				};
 				const parse = parseArtichale({
 					markdown,
 					template,
