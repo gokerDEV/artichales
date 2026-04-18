@@ -31,6 +31,7 @@ type ViewerState = {
 	renderDiagnostics: readonly RenderDiagnostic[];
 	result: Awaited<ReturnType<typeof renderArtichale>> | null;
 	template: ReturnType<typeof parseArtichale>["template"] | null;
+	templateLastModified: string;
 };
 
 type ViewersProps = EdithorViewerProps & {
@@ -135,6 +136,7 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 		renderDiagnostics: [],
 		result: null,
 		template: null,
+		templateLastModified: "",
 	});
 
 	useEffect(() => {
@@ -215,6 +217,7 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 						renderDiagnostics: render.diagnostics,
 						result: render,
 						template: parse.template,
+						templateLastModified: template.lastModified,
 					});
 				});
 			} catch (error) {
@@ -229,6 +232,7 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 						renderDiagnostics: [],
 						result: null,
 						template: null,
+						templateLastModified: "",
 					});
 				});
 			}
@@ -285,7 +289,11 @@ export function Viewers({ files, methods, mode, tab }: ViewersProps) {
 				state.result &&
 				state.template ? (
 				mode === "print" ? (
-					<PrintView template={state.template} result={state.result} />
+					<PrintView
+						template={state.template}
+						templateLastModified={state.templateLastModified}
+						result={state.result}
+					/>
 				) : (
 					<WebView template={state.template} result={state.result} />
 				)

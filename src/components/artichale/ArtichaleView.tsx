@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache";
 import type {
 	ResolvedMarginConfig,
 	TemplateResolved,
@@ -10,6 +11,7 @@ import "@/components/artichale/base/print.mechanics.css";
 
 export type ArtichaleViewProps = {
 	template: TemplateResolved;
+	templateLastModified?: string;
 	title: ReactNode;
 	authors: ReactNode;
 	article: ReactNode;
@@ -42,6 +44,19 @@ const HIDDEN_SOURCE_STYLE: CSSProperties = {
 	opacity: 0,
 	pointerEvents: "none",
 };
+
+const HIDDEN_PAGED_MOUNT_STYLE: CSSProperties = {
+	visibility: "hidden",
+	height: 0,
+	overflow: "hidden",
+};
+
+const VISIBLE_PAGED_MOUNT_STYLE: CSSProperties = {
+	visibility: "visible",
+	height: "auto",
+	overflow: "visible",
+};
+const pagedStylesheetCache = createLastModifiedCache<string>();
 
 function resolvePagedPreviewerFactory(
 	moduleCandidate: unknown,
@@ -371,7 +386,7 @@ function buildArtichalePagedStylesheet(input: {
 @page {
 	size: ${page.size} ${orientation};
 	margin: ${page.margin.top} ${page.margin.right} ${page.margin.bottom} ${page.margin.left};
-}
+} 
 
 .paged-print-content .art--print article,
 .paged-print-content article {
@@ -389,6 +404,29 @@ ${footerCss}
 ${leftCss}
 ${rightCss}
 `;
+}
+
+function getPagedStylesheet(input: {
+	template: TemplateResolved;
+	templateLastModified?: string;
+	tokens?: Record<string, string | number | undefined>;
+}): string {
+	const cacheKey = input.templateLastModified?.trim();
+	if (cacheKey) {
+		const cached = pagedStylesheetCache.get(cacheKey);
+		if (cached !== undefined) return cached;
+	}
+
+	const stylesheet = buildArtichalePagedStylesheet({
+		template: input.template,
+		tokens: input.tokens,
+	});
+
+	if (cacheKey) {
+		pagedStylesheetCache.set(cacheKey, stylesheet);
+	}
+
+	return stylesheet;
 }
 
 function setMarginText(
@@ -615,23 +653,26 @@ function buildStyleVars(template: TemplateResolved): CSSProperties {
 export function ArtichaleView(props: ArtichaleViewProps) {
 	const sourceRef = useRef<HTMLDivElement | null>(null);
 	const pagedMountRef = useRef<HTMLDivElement | null>(null);
+	const hasPagedContentRef = useRef(false);
 	const [pagedError, setPagedError] = useState<string | null>(null);
 	const [isPagedReady, setIsPagedReady] = useState(false);
 	const enablePaged = props.enablePaged ?? true;
 
 	const pagedCss = useMemo(
 		() =>
-			buildArtichalePagedStylesheet({
+			getPagedStylesheet({
 				template: props.template,
+				templateLastModified: props.templateLastModified,
 				tokens: props.pagedTokens,
 			}),
-		[props.template, props.pagedTokens],
+		[props.template, props.templateLastModified, props.pagedTokens],
 	);
 
 	useEffect(() => {
 		if (!enablePaged) {
 			setPagedError(null);
 			setIsPagedReady(false);
+			hasPagedContentRef.current = false;
 			if (pagedMountRef.current) {
 				pagedMountRef.current.replaceChildren();
 			}
@@ -643,9 +684,20 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 		if (!sourceElement || !mountElement) return;
 
 		let cancelled = false;
+		let layoutSucceeded = false;
 		setPagedError(null);
-		setIsPagedReady(false);
-		mountElement.replaceChildren();
+		if (!hasPagedContentRef.current) {
+			setIsPagedReady(false);
+		}
+
+		const scratchMount = document.createElement("div");
+		scratchMount.className = "paged-print-content";
+		scratchMount.style.position = "absolute";
+		scratchMount.style.left = "-200vw";
+		scratchMount.style.top = "0";
+		scratchMount.style.visibility = "hidden";
+		scratchMount.style.pointerEvents = "none";
+		document.body.appendChild(scratchMount);
 
 		const cssBlobUrl = URL.createObjectURL(
 			new Blob([pagedCss], { type: "text/css" }),
@@ -653,11 +705,14 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 
 		void runArtichalePagedLayout({
 			sourceRoot: sourceElement,
-			mountRoot: mountElement,
+			mountRoot: scratchMount,
 			stylesheets: [cssBlobUrl, ...(props.pagedStylesheets ?? [])],
 			template: props.template,
 			tokens: props.pagedTokens,
 		})
+			.then(() => {
+				layoutSucceeded = true;
+			})
 			.catch((error) => {
 				if (cancelled) return;
 				const detail = error instanceof Error ? error.message : String(error);
@@ -666,12 +721,18 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 			.finally(() => {
 				URL.revokeObjectURL(cssBlobUrl);
 				if (cancelled) return;
+				if (layoutSucceeded) {
+					mountElement.replaceChildren(...Array.from(scratchMount.childNodes));
+					hasPagedContentRef.current = mountElement.childNodes.length > 0;
+				}
+				scratchMount.remove();
 				setIsPagedReady(true);
 				if (props.onReady) props.onReady();
 			});
 
 		return () => {
 			cancelled = true;
+			scratchMount.remove();
 		};
 	}, [
 		enablePaged,
@@ -686,8 +747,11 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 	]);
 
 	const showSource = !enablePaged || Boolean(pagedError);
-	const hideSourceBecausePagedPreviewIsReady =
-		enablePaged && isPagedReady && !pagedError;
+	const hideSourceWhilePagedPreviewIsActive = enablePaged && !pagedError;
+	const pagedMountStyle =
+		!enablePaged || showSource || (!isPagedReady && !pagedError)
+			? HIDDEN_PAGED_MOUNT_STYLE
+			: VISIBLE_PAGED_MOUNT_STYLE;
 
 	return (
 		<div
@@ -699,7 +763,7 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 			<div
 				ref={sourceRef}
 				style={
-					hideSourceBecausePagedPreviewIsReady ? HIDDEN_SOURCE_STYLE : undefined
+					hideSourceWhilePagedPreviewIsActive ? HIDDEN_SOURCE_STYLE : undefined
 				}
 			>
 				{props.title}
@@ -708,15 +772,15 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 				{props.references}
 			</div>
 
-			{enablePaged && !showSource ? (
-				<div className="paged-print-content" ref={pagedMountRef} />
+			{enablePaged ? (
+				<div
+					className="paged-print-content"
+					ref={pagedMountRef}
+					style={pagedMountStyle}
+				/>
 			) : null}
 
-			{enablePaged && !isPagedReady && !pagedError ? (
-				<div style={{ padding: "8px", fontSize: "12px", color: "#475569" }}>
-					Preparing pages...
-				</div>
-			) : null}
+
 
 			{pagedError ? (
 				<div style={{ padding: "8px", fontSize: "12px", color: "#b91c1c" }}>

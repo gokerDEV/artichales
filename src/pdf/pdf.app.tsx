@@ -105,6 +105,7 @@ export function PdfApp() {
 		<main className="mx-auto min-h-screen w-full bg-white print:m-0 print:min-h-0 print:px-0 print:py-0">
 			<ArtichaleView
 				template={executionResult.parse.template}
+				templateLastModified=""
 				title={executionResult.render.title}
 				authors={executionResult.render.authors}
 				article={executionResult.render.article}

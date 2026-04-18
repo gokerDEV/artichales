@@ -186,6 +186,7 @@ export function PrintApp() {
 		<main className="mx-auto min-h-screen w-full bg-white px-4 py-6 print:m-0 print:min-h-0 print:px-0 print:py-0">
 			<ArtichaleView
 				template={executionResult.parse.template}
+				templateLastModified=""
 				title={executionResult.render.title}
 				authors={executionResult.render.authors}
 				article={executionResult.render.article}

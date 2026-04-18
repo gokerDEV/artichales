@@ -4,14 +4,20 @@ import type { TemplateResolved } from "@/components/artichale/types/template.typ
 
 type PrintViewProps = {
 	template: TemplateResolved;
+	templateLastModified?: string;
 	result: RenderArtichaleResult;
 };
 
-export function PrintView({ template, result }: PrintViewProps) {
+export function PrintView({
+	template,
+	templateLastModified,
+	result,
+}: PrintViewProps) {
 	return (
 		<div className="p-4">
 			<ArtichaleView
 				template={template}
+				templateLastModified={templateLastModified}
 				title={result.title}
 				authors={result.authors}
 				article={result.article}
