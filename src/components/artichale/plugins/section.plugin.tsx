@@ -2,7 +2,7 @@ import * as React from "react";
 import {
 	extractReferenceNumber,
 	toReadableTitle,
-} from "@/components/artichale/base/plugin.shared.ts";
+} from "@/components/artichale/core/plugin.shared.ts";
 import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
@@ -27,7 +27,7 @@ export const sectionPlugin: PluginDefinition = {
 	render({ node, resolvedReferences }) {
 		const parsed = parseDirectiveNode(node);
 		const title = toReadableTitle(
-			parsed.label || parsed.dataFile || parsed.caption,
+			parsed.caption || parsed.dataFile || parsed.label,
 			"Section",
 		);
 		const number = extractReferenceNumber(resolvedReferences.get(parsed.id));

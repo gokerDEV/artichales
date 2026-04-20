@@ -34,7 +34,6 @@ export function parseArtichale({
 	bibliography,
 	markdown,
 }: ParseArtichaleInput): ParseArtichaleResult {
-
 	const templateResult = parseTemplate(template);
 	const plugins = resolveEnabledPluginsFromTemplate(
 		templateResult.template.plugins,

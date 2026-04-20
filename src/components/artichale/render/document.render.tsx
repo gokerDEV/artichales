@@ -24,7 +24,6 @@ import {
 import { createLastModifiedCache } from "@/components/artichale/core/last-modified.cache";
 import {
 	DisplayAs,
-	type PluginDefinition,
 	type PluginRegistryMaps,
 } from "@/components/artichale/types/plugin.types";
 import type { ResolvedReference } from "@/components/artichale/types/reference.types";
@@ -93,13 +92,6 @@ function isDirectiveNode(node: RootContent): node is RootContent & {
 	);
 }
 
-function directiveBlockWithCaption(
-	plugin: PluginDefinition,
-	content: ReactNode,
-): ReactNode {
-	return <Fragment key={`directive-${plugin.id}`}>{content}</Fragment>;
-}
-
 async function renderDirective(
 	node: RootContent & {
 		type: "textDirective" | "leafDirective" | "containerDirective";
@@ -133,14 +125,24 @@ async function renderDirective(
 			fnAssetResolver: context.fnAssetResolver,
 			resolvedReferences: context.resolvedReferences,
 		});
+
+		if (!rendered) {
+			return null;
+		}
+
 		const parsed = parseDirectiveNode(node);
 		const shouldRenderCaption = CAPTION_DISPLAY_FAMILIES.has(plugin.displayAs);
-		const caption =
-			shouldRenderCaption && parsed.caption ? (
-				<figcaption className="art-caption">{parsed.caption}</figcaption>
-			) : null;
+		const captionContent = shouldRenderCaption
+			? buildCaptionContent(
+					parsed.id,
+					parsed.caption,
+					context.resolvedReferences,
+				)
+			: null;
 
-		if (node.type === "textDirective") return rendered;
+		if (node.type === "textDirective") {
+			return rendered;
+		}
 
 		return (
 			<div
@@ -149,8 +151,8 @@ async function renderDirective(
 				data-plugin-id={plugin.id}
 				data-source-line={getSourceLine(node)}
 			>
-				{directiveBlockWithCaption(plugin, rendered)}
-				{caption}
+				{rendered}
+				{captionContent}
 			</div>
 		);
 	} catch (error) {
@@ -165,6 +167,33 @@ async function renderDirective(
 		);
 		return null;
 	}
+}
+
+function buildCaptionContent(
+	id: string,
+	captionText: string,
+	resolvedReferences: ReadonlyMap<string, ResolvedReference>,
+): ReactNode {
+	const reference = resolvedReferences.get(id);
+	const numberedLabel = reference?.label ?? "";
+	const text = captionText || "";
+
+	if (!numberedLabel && !text) {
+		return null;
+	}
+
+	const parts: ReactNode[] = [];
+	if (numberedLabel) {
+		parts.push(<strong key="label">{numberedLabel}</strong>);
+	}
+	if (text) {
+		if (numberedLabel) {
+			parts.push(": ");
+		}
+		parts.push(text);
+	}
+
+	return <figcaption className="art-caption">{parts}</figcaption>;
 }
 
 async function renderChildren(

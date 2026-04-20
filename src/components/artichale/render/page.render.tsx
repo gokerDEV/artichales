@@ -20,9 +20,7 @@ export function renderPage(input: {
 		return result;
 	}
 
-	result = (
-		<div className="art--print">{input.children}</div>
-	);
+	result = <div className="art--print">{input.children}</div>;
 
 	pageRenderCache.set(input.lastModified, result);
 	return result;

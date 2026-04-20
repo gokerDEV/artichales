@@ -1,10 +1,10 @@
 import * as React from "react";
+import type { RootContent } from "mdast";
 import {
-	extractDirectiveCode,
 	resolveBlockSpacingStyle,
 	resolveComponentConfig,
 	resolveFlowSpan,
-} from "@/components/artichale/base/plugin.shared.ts";
+} from "@/components/artichale/core/plugin.shared.ts";
 import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
@@ -12,36 +12,48 @@ import {
 	DisplayAs,
 } from "@/components/artichale/types/plugin.types";
 
-const EquationBlock = React.memo(
-	function EquationBlock({
-		expression,
-		span,
-		marginTop,
-		marginBottom,
-	}: {
-		expression: string;
-		span: "column" | "page";
-		marginTop?: string;
-		marginBottom?: string;
-	}) {
-		return (
-			<div
-				className="art-table"
-				data-flow-span={span}
-				style={{ marginTop, marginBottom }}
-			>
-				<div className="px-4 py-3 text-center">
-					<code>{expression || "Equation expression missing."}</code>
-				</div>
+function extractCodeFromChildren(children: RootContent[] | undefined): string {
+	if (!Array.isArray(children) || children.length === 0) {
+		return "";
+	}
+
+	for (const child of children) {
+		if (child.type === "code") {
+			const codeBlock = child as RootContent & { type: "code"; value: string };
+			return codeBlock.value.trim();
+		}
+	}
+
+	return "";
+}
+
+type EquationBlockProps = {
+	expression: string;
+	span: "column" | "page";
+	marginTop?: string;
+	marginBottom?: string;
+};
+
+const EquationBlock = React.memo(function EquationBlock({
+	expression,
+	span,
+	marginTop,
+	marginBottom,
+}: EquationBlockProps) {
+	return (
+		<div
+			className="art-equation"
+			data-flow-span={span}
+			style={{ marginTop, marginBottom }}
+		>
+			<div className="px-4 py-3 text-center">
+				<code>{expression || "Equation expression missing."}</code>
 			</div>
-		);
-	},
-	(previousProps, nextProps) =>
-		previousProps.expression === nextProps.expression &&
-		previousProps.span === nextProps.span &&
-		previousProps.marginTop === nextProps.marginTop &&
-		previousProps.marginBottom === nextProps.marginBottom,
-);
+		</div>
+	);
+});
+
+EquationBlock.displayName = "EquationBlock";
 
 export const equationPlugin: PluginDefinition = {
 	id: "equation",
@@ -50,24 +62,32 @@ export const equationPlugin: PluginDefinition = {
 	kind: DirectiveKind.CONTAINER,
 	autocomplete: true,
 	render({ node, template }) {
-		const parsed = parseDirectiveNode(node);
-		const config = resolveComponentConfig(template, "equation");
-		const fallbackSpan = config.defaultSpan === "page" ? "page" : "column";
-		const span = resolveFlowSpan(node, fallbackSpan);
-		const expression =
-			extractDirectiveCode(node) ||
-			parsed.caption ||
-			parsed.label ||
-			parsed.dataFile ||
-			"";
-		const spacing = resolveBlockSpacingStyle(config);
-		return (
-			<EquationBlock
-				expression={expression}
-				span={span}
-				marginTop={spacing.marginTop}
-				marginBottom={spacing.marginBottom}
-			/>
-		);
+		try {
+			const parsed = parseDirectiveNode(node);
+			const extracted = extractCodeFromChildren(node.children);
+			const expression =
+				extracted || parsed.caption || parsed.label || parsed.dataFile || "";
+
+			const config = resolveComponentConfig(template, "equation");
+			const fallbackSpan = config.defaultSpan === "page" ? "page" : "column";
+			const span = resolveFlowSpan(node, fallbackSpan);
+			const spacing = resolveBlockSpacingStyle(config);
+
+			return (
+				<EquationBlock
+					expression={expression}
+					span={span}
+					marginTop={spacing.marginTop}
+					marginBottom={spacing.marginBottom}
+				/>
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return (
+				<div style={{ color: "red", padding: "10px", border: "1px solid red" }}>
+					Error rendering equation: {message}
+				</div>
+			);
+		}
 	},
 };

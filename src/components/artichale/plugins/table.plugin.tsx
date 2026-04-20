@@ -3,7 +3,7 @@ import {
 	resolveBlockSpacingStyle,
 	resolveComponentConfig,
 	resolveFlowSpan,
-} from "@/components/artichale/base/plugin.shared.ts";
+} from "@/components/artichale/core/plugin.shared.ts";
 import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {

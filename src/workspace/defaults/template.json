@@ -211,12 +211,5 @@
 			}
 		}
 	},
-	"plugins": [
-		"abstract",
-		"plotty",
-		"datatable",
-		"section",
-		"subsection",
-		"subsubsection"
-	]
+	"plugins": ["plotty", "datatable"]
 }

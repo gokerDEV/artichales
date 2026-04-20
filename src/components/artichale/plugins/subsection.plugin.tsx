@@ -2,7 +2,7 @@ import * as React from "react";
 import {
 	extractReferenceNumber,
 	toReadableTitle,
-} from "@/components/artichale/base/plugin.shared.ts";
+} from "@/components/artichale/core/plugin.shared.ts";
 import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {
@@ -12,7 +12,7 @@ import {
 
 const SubsectionHeading = React.memo(
 	function SubsectionHeading({ headingText }: { headingText: string }) {
-		return <h3 className="art-section">{headingText}</h3>;
+		return <h3 className="art-subsection">{headingText}</h3>;
 	},
 	(previousProps, nextProps) =>
 		previousProps.headingText === nextProps.headingText,

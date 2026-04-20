@@ -6,7 +6,7 @@
 
 /* --- 1. ROOT & TYPOGRAPHY --- */
 .art--print {
-    @apply max-w-none text-black text-justify;
+    @apply max-w-none text-black;
     font-family: var(--art-font-body);
     font-size: var(--art-font-size-body);
     line-height: var(--art-line-height);
@@ -16,7 +16,7 @@
 
 /* --- 2. RAW MARKDOWN HTML ELEMENTS --- */
 .art--print p {
-    @apply leading-7 my-4;
+    @apply leading-6 my-4;
 }
 
 .art--print p > strong {
@@ -30,7 +30,7 @@
 .art--print h5,
 .art--print h6 {
     font-family: var(--art-font-heading);
-    @apply text-black font-semibold tracking-tight;
+    @apply text-black font-semibold tracking-tight text-left! uppercase;
     page-break-after: avoid;
     break-after: avoid;
 }
@@ -40,17 +40,24 @@
     font-size: var(--art-font-size-h1);
 }
 
-.art--print h2 {
+.art--print h2,
+.art--print .art-section {
     @apply mt-5 mb-2.5 text-2xl;
     font-size: var(--art-font-size-h2);
 }
 
-.art--print h3 {
+.art--print h3,
+.art--print .art-subsection {
     @apply mt-4 mb-2 text-xl;
     font-size: var(--art-font-size-h3);
 }
 
 .art--print h4,
+.art--print .art-subsubsection {
+    @apply mt-4 mb-2 text-xl;
+    font-size: var(--art-font-size-h3);
+}
+
 .art--print h5,
 .art--print h6 {
     @apply mt-3 mb-1.5;
@@ -164,7 +171,7 @@
 
 /* --- 4. SEMANTIC COMPONENTS (Plugins) --- */
 .art-abstract {
-    @apply block border-y-2 border-black py-4 my-8 mx-auto w-[90%];
+    @apply block border-y-2 border-black py-4 my-8 mx-auto text-justify w-full;
     page-break-inside: avoid;
     break-inside: avoid;
 }

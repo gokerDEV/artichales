@@ -312,7 +312,10 @@ export function Edithor({
 		}
 
 		const line = editorView.state.doc.lineAt(position).number;
-		const targetElement = getClosestSourceLineElement(previewScrollElement, line);
+		const targetElement = getClosestSourceLineElement(
+			previewScrollElement,
+			line,
+		);
 		if (!targetElement) {
 			console.log("[align editor->preview] missing preview target", {
 				editorLine: line,

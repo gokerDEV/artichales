@@ -2,7 +2,7 @@ import * as React from "react";
 import {
 	resolveBlockSpacingStyle,
 	resolveComponentConfig,
-} from "@/components/artichale/base/plugin.shared.ts";
+} from "@/components/artichale/core/plugin.shared.ts";
 import { parseDirectiveNode } from "@/components/artichale/core/artichale.util";
 import type { PluginDefinition } from "@/components/artichale/types/plugin.types";
 import {

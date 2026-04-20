@@ -53,19 +53,19 @@ export function resolveEnabledPluginsFromTemplate(
 	// lastModified: string,
 ): PluginDefinition[] {
 	//  TODO:  memoize  by lastModified
-	if (templatePlugins.length === 0) return [...BUILTIN_PLUGINS];
 
 	const result: PluginDefinition[] = [];
 	const seen = new Set<string>();
 
-	for (const pluginId of templatePlugins) {
-		if (seen.has(pluginId)) continue;
-		seen.add(pluginId);
-		const plugin = BUILTIN_BY_ID.get(pluginId);
-		if (plugin) result.push(plugin);
-	}
+	if (templatePlugins.length > 0)
+		for (const pluginId of templatePlugins) {
+			if (seen.has(pluginId)) continue;
+			seen.add(pluginId);
+			const plugin = BUILTIN_BY_ID.get(pluginId);
+			if (plugin) result.push(plugin);
+		}
 
-	return result.length > 0 ? result : [...BUILTIN_PLUGINS];
+	return result.length > 0 ? [...BUILTIN_PLUGINS, ...result] : BUILTIN_PLUGINS;
 }
 
 // export function resolvePlugins(

@@ -44,15 +44,24 @@ editors:
 This document demonstrates core Markdown features, citation and reference tokens, code blocks, math equations, and custom Artichales directives. Integer maximus dui leo, sit amet dignissim augue malesuada eu. Aenean ornare odio a ligula feugiat, ut hendrerit urna interdum. Pellentesque in feugiat ex, quis placerat magna. Sed lacus sapien, posuere ac ipsum sed, dapibus tempor urna. Aenean vel est eros. Nam euismod, orci quis sodales lacinia, neque neque mattis enim, eget mollis quam tellus a arcu.
 :::
 
-# Heading Level 1
+:::section[section_1]
+Heading Level Section (1)
+:::
+
 Regular paragraph with **bold**, *italic*, ~~strikethrough~~, and `inline code`.
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Maecenas nec eleifend nisi. Duis sit amet feugiat arcu. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc malesuada erat at ante lacinia tristique et eget turpis. Duis sagittis, justo a mollis malesuada, orci dui vestibulum risus, nec hendrerit urna ligula non est. Quisque nec rhoncus sem, pulvinar dignissim risus. Aliquam tristique molestie lorem, eu egestas elit auctor sit amet.
 
 
-## Heading Level 2
+
+:::subsection[subsection_1]
+Heading Level Sub-Section (2)
+:::
+
 Link examples: [Artichales](https://github.com/goker/artichales) and [local ref](#heading-level-3). Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
-### Heading Level 3
+:::subsubsection[subsubsection_1]
+Heading Level Sub-Sub-Section (3)
+:::
 Citation tokens: :cite[knuth1984, goker] and :cite[knuth1984, goker].
 Cross refs: :ref[plotty:plot_1], :ref[datatable:datatable_1], :ref[abstract]. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
@@ -79,7 +88,9 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta t
 > - Quote list item A
 > - Quote list item B
 
-# Section
+:::section[section_2]
+Section
+:::
 
 Sed vitae neque at dolor laoreet pharetra. Aliquam a lectus sit amet neque semper ullamcorper sit amet non leo. Phasellus congue purus nec orci bibendum, vel eleifend magna interdum. Donec sagittis nisl pretium, mollis diam ut, rhoncus dolor. Vestibulum commodo, nisi non semper mollis, lorem ligula vehicula massa, et finibus lectus justo sit amet tortor. Pellentesque convallis nulla dolor, ut sodales justo convallis id. Nullam orci felis, lobortis in magna ac, egestas pellentesque nulla. Donec ultricies pharetra hendrerit. Vivamus facilisis rutrum sem, sed consectetur tellus gravida at. Vestibulum rhoncus lobortis orci, id mollis lorem sodales vel. Mauris eleifend urna ac libero posuere, sit amet dignissim enim venenatis. Integer tristique rhoncus libero, ut bibendum diam finibus eget. Nulla non venenatis orci. Sed tincidunt posuere erat, quis egestas risus interdum at. Nulla facilisi. Duis ultricies nulla augue, quis blandit urna iaculis id.
 
@@ -87,16 +98,25 @@ Proin ac iaculis odio. Duis sit amet leo ut massa semper euismod. Aenean dapibus
 
 ---
 
-## Table Sample
+:::subsection[subsection_table]
+Table Sample
+:::
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
+
+:::table[table_metrics]
+Sample table with control and treatment groups
 
 | Metric | Control | Treatment |
 | ------ | ------- | --------- |
 | Mean   | 0.24    | 0.39      |
 | Std    | 0.03    | 0.04      |
+:::
 
 ## Code Sample
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
+
+:::codesample[compute_mean]
+TypeScript function calculating mean value
 
 ~~~ts
 type Result = {
@@ -109,27 +129,44 @@ const computeMean = (rows: Result[]): number => {
   return Number((total / rows.length).toFixed(3));
 };
 ~~~
+:::
+
+:::codesample[npm_commands]
+Shell commands for linting and building
 
 ~~~bash
 npm run lint
 npm run build
 ~~~
+:::
 
-## Math Sample
+:::subsection[subsection_math]
+Math Sample
+:::
 
-Inline math: $E = mc^2$ and $alpha + \beta = gamma$.
+Inline math: $E = mc^2$ and $\alpha + \beta = \gamma$.
 
-Block equation:
+Block equations:
+
+:::equation[gauss_law]
+Gauss's Law
 
 $$
 \nabla \cdot \vec{E} = \frac{\rho}{\varepsilon_0}
 $$
+:::
+
+:::equation[integral_power]
+Integral of power function
 
 $$
 \int_0^1 x^2\,dx = \frac{1}{3}
 $$
+:::
 
-## Custom Directives
+:::subsection[subsection_directives]
+Custom Directives
+:::
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec fermentum porta tortor, at scelerisque sapien hendrerit in. Integer viverra bibendum ultrices. In semper orci eu est vehicula, a viverra augue eleifend. Aenean vel aliquam lacus.
 
 :::plotty[plot_1.json]{span_options="page"}
@@ -140,7 +177,9 @@ caption: "Full-width ribbon plot in two-column print layout"
 caption: "Column-flow datatable after full-width figure"
 :::
 
-## Long Flow Demo
+:::subsection[subsection_flow]
+Long Flow  Demonstration
+:::
 
 This section intentionally extends content length to force a multi-page print preview.
 In two-column mode, text should continue in columns, break into the next page, and keep

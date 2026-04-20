@@ -1,4 +1,4 @@
-import { collectNodeText } from "@/components/artichale/core/artichale.util";
+import { collectNodeText } from "@/components/artichale/core/artichale.util.ts";
 import type { DirectiveNode } from "@/components/artichale/types/plugin.types.ts";
 import type { ResolvedReference } from "@/components/artichale/types/reference.types.ts";
 import type {
