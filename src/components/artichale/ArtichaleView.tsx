@@ -791,14 +791,15 @@ export function ArtichaleView(props: ArtichaleViewProps) {
 				/>
 			) : null}
 
-			{enablePaged ? (
-				<div
-					className="paged-print-content"
-					ref={scratchPagedMountRef}
-					style={HIDDEN_SCRATCH_MOUNT_STYLE}
-					aria-hidden="true"
-				/>
-			) : null}
+		{enablePaged ? (
+			<div
+				className="paged-print-content"
+				ref={scratchPagedMountRef}
+				style={HIDDEN_SCRATCH_MOUNT_STYLE}
+				data-paged-scratch-mount="true"
+				aria-hidden="true"
+			/>
+		) : null}
 
 			{pagedError ? (
 				<div style={{ padding: "8px", fontSize: "12px", color: "#b91c1c" }}>
